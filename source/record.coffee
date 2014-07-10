@@ -1,6 +1,7 @@
 
-CalendarCtrl.factory 'RxRecord', ->
-  class RxRecord
+main.factory 'kareo.Record', ->
+
+  class Record
     constructor: (data) ->
       return @_construct(data) if data?
 

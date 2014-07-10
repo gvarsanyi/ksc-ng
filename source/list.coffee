@@ -1,7 +1,7 @@
 
-CalendarCtrl.factory 'RxList', [
-  'RxEditableRecord', 'RxRecord',
-  (RxEditableRecord, RxRecord) ->
+main.factory 'kareo.List', [
+  'kareo.EditableRecord', 'kareo.Record',
+  (EditableRecord, Record) ->
 
     add = (list, orig_fn, items..., return_records) ->
       if typeof return_records is 'boolean'
@@ -10,14 +10,14 @@ CalendarCtrl.factory 'RxList', [
         items.push return_records
         return_records = null
 
-      record_class = list.constructorPrototype.recordClass or RxEditableRecord
+      record_class = list.constructorPrototype.recordClass or EditableRecord
       for item in items
         unless item and typeof item is 'object'
-          throw new Error 'RxList can only contain objects. `' + item +
+          throw new Error 'List can only contain objects. `' + item +
                           '` is ' + (typeof item) + 'type.'
 
         unless item instanceof record_class
-          if item instanceof RxRecord
+          if item instanceof Record
             item = new record_class item._clone true
           else
             item = new record_class item
@@ -81,7 +81,7 @@ CalendarCtrl.factory 'RxList', [
         -1
 
 
-    class RxList
+    class List
       constructor: (args...) ->
         @list = list = []
 

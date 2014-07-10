@@ -1,7 +1,7 @@
 
-CalendarCtrl.factory 'RxRestList', [
-  '$http', 'RxList',
-  ($http, RxList) ->
+main.factory 'kareo.RestList', [
+  '$http', 'kareo.List', 'kareo.restUtils',
+  ($http, List, restUtils) ->
 
     async_squash = (records, done_callback, iteration_fn) ->
       count   = 0
@@ -30,16 +30,6 @@ CalendarCtrl.factory 'RxRestList', [
         return promises[0]
       promises
 
-    load_count_increment = (list) ->
-      list.restLoading = (list.restLoading or 0) + 1
-      return
-
-    load_count_decrement = (list) ->
-      list.restLoading -= 1
-      if list.restLoading is 0
-        delete list.restLoading
-      return
-
     # @restListProperty
     upsert = (list, data) ->
       if typeof list.restListProperty is 'undefined'
@@ -59,17 +49,6 @@ CalendarCtrl.factory 'RxRestList', [
       src = if list_property then data[list_property] else data
       list.push src..., true
 
-    wrap_promise = (list, promise, callback) ->
-      load_count_increment list
-
-      promise.success (data, status, headers, config) ->
-        load_count_decrement list
-        callback? null, {data, status, headers, config}
-
-      promise.error (data, status, headers, config) ->
-        load_count_decrement list
-        error = new Error 'HTTP' + status + ': ' + method + ' ' + url
-        callback? error, {error, data, status, headers, config}
 
     # @restBulkDelete
     # @restBulkSave=(true==PUT)|POST
@@ -92,7 +71,7 @@ CalendarCtrl.factory 'RxRestList', [
         else
           data = (record.id for record in records)
         promise = $http[bulk_method] url, data
-        return wrap_promise list, promise, (err, raw_response) ->
+        return restUtils.wrapPromise list, promise, (err, raw_response) ->
           unless err
             if save_type
               record_list = upsert list, raw_response.data
@@ -119,7 +98,8 @@ CalendarCtrl.factory 'RxRestList', [
 
         args = [url]
         args.push(record.entity()) if save_type
-        wrap_promise list, $http[method](args...), (err, raw_response) ->
+        promise = $http[method](args...)
+        restUtils.wrapPromise list, promise, (err, raw_response) ->
           unless err
             if save_type
               for k, v of list.push raw_response.data
@@ -129,7 +109,7 @@ CalendarCtrl.factory 'RxRestList', [
           iteration_callback err, raw_response
 
 
-    class RxRestList extends RxList
+    class RestList extends List
       # @restUrl
       restGetRaw: (query_parameters, callback) ->
         if typeof query_parameters is 'function'
@@ -143,7 +123,7 @@ CalendarCtrl.factory 'RxRestList', [
           if parts.length
             url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
 
-        wrap_promise @, $http.get(url), callback
+        restUtils.wrapPromise @, $http.get(url), callback
 
       # [@restListProperty]
       # @restUrl

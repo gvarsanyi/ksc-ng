@@ -1,14 +1,18 @@
 
-CalendarCtrl.factory 'RxEditableRecord', [
-  'RxRecord',
-  (RxRecord) ->
+main.factory 'kareo.EditableRecord', [
+  'kareo.Record',
+  (Record) ->
 
-    class RxEditableRecord extends RxRecord
-      is_object = (refs...) ->
-        for ref in refs
-          return false unless ref and typeof ref is 'object'
-        true
+    update_changed_property = (base, value) ->
+      Object.defineProperty base, '_changed', {value, writable: false}
 
+    is_object = (refs...) ->
+      for ref in refs
+        return false unless ref and typeof ref is 'object'
+      true
+
+
+    class EditableRecord extends Record
       _construct: (data) ->
         deep_inherit = (saved, data) ->
           data ?= Object.create saved
@@ -17,9 +21,14 @@ CalendarCtrl.factory 'RxEditableRecord', [
           data
 
         saved = super
-        saved._base._data = deep_inherit saved
 
-      _changed: (keys...) =>
+        update_changed_property saved._base, false
+
+        saved._base._edited = deep_inherit saved
+
+      _changed: false
+
+      _changedKeys: (keys...) =>
         recursive_cmp = (data, saved, key_trail=[]) ->
           for own key, value of data
             if is_object value, saved[key]
@@ -36,7 +45,7 @@ CalendarCtrl.factory 'RxEditableRecord', [
         if keys.length
           for key in keys
             orig_key = key
-            data     = @_data
+            data     = @_edited
             saved    = @_saved
             if is_object key
               for subkey in key[0 ... key.length - 1]
@@ -60,7 +69,7 @@ CalendarCtrl.factory 'RxEditableRecord', [
             (not saved?.hasOwnProperty(key) or data[key] isnt saved[key])
               changed_keys.push orig_key
         else
-          recursive_cmp @_data, @_saved
+          recursive_cmp @_edited, @_saved
 
         if changed_keys.length
           changed_keys.sort (a, b) ->
@@ -73,7 +82,7 @@ CalendarCtrl.factory 'RxEditableRecord', [
 
       _clone: (return_plain_object=false, saved_only=false) ->
         clone = angular.copy @_saved
-        angular.copy(@_data, clone) unless saved_only
+        angular.copy(@_edited, clone) unless saved_only
 
         unless return_plain_object
           clone = new @constructor angular.copy source
@@ -101,7 +110,7 @@ CalendarCtrl.factory 'RxEditableRecord', [
               saved[k] = v
           return
 
-        deep_replace angular.copy(incoming), @_saved, @_data
+        deep_replace angular.copy(incoming), @_saved, @_edited
 
       _revert: ->
         deep_revert = (saved, data) ->
@@ -115,5 +124,5 @@ CalendarCtrl.factory 'RxEditableRecord', [
               delete data[k]
           return
 
-        deep_revert @_saved, @_data
+        deep_revert @_saved, @_edited
 ]
