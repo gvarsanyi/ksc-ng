@@ -1,6 +1,6 @@
 
-main.factory 'kareo.RestEndpoint', [
-  'kareo.RestList', 'kareo.RestRecord',
+app.factory 'ksc.RestEndpoint', [
+  'ksc.RestList', 'ksc.RestRecord',
   (RestList, RestRecord) ->
 
 #     options:

@@ -1,5 +1,5 @@
 
-main.factory 'kareo.Record', ->
+app.factory 'ksc.Record', ->
 
   class Record
     constructor: (data) ->
@@ -15,9 +15,13 @@ main.factory 'kareo.Record', ->
       saved
 
     _clone: (return_plain_object=false) ->
-      clone = angular.copy @_saved
+      saved = {}
+      saved[k] = v for own k, v of @_saved
+      clone = angular.copy saved
+
       unless return_plain_object
-        clone = new @constructor angular.copy source
+        clone = new @constructor clone
+
       clone
 
     _entity: ->

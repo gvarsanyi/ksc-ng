@@ -1,10 +1,10 @@
 
-main.factory 'kareo.RestRecord', [
-  '$http', 'kareo.EditableRecord', 'kareo.restUtils',
-  ($http, EditableRecord, restUtils) ->
+app.factory 'ksc.RestRecord', [
+  '$http', 'ksc.EditableRecord', 'ksc.RestUtils',
+  ($http, EditableRecord, RestUtils) ->
 
     async = (record, promise, callback) ->
-      restUtils.wrapPromise promise, (err, raw_response) ->
+      RestUtils.wrapPromise promise, (err, raw_response) ->
         if not err and raw_response.data
           record._replace raw_response.data
         callback? err, raw_response

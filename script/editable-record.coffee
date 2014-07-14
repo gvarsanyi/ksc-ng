@@ -1,6 +1,6 @@
 
-main.factory 'kareo.EditableRecord', [
-  'kareo.Record',
+app.factory 'ksc.EditableRecord', [
+  'ksc.Record',
   (Record) ->
 
     update_changed_property = (base, value) ->
@@ -81,11 +81,17 @@ main.factory 'kareo.EditableRecord', [
         false
 
       _clone: (return_plain_object=false, saved_only=false) ->
-        clone = angular.copy @_saved
-        angular.copy(@_edited, clone) unless saved_only
+        if saved_only
+          return super
+
+        edited = {}
+        for k, v of @
+          if @_edited.hasOwnProperty(k) or @_saved.hasOwnProperty(k)
+            edited[k] = v
+        clone = angular.copy edited
 
         unless return_plain_object
-          clone = new @constructor angular.copy source
+          clone = new @constructor clone
 
         clone
 
