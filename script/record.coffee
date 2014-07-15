@@ -1,44 +1,64 @@
 
-app.factory 'ksc.Record', ->
+app.factory 'ksc.Record', [
+  'ksc.Utils',
+  (Utils) ->
 
-  class Record
-    constructor: (data) ->
-      return @_construct(data) if data?
+    define_value = Utils.defineValue
+    is_object    = Utils.isObject
 
-    _construct: (data) ->
-      base = new @constructor
-      base._base = base
+    class Record
+      @getId: (record) ->
+        key = 'idProperty'
+        options = record._options
 
-      base._saved = saved = Object.create base
-      saved[k] = v for own k, v of angular.copy data
-      base._id = saved._getId()
-      saved
+        unless options[key] # assign first as ID
+          for own key of record._saved
+            options[key] = key
+            break
 
-    _clone: (return_plain_object=false) ->
-      saved = {}
-      saved[k] = v for own k, v of @_saved
-      clone = angular.copy saved
+        unless (id_property = options[key])
+          throw new Error 'Could not identify ._options.idProperty'
 
-      unless return_plain_object
-        clone = new @constructor clone
+        if Array.isArray id_property
+          return (record[pt] for pt in id_property when record[pt]?).join '-'
 
-      clone
+        record[id_property]
 
-    _entity: ->
-      @_clone true
 
-    _getId: ->
-      key = 'idProperty'
-      options = @_base._options ?= {}
-      unless options[key]
-        for own k of @_saved
-          options[key] = k
-          break
+      constructor: (data, options={}) ->
+        @_replace data
 
-      unless (id_property = options[key])
-        throw new Error 'Could not identify ._options.idProperty'
+        define_value @, '_options', angular.copy options
+        define_value @, '_id', Record.getId @, data
 
-      if typeof id_property is 'object'
-        return (@[pt] for pt in id_property when data[pt]?).join '-'
+      _clone: (return_plain_object=false) ->
+        clone = angular.copy @_saved
 
-      @[id_property]
+        unless return_plain_object
+          return new @constructor clone
+
+        clone
+
+      _entity: ->
+        @_clone true
+
+      _replace: (data) ->
+        for key of data when key.substr(0, 1) is '_'
+          throw new Error 'property names must not start with underscore "_"'
+
+        if @_saved
+          for key of @_saved
+            delete @[key]
+
+        define_value @, '_saved', angular.copy data
+
+        for key, value of @_saved
+          define_value @, key, value, true, true
+
+        deep_ro = (saved) ->
+          for key, value of saved
+            define_value saved, key, value, false, true
+            if is_object value
+              deep_ro value
+        deep_ro @_saved, @
+]

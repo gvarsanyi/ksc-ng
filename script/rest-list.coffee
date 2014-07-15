@@ -231,7 +231,7 @@ app.factory 'ksc.RestList', [
           unless (record = list.map[id = record?._id])
             throw new Error 'record is not in the list: ' + id
 
-          if save_type and not record._base._changed
+          if save_type and not record._changed
             throw new Error 'Record has no changes to save: ' + id
 
           if unique_record_map[id]

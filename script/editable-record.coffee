@@ -1,93 +1,26 @@
 
 app.factory 'ksc.EditableRecord', [
-  'ksc.Record',
-  (Record) ->
+  'ksc.Record', 'ksc.Utils',
+  (Record, Utils) ->
 
-    update_changed_property = (base, value) ->
-      Object.defineProperty base, '_changed', {value, writable: false}
+    define_getset = Utils.defineGetSet
+    define_value  = Utils.defineValue
+    is_object     = Utils.isObject
 
-    is_object = (refs...) ->
-      for ref in refs
-        return false unless ref and typeof ref is 'object'
-      true
-
+    has_own = (obj, key) ->
+      obj.hasOwnProperty key
 
     class EditableRecord extends Record
-      _construct: (data) ->
-        deep_inherit = (saved, data) ->
-          data ?= Object.create saved
-          for own k, v of saved when is_object v
-            data[k] = deep_inherit v
-          data
-
-        saved = super
-
-        update_changed_property saved._base, false
-
-        saved._base._edited = deep_inherit saved
-
-      _changed: false
-
-      _changedKeys: (keys...) =>
-        recursive_cmp = (data, saved, key_trail=[]) ->
-          for own key, value of data
-            if is_object value, saved[key]
-              (trail = angular.copy key_trail).push key
-              recursive_cmp value, saved[key], trail
-            else if value isnt saved[key]
-              if key_trail.length
-                (response = angular.copy key_trail).push key
-                changed_keys.push response
-              else
-                changed_keys.push key
-
-        changed_keys = []
-        if keys.length
-          for key in keys
-            orig_key = key
-            data     = @_edited
-            saved    = @_saved
-            if is_object key
-              for subkey in key[0 ... key.length - 1]
-                if is_object(data) and data[subkey]?
-                  data = data[subkey]
-                else
-                  data = null
-
-                if is_object(saved) and saved[subkey]?
-                  saved = saved[subkey]
-                else
-                  saved = null
-              key = key[key.length - 1]
-
-            if is_object data?[key], saved?[key]
-              trail = orig_key
-              unless is_object orig_key
-                trail = [orig_key]
-              recursive_cmp data[key], saved[key], trail
-            else if data?.hasOwnProperty(key) and
-            (not saved?.hasOwnProperty(key) or data[key] isnt saved[key])
-              changed_keys.push orig_key
-        else
-          recursive_cmp @_edited, @_saved
-
-        if changed_keys.length
-          changed_keys.sort (a, b) ->
-            a = a.join('.') if is_object a
-            b = b.join('.') if is_object b
-            return 1 if a > b
-            - 1
-          return changed_keys
-        false
+      #_changed: false
 
       _clone: (return_plain_object=false, saved_only=false) ->
         if saved_only
           return super
 
         edited = {}
-        for k, v of @
-          if @_edited.hasOwnProperty(k) or @_saved.hasOwnProperty(k)
-            edited[k] = v
+        for key, value of @
+          if has_own(@_edited, key) or has_own @_saved, key
+            edited[key] = value
         clone = angular.copy edited
 
         unless return_plain_object
@@ -95,40 +28,53 @@ app.factory 'ksc.EditableRecord', [
 
         clone
 
-      _replace: (incoming) ->
-        deep_replace = (incoming, saved, data) ->
-          for own k, v of saved
-            unless is_object v, incoming[k]
-              delete saved[k]
+      _replace: (data) ->
+        super
 
-          for own k, v of data
-            unless is_object v, saved[k]
-              delete data[k]
+        define_value @, '_edited', {}
 
-          for k, v of incoming
-            if is_object v
-              if is_object saved[k]
-                deep_replace v, saved[k], data[k]
+        record = @
+
+        identical = (obj1, obj2) ->
+          unless is_object v1, v2
+            return v1 is v2
+
+          for k, v1 of obj1 when not identical v1, obj2[k]
+            return false
+          for k of obj2 when not has_own obj1, k
+            return false
+          true
+
+        deep_rw = (saved, edited, target) ->
+          target ?= {}
+
+          s = (key) ->
+            getter = ->
+              if typeof (res = edited[key]) is 'undefined'
+                res = saved[key]
+              if is_object res
+                return deep_rw saved[key], edited[key]
+              res
+
+            setter = (update) ->
+              if (is_object(update) and identical(saved[key], update)) or
+              saved[key] is update
+                delete edited[key]
               else
-                saved[k] = v
-                data[k] = Object.create saved[k]
-            else
-              saved[k] = v
-          return
+                edited[key] = update
 
-        deep_replace angular.copy(incoming), @_saved, @_edited
+            define_getset target, key, getter, setter, true
+
+          for key of edited
+            s key
+          if is_object saved
+            for key of saved when not has_own edited, key
+              s key
+
+          target
+
+        deep_rw @_saved, @_edited, @
 
       _revert: ->
-        deep_revert = (saved, data) ->
-          for own k, v of data
-            if is_object saved[k]
-              if is_object v
-                deep_revert saved[k], v
-              else
-                data[k] = Object.create saved[k]
-            else
-              delete data[k]
-          return
-
-        deep_revert @_saved, @_edited
+        define_value @, '_edited', {}
 ]
