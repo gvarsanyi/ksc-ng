@@ -47,7 +47,7 @@ describe 'List', ->
 
   it 'Upsert', ->
     list = new List
-    list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'd'}
+    list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
 
     len = list.unshift {id: 1, x: 'x'}
 
@@ -67,7 +67,7 @@ describe 'List', ->
     record2 = new EditableRecord {id: 4, x: 'y'}
 
     list = new List {record: {class: EditableRecord}}
-    res = list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'd'},
+    res = list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                     record1, record2, true
 
     expect(list.map[2].x).toBe 'x'

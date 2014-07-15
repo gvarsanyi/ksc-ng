@@ -17,18 +17,16 @@ app.factory 'ksc.RestEndpoint', [
 #         url:        'api/Appointment/<id>'
 
     class RestEndpoint
-      constructor: (args..., options) ->
+      constructor: (options) ->
         unless options?.record
           throw new Error 'endpoint record spec missing'
 
         if options.list
           class_ref = options.list.class or RestList
-          list = new class_ref args...
-          list.restOptions = options
-          return list
+          return new class_ref options
 
         class_ref = options.record.class or RestRecord
-        record = new class_ref args...
-        record._base._restOptions = options.record
+        record = new class_ref
+        record._base._options = options.record
         return record
 ]

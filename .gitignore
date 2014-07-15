@@ -3,4 +3,5 @@
 *.kate-swp
 node_modules
 /.project
-*doc/*
+doc/*
+test/coverage/*

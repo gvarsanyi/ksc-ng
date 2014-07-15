@@ -57,7 +57,7 @@ app.factory 'ksc.RestList', [
           throw new Error 'Could not identify endpoint url'
 
         if query_parameters
-          parts = for k, v of options
+          parts = for k, v of query_parameters
             encodeURIComponent(k) + '=' + encodeURIComponent v
           if parts.length
             url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
@@ -108,7 +108,7 @@ app.factory 'ksc.RestList', [
       - .options.record.idProperty (property/properties that define record ID)
       - .options.record.endpoint.url (url for endpoint with ID)
 
-      @param [Record] records... 1 or more records to save
+      @param [Record/number] records... 1 or more records or ID's to save
       @param [function] callback (optional) Callback function with signiture:
         (err, record_list, raw_response) ->
       @option record_list [Array] insert (optional) List of new records
@@ -118,6 +118,11 @@ app.factory 'ksc.RestList', [
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
+
+      @throw [Error] No record to save
+      @throw [Error] Non-unique record was passed in
+      @throw [Error] Record has no changes to save
+      @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
 
       @return [HttpPromise] Promise or chained promises returned by $http.put or
       $http.post
@@ -135,7 +140,7 @@ app.factory 'ksc.RestList', [
       - .options.record.idProperty (property/properties that define record ID)
       - .options.record.endpoint.url (url for endpoint with ID)
 
-      @param [Record] records... 1 or more records to delete
+      @param [Record/number] records... 1 or more records or ID's to delete
       @param [function] callback (optional) Callback function with signiture:
         (err, record_list, raw_response) ->
       @option record_list [Array] insert (optional) List of new records
@@ -145,6 +150,10 @@ app.factory 'ksc.RestList', [
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
+
+      @throw [Error] No record to delete
+      @throw [Error] Non-unique record was passed in
+      @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
 
       @return [HttpPromise] Promise or chained promises returned by $http.delete
       ###
@@ -202,12 +211,36 @@ app.factory 'ksc.RestList', [
       @param [function] callback (optional) Callback function with signiture:
         (err, record_list, raw_response) ->
 
+      @throw [Error] No record to save/delete
+      @throw [Error] Non-unique record was passed in
+      @throw [Error] Record has no changes to save
+      @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
+
       @return [$HttpPromise] Promise or chained promises of the HTTP action(s)
       ###
       __writeBack: (save_type, records..., callback) ->
         unless callback and typeof callback is 'function'
           records.push(callback) if callback
           callback = null
+
+        list = @
+
+        unique_record_map = {}
+        for record in records
+          record = list.map[record] unless typeof record is 'object'
+          unless (record = list.map[id = record?._id])
+            throw new Error 'record is not in the list: ' + id
+
+          if save_type and not record._base._changed
+            throw new Error 'Record has no changes to save: ' + id
+
+          if unique_record_map[id]
+            throw new Error 'Record/ID is not unique: ' + id
+
+          unique_record_map[id] = record
+
+        unless records.length
+          throw new Error 'No records to send to the REST interface'
 
         endpoint_options = list.options?.endpoint or {}
 
@@ -218,10 +251,13 @@ app.factory 'ksc.RestList', [
         else if not save_type and endpoint_options.bulkDelete
           bulk_method = 'delete'
         if bulk_method
+          unless endpoint_options.url
+            throw new Error 'Could not identify endpoint url'
+
           if save_type
-            data = (record.entity() for record in records)
+            data = (record._entity() for record in records)
           else
-            data = (record.id for record in records)
+            data = (record._id for record in records)
           promise = $http[bulk_method] endpoint_options.url, data
           return RestUtils.wrapPromise promise, list, (err, raw_response) ->
             unless err
@@ -238,17 +274,18 @@ app.factory 'ksc.RestList', [
           callback? err, results, raw_responses...
 
         RestUtils.asyncSquash records, finished, (record, iteration_callback) ->
-          id     = record.id
+          id     = record._id
           method = 'delete'
-          url    = options?.record?.endpoint?.url
+          url    = list.options?.record?.endpoint?.url
           if save_type
             method = 'put'
-            unless (id = record.id) and id isnt 'pseudo'
+            unless (id = record._id) and id isnt 'pseudo'
               method = 'post'
               id = null
-              url = endpoint_options.url
+              url = list.options?.endpoint?.url
 
           unless url
+            console.log url, list.options.record
             throw new Error 'Could not identify endpoint url'
 
           if id?
@@ -256,7 +293,7 @@ app.factory 'ksc.RestList', [
             url = url.replace '<id>', id
 
           args = [url]
-          args.push(record.entity()) if save_type
+          args.push(record._entity()) if save_type
           promise = $http[method](args...)
           RestUtils.wrapPromise promise, list, (err, raw_response) ->
             unless err

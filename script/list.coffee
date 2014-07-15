@@ -14,7 +14,7 @@ app.factory 'ksc.List', [
     the list it will update the already existing one instead of being added to
     the list
 
-    Maintains a key-value map of record.id's in the .map={id: Record} property
+    Maintains a key-value map of record._id's in the .map={id: Record} property
 
     @example
       list = new List
@@ -257,6 +257,6 @@ app.factory 'ksc.List', [
       ###
       __remove: (orig_fn) ->
         record = Array.prototype[orig_fn].call @
-        delete @map[record.id]
+        delete @map[record._id]
         record
 ]

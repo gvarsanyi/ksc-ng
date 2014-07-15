@@ -28,10 +28,17 @@ app.factory 'ksc.Record', ->
       @_clone true
 
     _getId: ->
-      unless id_property = @_idProperty
+      key = 'idProperty'
+      options = @_base._options ?= {}
+      unless options[key]
         for own k of @_saved
-          @_idProperty = id_property = k
+          options[key] = k
           break
+
+      unless (id_property = options[key])
+        throw new Error 'Could not identify ._options.idProperty'
+
       if typeof id_property is 'object'
-        return (@[part] for part in id_property when data[part]?).join '-'
+        return (@[pt] for pt in id_property when data[pt]?).join '-'
+
       @[id_property]
