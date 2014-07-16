@@ -13,7 +13,7 @@ describe 'EditableRecord', ->
     record = new EditableRecord {a: 1}
     expect(record instanceof Record).toBe true
 
-  it 'Properties ._changes, ._changedKeys and method .revert()', ->
+  it 'Properties ._changes, ._changedKeys and method ._revert()', ->
     record = new EditableRecord {a: 1, b: {x: 2}, c: {x: 3}, d: null}
 
     expect(record._changes).toBe 0

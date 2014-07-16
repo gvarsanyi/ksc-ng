@@ -12,7 +12,7 @@ app.factory 'ksc.Record', [
         options = record._options
 
         unless options[key] # assign first as ID
-          for own key of record._saved
+          for key of record._saved
             options[key] = key
             break
 
@@ -30,15 +30,18 @@ app.factory 'ksc.Record', [
 
         define_value @, '_options', options
         unless options.sub
-          define_value @, '_id', Record.getId @, data
+          define_value @, '_id', Record.getId @
 
       _clone: (return_plain_object=false) ->
-        clone = angular.copy @_saved
+        clone = {}
+        for key, value of @_saved
+          if is_object value
+            value = value._clone true
+          clone[key] = value
+        if return_plain_object
+          return clone
 
-        unless return_plain_object
-          return new @constructor clone
-
-        clone
+        return new @constructor clone
 
       _entity: ->
         @_clone true
@@ -52,8 +55,12 @@ app.factory 'ksc.Record', [
             delete @[key]
 
         define_value @, '_saved', {}
-        for key, value of data when typeof value isnt 'function'
-          if is_object(value) and not (value instanceof Record)
+        for key, value of data
+          if typeof value is 'function'
+            throw new Error 'Property must not be a function'
+          if is_object value
+            if value instanceof Record
+              value = value._clone 1
             value = new class_ref value, sub: {parent: @, key}
           define_value @_saved, key, value, 1, 1
 

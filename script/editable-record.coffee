@@ -23,15 +23,20 @@ app.factory 'ksc.EditableRecord', [
         if saved_only
           return super
 
-        edited = {}
-        for key, value of @
-          if has_own(@[EDITED], key) or has_own @[SAVED], key
-            edited[key] = value
-        clone = angular.copy edited
+        if return_plain_object
+          clone = {}
+          for own key, value of @
+            if has_own(@[EDITED], key) or has_own @[SAVED], key
+              if is_object value
+                value = value._clone 1
+              clone[key] = value
+          return clone
 
-        unless return_plain_object
-          clone = new @constructor clone
-
+        clone = new @constructor @[SAVED]
+        for key, value of @[EDITED]
+          if is_object value
+            value = value._clone 1
+          clone[key] = value
         clone
 
       _replace: (data) ->
@@ -43,6 +48,9 @@ app.factory 'ksc.EditableRecord', [
         define_value record, CHANGES, 0
         define_value record, CHANGED_KEYS, {}
 
+        update_id = ->
+          define_value record, '_id', Record.getId record
+
         set_property = (key, saved, edited) ->
           getter = ->
             if typeof (res = edited[key]) is 'undefined'
@@ -50,6 +58,8 @@ app.factory 'ksc.EditableRecord', [
             res
 
           setter = (update) ->
+            if typeof update is 'function'
+              throw new Error 'Property must not be a function'
             if Utils.identical saved[key], update
               if has_own edited, key
                 define_value record, CHANGES, record[CHANGES] - 1
@@ -73,6 +83,13 @@ app.factory 'ksc.EditableRecord', [
 
             if sub = record._options.sub
               sub.parent._subChanges sub.key, record[CHANGES]
+
+            if has_own record, '_id' # update _id if needed
+              if Array.isArray id_property = record._options.idProperty
+                if id_property.indexOf(key) > -1
+                  update_id()
+              else if key is id_property
+                update_id()
 
           define_getset record, key, getter, setter, 1
 
