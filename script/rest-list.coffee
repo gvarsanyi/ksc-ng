@@ -231,7 +231,7 @@ app.factory 'ksc.RestList', [
           unless (record = list.map[id = record?._id])
             throw new Error 'record is not in the list: ' + id
 
-          if save_type and not record._changed
+          if save_type and not record._changes
             throw new Error 'Record has no changes to save: ' + id
 
           if unique_record_map[id]
@@ -285,7 +285,6 @@ app.factory 'ksc.RestList', [
               url = list.options?.endpoint?.url
 
           unless url
-            console.log url, list.options.record
             throw new Error 'Could not identify endpoint url'
 
           if id?

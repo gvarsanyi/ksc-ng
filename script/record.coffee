@@ -28,8 +28,9 @@ app.factory 'ksc.Record', [
       constructor: (data, options={}) ->
         @_replace data
 
-        define_value @, '_options', angular.copy options
-        define_value @, '_id', Record.getId @, data
+        define_value @, '_options', options
+        unless options.sub
+          define_value @, '_id', Record.getId @, data
 
       _clone: (return_plain_object=false) ->
         clone = angular.copy @_saved
@@ -42,7 +43,7 @@ app.factory 'ksc.Record', [
       _entity: ->
         @_clone true
 
-      _replace: (data) ->
+      _replace: (data, class_ref=Record) ->
         for key of data when key.substr(0, 1) is '_'
           throw new Error 'property names must not start with underscore "_"'
 
@@ -50,15 +51,12 @@ app.factory 'ksc.Record', [
           for key of @_saved
             delete @[key]
 
-        define_value @, '_saved', angular.copy data
+        define_value @, '_saved', {}
+        for key, value of data when typeof value isnt 'function'
+          if is_object(value) and not (value instanceof Record)
+            value = new class_ref value, sub: {parent: @, key}
+          define_value @_saved, key, value, 1, 1
 
         for key, value of @_saved
-          define_value @, key, value, true, true
-
-        deep_ro = (saved) ->
-          for key, value of saved
-            define_value saved, key, value, false, true
-            if is_object value
-              deep_ro value
-        deep_ro @_saved, @
+          define_value @, key, value, 1, 1
 ]

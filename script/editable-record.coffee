@@ -3,15 +3,21 @@ app.factory 'ksc.EditableRecord', [
   'ksc.Record', 'ksc.Utils',
   (Record, Utils) ->
 
+    CHANGES      = '_changes'
+    CHANGED_KEYS = '_changedKeys'
+    EDITED       = '_edited'
+    SAVED        = '_saved'
+
     define_getset = Utils.defineGetSet
     define_value  = Utils.defineValue
     is_object     = Utils.isObject
 
     has_own = (obj, key) ->
-      obj.hasOwnProperty key
+      is_object(obj) and obj.hasOwnProperty key
 
     class EditableRecord extends Record
-      #_changed: false
+      #_changes: false
+      #_changedKeys: false
 
       _clone: (return_plain_object=false, saved_only=false) ->
         if saved_only
@@ -19,7 +25,7 @@ app.factory 'ksc.EditableRecord', [
 
         edited = {}
         for key, value of @
-          if has_own(@_edited, key) or has_own @_saved, key
+          if has_own(@[EDITED], key) or has_own @[SAVED], key
             edited[key] = value
         clone = angular.copy edited
 
@@ -29,52 +35,62 @@ app.factory 'ksc.EditableRecord', [
         clone
 
       _replace: (data) ->
-        super
-
-        define_value @, '_edited', {}
+        super data, EditableRecord
 
         record = @
 
-        identical = (obj1, obj2) ->
-          unless is_object v1, v2
-            return v1 is v2
+        define_value record, EDITED, {}
+        define_value record, CHANGES, 0
+        define_value record, CHANGED_KEYS, {}
 
-          for k, v1 of obj1 when not identical v1, obj2[k]
-            return false
-          for k of obj2 when not has_own obj1, k
-            return false
-          true
+        set_property = (key, saved, edited) ->
+          getter = ->
+            if typeof (res = edited[key]) is 'undefined'
+              res = saved[key]
+            res
 
-        deep_rw = (saved, edited, target) ->
-          target ?= {}
-
-          s = (key) ->
-            getter = ->
-              if typeof (res = edited[key]) is 'undefined'
-                res = saved[key]
-              if is_object res
-                return deep_rw saved[key], edited[key]
-              res
-
-            setter = (update) ->
-              if (is_object(update) and identical(saved[key], update)) or
-              saved[key] is update
+          setter = (update) ->
+            if Utils.identical saved[key], update
+              if has_own edited, key
+                define_value record, CHANGES, record[CHANGES] - 1
+                delete record[CHANGED_KEYS][key]
                 delete edited[key]
-              else
-                edited[key] = update
+            else
+              res = update
+              if is_object update
+                if is_object saved[key]
+                  res = saved[key]
+                else
+                  res = new EditableRecord {}, sub: {parent: record, key}
+                for k, v of update
+                  res[k] = v
 
-            define_getset target, key, getter, setter, true
+              unless has_own edited, key
+                define_value record, CHANGES, record[CHANGES] + 1
+                define_value record[CHANGED_KEYS], key, true, 1, 1
 
-          for key of edited
-            s key
-          if is_object saved
-            for key of saved when not has_own edited, key
-              s key
+              edited[key] = res
 
-          target
+            if sub = record._options.sub
+              sub.parent._subChanges sub.key, record[CHANGES]
 
-        deep_rw @_saved, @_edited, @
+          define_getset record, key, getter, setter, 1
+
+        for key of record[SAVED]
+          set_property key, record[SAVED], record[EDITED]
+
+        return
 
       _revert: ->
-        define_value @, '_edited', {}
+        @_replace @[SAVED]
+
+      _subChanges: (key, n) ->
+        record = @
+        if record[CHANGED_KEYS][key]
+          unless n
+            define_value record, CHANGES, record[CHANGES] - 1
+            delete record[CHANGED_KEYS][key]
+        else if n
+          define_value record, CHANGES, record[CHANGES] + 1
+          define_value record[CHANGED_KEYS], key, true, 1, 1
 ]
