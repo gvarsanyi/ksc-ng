@@ -3,15 +3,14 @@ app.factory 'ksc.EditableRecord', [
   'ksc.Record', 'ksc.Utils',
   (Record, Utils) ->
 
-    ID            = '_id'
-    CHANGES       = '_changes'
-    CHANGED_KEYS  = '_changedKeys'
-    DELETED_KEYS  = '_deletedKeys'
-    EDITED        = '_edited'
-    PARENT        = '_parent'
-    PARENT_KEY    = '_parentKey'
-    SAVED         = '_saved'
-    SUBTREE_CLASS = '_subtreeClass'
+    ID           = '_id'
+    CHANGES      = '_changes'
+    CHANGED_KEYS = '_changedKeys'
+    DELETED_KEYS = '_deletedKeys'
+    EDITED       = '_edited'
+    PARENT       = '_parent'
+    PARENT_KEY   = '_parentKey'
+    SAVED        = '_saved'
 
     define_value  = Utils.defineValue
     has_own       = Utils.hasOwn
@@ -19,10 +18,13 @@ app.factory 'ksc.EditableRecord', [
     is_object     = Utils.isObject
 
     class EditableRecord extends Record
-      constructor: ->
-        define_value @, SUBTREE_CLASS, EditableRecord
+      constructor: (data, options={}, parent, parent_key) ->
+        unless is_object options
+          throw new Error 'Argument options must be null or object'
+        options.subtreeClass = EditableRecord
+        super data, options, parent, parent_key
+
         define_value @, DELETED_KEYS, {}
-        super
 
       # virtual properties:
       # - _changes: 0
@@ -115,8 +117,7 @@ app.factory 'ksc.EditableRecord', [
                     if is_enumerable(res, k) and not has_own update, k
                       res._delete k
                 else
-                  class_ref = record[SUBTREE_CLASS]
-                  res = new class_ref {}, null, record, key
+                  res = new EditableRecord {}, null, record, key
                 for k, v of update
                   res[k] = v
 

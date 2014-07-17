@@ -14,6 +14,13 @@ describe 'Record', ->
   it 'Requires 1+ properties', ->
     expect(-> new Record {}).toThrow()
 
+  it 'Data is required', ->
+    expect(-> new Record).toThrow()
+    expect(-> new Record {}).toThrow()
+
+  it 'Options arg must be null/undefined/Object', ->
+    expect(-> new Record {a: 1}, 'fds').toThrow()
+
   it 'Composite id', ->
     record = new Record {id1: 1, id2: 2, x: 3}, idProperty: ['id1', 'id2']
     expect(record._id).toBe '1-2'
@@ -28,9 +35,31 @@ describe 'Record', ->
     obj = record._clone true
     expect(obj).toEqual example
 
+    example.ext = 1
+    record.ext = 1
+    obj = record._clone true
+    expect(obj).toEqual example
+
     record2 = record._clone()
     expect(record).toEqual record2
     expect(record).not.toBe record2
+
+  it 'Method ._entity()', ->
+    example = {id: 1, x: 2, y: {a: 3}}
+    record = new Record example
+    ent = record._entity()
+    expect(ent).toEqual example
+    expect(ent).not.toBe example
+
+  it 'Method ._replace()', ->
+    example = {id: 1, x: 2, y: {a: 3}}
+    example2 = {id: 2, x: 3, y: new Record {dds: 43, dff: 4}}
+    expected = {id: 2, x: 3, y: {dds: 43, dff: 4}}
+    record = new Record example
+    record._replace example2
+    ent = record._clone true
+    expect(ent).toEqual expected
+    expect(ent).not.toBe expected
 
   it 'Data separation', ->
     example_sub = {a: 3}

@@ -27,17 +27,19 @@ app.factory 'ksc.Record', [
         record[id_property]
 
       # virtual properties:
-      # - _id:           number|string
-      # - _options:      {}
-      # - _parent:       Record|List
-      # - _parentKey:    number|string
-      # - _subtreeClass: number|string
+      # - _id:        number|string
+      # - _options:   {}
+      # - _parent:    Record|List
+      # - _parentKey: number|string
 
       constructor: (data, options={}, parent, parent_key) ->
-        define_value @, '_options', options
+        unless is_object data
+          throw new Error 'First argument (data) must be null or object'
 
-        unless @_subtreeClass
-          define_value @, '_subtreeClass', Record
+        unless is_object options
+          throw new Error 'Second argument (options) must be null or object'
+
+        define_value @, '_options', options
 
         if parent? or parent_key?
           unless is_object parent
@@ -85,7 +87,7 @@ app.factory 'ksc.Record', [
           if is_object value
             if value instanceof Record
               value = value._clone 1
-            class_ref = @_subtreeClass
+            class_ref = @_options.subtreeClass or Record
             value = new class_ref value, null, @, key
           define_value @_saved, key, value, 1, 1
 

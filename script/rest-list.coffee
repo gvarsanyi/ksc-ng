@@ -46,6 +46,8 @@ app.factory 'ksc.RestList', [
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
 
+      @throw [Error] No .options.endpoint.url
+
       @return [$HttpPromise] Promise returned by $http
       ###
       restGetRaw: (query_parameters, callback) ->
@@ -53,7 +55,7 @@ app.factory 'ksc.RestList', [
           callback = query_parameters
           query_parameters = null
 
-        unless url = @options?.endpoint?.url
+        unless url = @options.endpoint?.url
           throw new Error 'Could not identify endpoint url'
 
         if query_parameters
@@ -242,7 +244,7 @@ app.factory 'ksc.RestList', [
         unless records.length
           throw new Error 'No records to send to the REST interface'
 
-        endpoint_options = list.options?.endpoint or {}
+        endpoint_options = list.options.endpoint or {}
 
         # api has collection/bulk support
         if save_type and endpoint_options.bulkSave
@@ -258,7 +260,9 @@ app.factory 'ksc.RestList', [
             data = (record._entity() for record in records)
           else
             data = (record._id for record in records)
-          promise = $http[bulk_method] endpoint_options.url, data
+          args = [endpoint_options.url]
+          args.push(data) unless bulk_method is 'delete'
+          promise = $http[bulk_method] args...
           return RestUtils.wrapPromise promise, list, (err, raw_response) ->
             unless err
               if save_type

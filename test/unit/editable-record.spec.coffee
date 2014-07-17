@@ -13,6 +13,9 @@ describe 'EditableRecord', ->
     record = new EditableRecord {a: 1}
     expect(record instanceof Record).toBe true
 
+  it 'Options arg must be null/undefined/Object', ->
+    expect(-> new EditableRecord {a: 1}, 'fds').toThrow()
+
   it 'Properties ._changes, ._changedKeys and method ._revert()', ->
     example = {a: 1, b: {x: 2}, c: {x: 3, y: 4}, d: null}
 
