@@ -14,8 +14,9 @@ describe 'EditableRecord', ->
     expect(record instanceof Record).toBe true
 
   it 'Properties ._changes, ._changedKeys and method ._revert()', ->
-    record = new EditableRecord {a: 1, b: {x: 2}, c: {x: 3}, d: null}
+    example = {a: 1, b: {x: 2}, c: {x: 3, y: 4}, d: null}
 
+    record = new EditableRecord example
     expect(record._changes).toBe 0
     expect(record._changedKeys).toEqual {}
 
@@ -47,3 +48,130 @@ describe 'EditableRecord', ->
     record.d = null
     expect(record._changes).toBe 0
     expect(record._changedKeys).toEqual {}
+
+    record = new EditableRecord example
+    record.c = {x: 3, y: 2, z: 1}
+    expect(record._changes).toBe 1
+    expect(record.c._changes).toBe 1
+
+    record.c = {x: 3, y: 2}
+    expect(record._changes).toBe 1
+    expect(record.c._changes).toBe 1
+
+    record.c = cc = {x: 3, y: 4}
+    expect(record._changes).toBe 0
+    expect(record.c._changes).toBe 0
+
+    record = new EditableRecord {id: 1, a: {b: {c: {d: 1, e: 1}}}}
+    record.a.b.c.d = 2
+    record.a.b.c.e = 2
+    expect(record._changes).toBe 1
+    expect(record.a._changes).toBe 1
+    expect(record.a.b._changes).toBe 1
+    expect(record.a.b.c._changes).toBe 2
+
+  it 'Method ._delete()', ->
+    example = {id: 1, x: 2, y: {a: 3}, z: null}
+    record = new EditableRecord example
+
+    expect(-> record._delete()).toThrow() # no key
+
+    record._delete 'x'
+    expect(record.x).toBeUndefined()
+    expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
+    expect(record.hasOwnProperty 'x').toBe true
+
+    record._delete 'x'
+    expect(record.x).toBeUndefined()
+    expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
+    expect(record.hasOwnProperty 'x').toBe true
+
+    record.xx = 'xx'
+    record._delete 'xx'
+    expect(record.xx).toBeUndefined()
+    expect(record.hasOwnProperty 'xx').toBe false
+
+    record._delete 'xx'
+    expect(record.xx).toBeUndefined()
+    expect(record.hasOwnProperty 'xx').toBe false
+
+    # special properties can't be deleted
+    expect(-> record._delete '_changes').toThrow()
+
+  it 'Method ._clone()', ->
+    example = {id: 1, x: 2, y: {a: 3}, z: null}
+    record = new EditableRecord example
+
+    record.x = 4
+    record.y.faux = 1
+    record.z = {x: 1}
+    record.faux = 1
+
+    expected_saved  = {id: 1, x: 2, y: {a: 3, faux: 1}, z: null, faux: 1}
+    expected_edited = {id: 1, x: 4, y: {a: 3, faux: 1}, z: {x: 1}, faux: 1}
+
+    # plain object, saved
+    obj = record._clone true, true
+    expect(obj).toEqual expected_saved
+
+    # plain object, edited
+    obj = record._clone true
+    expect(obj).toEqual expected_edited
+
+    # object cloning
+    record2 = record._clone()
+    expect(record).toEqual record2
+    expect(record).not.toBe record2
+
+  it 'Id changes', ->
+    example = {id: 1, x: 2}
+
+    record = new EditableRecord example
+    record.id = 2
+    expect(record._id).toBe 2
+
+    # report to parent
+    faux_parent = {recordIdChanged: ->}
+    spyOn faux_parent, 'recordIdChanged'
+    record = new EditableRecord example, null, faux_parent
+    record.id = 2
+    expect(faux_parent.recordIdChanged).toHaveBeenCalledWith record, 1
+
+    # don't report if id has not changed
+    faux_parent = {recordIdChanged: ->}
+    spyOn faux_parent, 'recordIdChanged'
+    record = new EditableRecord example, null, faux_parent
+    record.x = 3
+    expect(faux_parent.recordIdChanged).not.toHaveBeenCalled()
+
+    # should not fail if parent has no .recordIdChanged() method
+    record = new EditableRecord example, null, {}
+    expect(-> record.id = 3).not.toThrow()
+    expect(record._id).toBe 3
+
+  it 'Composite id changes', ->
+    example = {id1: 1, id2: 2, x: 3}
+    opts    = idProperty: ['id1', 'id2']
+
+    record = new EditableRecord example, opts
+    record.id1 = 4
+    record.id1 = 2
+    expect(record._id).toBe '2-2'
+
+    # report to parent
+    faux_parent = {recordIdChanged: ->}
+    spyOn faux_parent, 'recordIdChanged'
+    record = new EditableRecord example, opts, faux_parent
+    record.id1 = 2
+    expect(faux_parent.recordIdChanged).toHaveBeenCalledWith record, '1-2'
+
+    # don't report if id has not changed
+    faux_parent = {recordIdChanged: ->}
+    spyOn faux_parent, 'recordIdChanged'
+    record = new EditableRecord example, opts, faux_parent
+    record.x = 2
+    expect(faux_parent.recordIdChanged).not.toHaveBeenCalled()
+
+  it 'Does not take functions', ->
+    record = new EditableRecord {id: 1, x: 3}
+    expect(-> record.x = ->).toThrow()

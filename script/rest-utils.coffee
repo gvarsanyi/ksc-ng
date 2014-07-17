@@ -35,7 +35,8 @@ app.factory 'ksc.RestUtils', ->
         callback = rest_node
         rest_node = null
 
-      load_key = (if rest_node instanceof Array then '' else '_') + 'restLoading'
+      prefix = if rest_node instanceof Array then '' else '_'
+      load_key = prefix + 'restLoading'
 
       if rest_node
         rest_node[load_key] = (rest_node[load_key] or 0) + 1
@@ -52,5 +53,6 @@ app.factory 'ksc.RestUtils', ->
 
       promise.error (data, status, headers, config) ->
         load_count_decrement rest_node
-        err = new Error 'HTTP' + status + ': ' + config.method + ' ' + config.url
+        err = new Error 'HTTP' + status + ': ' + config.method + ' ' +
+                        config.url
         callback? err, {error: err, data, status, headers, config}

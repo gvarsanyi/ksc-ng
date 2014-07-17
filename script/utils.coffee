@@ -32,8 +32,16 @@ app.factory 'ksc.Utils', ->
       unless Utils.isObject obj1, obj2
         return obj1 is obj2
 
-      for k, v1 of obj1 when not Utils.identical v1, obj2[k]
+      for own k, v1 of obj1 when not Utils.identical v1, obj2[k]
         return false
-      for k of obj2 when not has_own obj1, k
+      for own k of obj2 when not Utils.hasOwn obj1, k
         return false
       true
+
+    @isEnumerable: (obj, key) ->
+      try
+        return !!(Object.getOwnPropertyDescriptor obj, key)?.enumerable
+      false
+
+    @hasOwn = (obj, key) ->
+      Utils.isObject(obj) and obj.hasOwnProperty key

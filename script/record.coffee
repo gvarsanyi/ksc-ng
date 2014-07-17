@@ -3,8 +3,10 @@ app.factory 'ksc.Record', [
   'ksc.Utils',
   (Utils) ->
 
-    define_value = Utils.defineValue
-    is_object    = Utils.isObject
+    define_value  = Utils.defineValue
+    has_own       = Utils.hasOwn
+    is_enumerable = Utils.isEnumerable
+    is_object     = Utils.isObject
 
     class Record
       @getId: (record) ->
@@ -12,8 +14,8 @@ app.factory 'ksc.Record', [
         options = record._options
 
         unless options[key] # assign first as ID
-          for key of record._saved
-            options[key] = key
+          for k of record._saved
+            options[key] = k
             break
 
         unless (id_property = options[key])
@@ -24,17 +26,39 @@ app.factory 'ksc.Record', [
 
         record[id_property]
 
+      # virtual properties:
+      # - _id:           number|string
+      # - _options:      {}
+      # - _parent:       Record|List
+      # - _parentKey:    number|string
+      # - _subtreeClass: number|string
 
-      constructor: (data, options={}) ->
+      constructor: (data, options={}, parent, parent_key) ->
+        define_value @, '_options', options
+
+        unless @_subtreeClass
+          define_value @, '_subtreeClass', Record
+
+        if parent? or parent_key?
+          unless is_object parent
+            throw new Error 'Parent must be an object'
+          define_value @, '_parent', parent
+
+          if parent_key?
+            unless typeof parent_key in ['string', 'number']
+              throw new Error 'Parent key must be a string or a number'
+            define_value @, '_parentKey', parent_key
+
         @_replace data
 
-        define_value @, '_options', options
-        unless options.sub
+        unless parent_key
           define_value @, '_id', Record.getId @
 
       _clone: (return_plain_object=false) ->
         clone = {}
-        for key, value of @_saved
+        for key, value of @ when is_enumerable @, key
+          if has_own @_saved, key
+            value = @_saved[key]
           if is_object value
             value = value._clone true
           clone[key] = value
@@ -46,7 +70,7 @@ app.factory 'ksc.Record', [
       _entity: ->
         @_clone true
 
-      _replace: (data, class_ref=Record) ->
+      _replace: (data) ->
         for key of data when key.substr(0, 1) is '_'
           throw new Error 'property names must not start with underscore "_"'
 
@@ -61,7 +85,8 @@ app.factory 'ksc.Record', [
           if is_object value
             if value instanceof Record
               value = value._clone 1
-            value = new class_ref value, sub: {parent: @, key}
+            class_ref = @_subtreeClass
+            value = new class_ref value, null, @, key
           define_value @_saved, key, value, 1, 1
 
         for key, value of @_saved

@@ -50,3 +50,16 @@ describe 'Record', ->
 
   it 'Does not take functions', ->
     expect(-> new Record {id: 1, fn: ->}).toThrow()
+
+  it 'Parent registration', ->
+    record = new Record {id: 1}, null, {x: 'a'}
+    expect(record._parent.x).toBe 'a'
+
+    # Parent must be an object if specified
+    expect(-> new Record {id: 1}, null, 'x').toThrow()
+
+    # Parent_key must be string or number
+    expect(-> new Record {id: 1}, null, {}, true).toThrow()
+
+    # Parent_key requires parent object
+    expect(-> new Record {id: 1}, null, null, 'x').toThrow()
