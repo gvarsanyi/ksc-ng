@@ -97,8 +97,11 @@ app.factory 'ksc.RestList', [
 
         list.restGetRaw query_parameters, (err, raw_response) ->
           unless err
-            data = RestList::__getResponseArray.call list, raw_response.data
-            record_list = list.push data..., true
+            try
+              data = RestList::__getResponseArray.call list, raw_response.data
+              record_list = list.push data..., true
+            catch _err
+              err = _err
           callback? err, record_list, raw_response
 
       ###
@@ -180,15 +183,15 @@ app.factory 'ksc.RestList', [
       @return [Array] List of raw records (property of data or data itself)
       ###
       __getResponseArray: (data) ->
-        endpoint_options = @options.endpoint ?= {}
+        endpoint_options = @options.endpoint
         key = 'responseProperty'
 
         if typeof endpoint_options[key] is 'undefined'
           # auto-identify options.endpoint.responseProperty
-          if data instaceof Array
+          if Array.isArray data
             endpoint_options[key] = null # response is top level Array
 
-          for k, v of data when v instaceof Array
+          for k, v of data when Array.isArray v
             endpoint_options[key] = k # found the Array in response
 
         if endpoint_options[key]?
@@ -259,7 +262,8 @@ app.factory 'ksc.RestList', [
           if save_type
             data = (record._entity() for record in records)
           else
-            data = (record._id for record in records)
+            data = for record in records
+              if record._primaryId? then record._primaryId else record._id
           args = [endpoint_options.url]
           args.push(data) unless bulk_method is 'delete'
           promise = $http[bulk_method] args...
@@ -278,22 +282,22 @@ app.factory 'ksc.RestList', [
           callback? err, results, raw_responses...
 
         RestUtils.asyncSquash records, finished, (record, iteration_callback) ->
-          id     = record._id
+          id     = if record._primaryId? then record._primaryId else record._id
           method = 'delete'
-          url    = list.options?.record?.endpoint?.url
+          url    = list.options.record?.endpoint?.url
           if save_type
             method = 'put'
-            unless (id = record._id) and id isnt 'pseudo'
-              method = 'post'
-              id = null
-              url = list.options?.endpoint?.url
+# TODO: cover new records saving
+#             unless (id = record._id) and id isnt 'pseudo'
+#               method = 'post'
+#               id = null
+#               url = list.options?.endpoint?.url
 
           unless url
             throw new Error 'Could not identify endpoint url'
 
-          if id?
-            id = id.split('-')[0] if typeof id is 'string' # handle composite id
-            url = url.replace '<id>', id
+#           if id?
+          url = url.replace '<id>', id
 
           args = [url]
           args.push(record._entity()) if save_type

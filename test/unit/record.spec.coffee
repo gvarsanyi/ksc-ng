@@ -21,12 +21,16 @@ describe 'Record', ->
   it 'Options arg must be null/undefined/Object', ->
     expect(-> new Record {a: 1}, 'fds').toThrow()
 
-  it 'Composite id', ->
+  it 'Composite id, ._primaryId', ->
     record = new Record {id1: 1, id2: 2, x: 3}, idProperty: ['id1', 'id2']
     expect(record._id).toBe '1-2'
+    expect(record._primaryId).toBe 1
 
     record = new Record {id1: 1, id2: null, x: 3}, idProperty: ['id1', 'id2']
     expect(record._id).toBe '1'
+
+    # requires primary ID to exist
+    expect(-> new Record {id2: 2, x: 3}, idProperty: ['id1', 'id2']).toThrow()
 
   it 'Method ._clone()', ->
     example = {id: 1, x: 2, y: {a: 3}}

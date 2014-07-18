@@ -1,7 +1,9 @@
 
 app.factory 'ksc.List', [
-  'ksc.EditableRecord', 'ksc.Record',
-  (EditableRecord, Record) ->
+  'ksc.EditableRecord', 'ksc.Record', 'ksc.Utils',
+  (EditableRecord, Record, Utils) ->
+
+    is_object = Utils.isObject
 
     ###
     Constructor for an Array instance and methods to be added to that instance
@@ -80,14 +82,12 @@ app.factory 'ksc.List', [
         cut      = []
         deleting = {}
         list     = @
-        for orig in records
-          if record and typeof record is 'object'
-            record = orig
-          else
-            record = list.map[orig]
+        for record in records
+          unless is_object record
+            record = list.map[record]
 
           unless list.map[record?._id]
-            throw new Error 'Could not find element: ' + orig
+            throw new Error 'Could not find element: ' + record
 
           delete list.map[record._id]
           deleting[record._id] = true
@@ -215,34 +215,37 @@ app.factory 'ksc.List', [
           items.push return_records
           return_records = null
 
+        list = @
+
         tmp = []
-        record_class = @options.record?.class or EditableRecord
+        record_opts = list.options.record
+        record_class = record_opts?.class or EditableRecord
         for item in items
-          unless item and typeof item is 'object'
+          unless is_object item
             throw new Error 'List can only contain objects. `' + item +
                             '` is ' + (typeof item) + 'type.'
 
           unless item instanceof record_class
             if item instanceof Record
-              item = new record_class item._clone true
+              item = new record_class item._clone(true), record_opts, list
             else
-              item = new record_class item
+              item = new record_class item, record_opts, list
 
-          if existing = @map[item._id]
+          if existing = list.map[item._id]
             existing._replace item._clone true
             if return_records
               (return_records.update ?= []).push item
           else
-            @map[item._id] = item
+            list.map[item._id] = item
             tmp.push item
             if return_records
               (return_records.insert ?= []).push item
 
         if tmp.length
-          Array.prototype[orig_fn].call @, tmp...
+          Array.prototype[orig_fn].apply list, tmp
 
         return return_records if return_records
-        @length # default push/unshift return behavior
+        list.length # default push/unshift return behavior
 
 
       ###

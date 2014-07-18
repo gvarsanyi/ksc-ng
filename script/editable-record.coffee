@@ -84,17 +84,17 @@ app.factory 'ksc.EditableRecord', [
 
         set_property = (key, saved, edited) ->
           update_id = -> # update _id if needed
+            act = ->
+              old_id = record[ID]
+              Record.setId record
+              record[PARENT]?.recordIdChanged? record, old_id
+
             if has_own record, ID
               if Array.isArray id_property = record._options.idProperty
                 if id_property.indexOf(key) > -1
-                  new_id = Record.getId record
+                  act()
               else if key is id_property
-                new_id = Record.getId record
-
-              if new_id?
-                old_id = record[ID]
-                define_value record, ID, Record.getId record
-                record[PARENT]?.recordIdChanged? record, old_id
+                act()
 
           getter = ->
             if has_own edited, key

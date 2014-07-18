@@ -9,7 +9,9 @@ app.factory 'ksc.Record', [
     is_object     = Utils.isObject
 
     class Record
-      @getId: (record) ->
+      @setId: (record) ->
+        return if record._parentKey
+
         key = 'idProperty'
         options = record._options
 
@@ -22,9 +24,13 @@ app.factory 'ksc.Record', [
           throw new Error 'Could not identify ._options.idProperty'
 
         if Array.isArray id_property
-          return (record[pt] for pt in id_property when record[pt]?).join '-'
-
-        record[id_property]
+          unless primary_id = record[id_property[0]]
+            throw new Error 'First part of the idProperty must have a value'
+          parts = (record[pt] for pt in id_property when record[pt]?)
+          define_value record, '_id', parts.join '-'
+          define_value record, '_primaryId', primary_id
+        else
+          define_value record, '_id', record[id_property]
 
       # virtual properties:
       # - _id:        number|string
@@ -53,8 +59,7 @@ app.factory 'ksc.Record', [
 
         @_replace data
 
-        unless parent_key
-          define_value @, '_id', Record.getId @
+        Record.setId @
 
       _clone: (return_plain_object=false) ->
         clone = {}
