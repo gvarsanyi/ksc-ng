@@ -1,0 +1,33 @@
+RecordContract
+  - add array type
+
+New/pseudo elemnts concept for List
+  - create logic
+
+Sorting list
+  - implement sort logic
+
+ListFilter
+  - create class and logic
+
+EventEmitter
+  - create class, bindings and logic
+
+CachedRestRecord
+  - create
+
+CachedEditableRestRecord
+  - create
+
+Generic list cache logic
+  - evaluate
+
+Error subclasses
+  - create types, update code and tests
+
+Figure out a good/better name for List
+  - XArray? HashArray? Set?
+
+Proper CODO coverage for all
+
+Proper unit test coverage for all
