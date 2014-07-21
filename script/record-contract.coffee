@@ -69,7 +69,7 @@ app.factory 'ksc.RecordContract', [
 
 
       @finalizeRecord: (record) ->
-        if record.contract and Object.isExtensible record
+        if record._options.contract and Object.isExtensible record
           Object.preventExtensions record
 
       @typeDefaults:

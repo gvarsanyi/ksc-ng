@@ -102,8 +102,10 @@ app.factory 'ksc.EditableRecord', [
 
 
       @setProperty: (record, key) ->
-        saved  = record[SAVED]
-        edited = record[EDITED]
+        saved    = record[SAVED]
+        edited   = record[EDITED]
+        options  = record._options
+        contract = options.contract
 
         update_id = -> # update _id if needed
           act = ->
@@ -112,7 +114,7 @@ app.factory 'ksc.EditableRecord', [
             record[PARENT]?.recordIdChanged? record, old_id
 
           if has_own record, ID
-            if Array.isArray id_property = record._options.idProperty
+            if Array.isArray id_property = options.idProperty
               if id_property.indexOf(key) > -1
                 act()
             else if key is id_property
@@ -130,7 +132,7 @@ app.factory 'ksc.EditableRecord', [
           if Utils.identical saved[key], update
             delete edited[key]
           else
-            record._options.contract?._match key, update
+            contract?._match key, update
 
             res = update
             if is_object update
@@ -141,7 +143,11 @@ app.factory 'ksc.EditableRecord', [
                   if is_enumerable(res, k) and not has_own update, k
                     res._delete k
               else
-                res = new EditableRecord {}, null, record, key
+                subopts = {}
+                if contract
+                  subopts.contract = contract[key].contract
+
+                res = new EditableRecord {}, subopts, record, key
               for k, v of update
                 res[k] = v
 

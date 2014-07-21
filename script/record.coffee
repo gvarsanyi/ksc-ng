@@ -97,7 +97,7 @@ app.factory 'ksc.Record', [
 
             subopts = {}
             if contract
-              subopts.contract = options.contract[key].contract
+              subopts.contract = contract[key].contract
 
             value = new class_ref value, subopts, record, key
 
@@ -109,6 +109,8 @@ app.factory 'ksc.Record', [
         if contract
           for own key, value of contract when not has_own saved, key
             set_property key, contract._default key
+
+        Object.freeze saved
 
         for key, value of saved
           define_value record, key, value, 1, 1

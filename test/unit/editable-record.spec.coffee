@@ -178,3 +178,27 @@ describe 'EditableRecord', ->
   it 'Does not take functions', ->
     record = new EditableRecord {id: 1, x: 3}
     expect(-> record.x = ->).toThrow()
+
+  it 'Contract record', ->
+    contract =
+      id: {type: 'number', nullable: false}
+      a: {type: 'string'}
+      b: {type: 'string', nullable: false}
+      c: {type: 'boolean'}
+      d: {contract: {a: {type: 'number'}}}
+      e: {type: 'object', nullable: false, contract: {
+            a: {type: 'number', default: 1},
+            b: {nullable: false, contract: {x: {type: 'number'}}}}}
+
+    record = new EditableRecord {id: 1}, {contract}
+    expect(-> record.id = 'wsd').toThrow()
+    expect(-> record.a = {}).toThrow()
+    expect(-> record.b = null).toThrow()
+    expect(-> record.c = 1).toThrow()
+    expect(-> record.d = {}).not.toThrow()
+    expect(record.d.a).toBe null
+    record.d = {xxx: 1}
+    expect(record.d.xxx).toBeUndefined()
+    expect(-> record.d = null).not.toThrow()
+    expect(record.d).toBe null
+    expect(-> record.e = null).toThrow()

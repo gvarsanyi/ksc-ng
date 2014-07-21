@@ -225,12 +225,11 @@ describe 'RestList', ->
     expected_url1 = id_url.replace '<id>', '1'
     expected_url2 = id_url.replace '<id>', '2'
     $http.expectPUT(expected_url1).respond {id: 1, x: 'b', y: 'y'}
-    $http.expectPUT(expected_url2).respond {id: 1, x: 'c', z: 'z'}
+    $http.expectPUT(expected_url2).respond {id: 2, x: 'c', z: 'z'}
 
     list.restSave list[0], list[1]
 
     $http.flush()
-
     expect(list[0].y).toBe 'y'
     expect(list[1].z).toBe 'z'
 

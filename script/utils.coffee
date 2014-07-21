@@ -13,7 +13,6 @@ app.factory 'ksc.Utils', ->
         visible = setter
         setter  = ->
 
-      delete obj[key]
       Object.defineProperty obj, key,
         configurable: true
         enumerable:   !!visible
@@ -21,7 +20,9 @@ app.factory 'ksc.Utils', ->
         set:          setter
 
     @defineValue: (obj, key, value, read_only=true, visible=false) ->
-      delete obj[key]
+      if Object.getOwnPropertyDescriptor(obj, key)?.writable is false
+        Object.defineProperty obj, key, writable: true
+
       Object.defineProperty obj, key,
         configurable: true
         enumerable:   !!visible
