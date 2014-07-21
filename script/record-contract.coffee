@@ -21,11 +21,10 @@ app.factory 'ksc.RecordContract', [
 
           @[key] = desc
 
-          if (nil = desc.nullable)?
-            if nil is true
-              delete desc.nullable
-            else if nil isnt false
-              throw new Error 'contract nullable spec must be true or false'
+          if desc.nullable
+            desc.nullable = true
+          else
+            delete desc.nullable
 
           if desc.type is 'object' and not is_object desc.contract
             throw new Error 'subcontract specification required for objects'
@@ -33,10 +32,13 @@ app.factory 'ksc.RecordContract', [
             if has_own(desc, 'type') and desc.type isnt 'object'
               throw new Error 'subcontract must be object type'
             if has_own desc, 'default'
-              throw new Error 'subcontracts can not have defaults'
+              throw new Error 'subcontracts can not have default values'
             delete desc.type
             desc.contract = new RecordContract desc.contract
           else
+            if has_own(desc, 'default') and not has_own(desc, 'type') and
+            RecordContract.typeDefaults[typeof desc.default]?
+              desc.type = typeof desc.default
             unless RecordContract.typeDefaults[desc.type]?
               throw new Error 'contract keys type unset or invalid (must be ' +
                               'boolean, number, object or string)'
@@ -49,7 +51,7 @@ app.factory 'ksc.RecordContract', [
         desc = @[key]
         if has_own desc, 'default'
           return desc.default
-        if desc.nullable isnt false
+        if desc.nullable
           return null
         if desc.contract
           value = {}
@@ -63,7 +65,7 @@ app.factory 'ksc.RecordContract', [
         if desc?
           if (desc.contract and is_object value) or typeof value is desc.type
             return true
-          if value is null and desc.nullable isnt false
+          if value is null and desc.nullable
             return true
         throw new Error 'Value breaks contract for ' + key + ' = ' + value
 

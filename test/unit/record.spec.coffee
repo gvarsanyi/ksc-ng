@@ -11,7 +11,10 @@ describe 'Record', ->
   it 'Does not accept property names starting with underscore', ->
     expect(-> new Record _a: 1).toThrow()
 
-  it 'Options arg must be null/undefined/Object', ->
+  it 'Data argument must be null/undefined/Object', ->
+    expect(-> new Record 'fds').toThrow()
+
+  it 'Options argument must be null/undefined/Object', ->
     expect(-> new Record {a: 1}, 'fds').toThrow()
 
   it 'Composite id, ._primaryId', ->
@@ -92,23 +95,25 @@ describe 'Record', ->
 
   it 'Contract record', ->
     contract =
-      id: {type: 'number', nullable: false}
-      a: {type: 'string'}
-      b: {type: 'string', nullable: false}
-      c: {type: 'string', default: ':)'}
-      d: {type: 'boolean'}
-      e: {type: 'boolean', default: true}
-      f: {type: 'boolean', nullable: false}
-      g: {contract: {a: {type: 'number'}}}
-      h: {type: 'object', nullable: false, contract: {
-            a: {type: 'number', default: 1},
-            b: {nullable: false, contract: {x: {type: 'number'}}}}}
+      id: {type: 'number'}
+      a: {type: 'string', nullable: true}
+      b: {type: 'string'}
+      c: {default: ':)', nullable: true}
+      d: {type: 'boolean', nullable: true}
+      e: {type: 'boolean', default: true, nullable: true}
+      f: {type: 'boolean'}
+      g: {contract: {a: {type: 'number'}}, nullable: true}
+      h: {type: 'object', contract: {
+            a: {type: 'number', default: 1, nullable: true},
+            b: {contract: {x: {type: 'number', nullable: true}}}}}
 
     record = new Record {id: 1}, {contract}
+
     expect(record._id).toBe 1
     expect(record.id).toBe 1
     expect(record.a).toBe null
     expect(record.b).toBe ''
+    expect(record._options.contract.c.type).toBe 'string'
     expect(record.c).toBe ':)'
     expect(record.d).toBe null
     expect(record.e).toBe true
@@ -119,23 +124,36 @@ describe 'Record', ->
 
     expect(-> new Record {id: 1}, {contract: 1}).toThrow()
 
-    contract = contract: {id: {type: 'string'}}
+    contract = {id: {type: 'string'}}
     expect(-> new Record {id: 1}, {contract}).toThrow()
 
-    contract = contract: {id: {type: 'number', nullable: false}}
+    contract = {id: {type: 'number'}}
     expect(-> new Record {id: null}, {contract}).toThrow()
 
-    contract = contract: {x: {type: 'number'}}
+    contract = {x: {type: 'number'}}
     expect(-> new Record {id: 1}, {contract}).toThrow()
 
-    contract = contract: {id: {type: 'number'}, _id: {type: 'number'}}
+    contract = {id: {type: 'number'}, _id: {type: 'number'}}
     expect(-> new Record {id: 1}, {contract}).toThrow()
 
-    contract = contract: {id: {type: 'number', nullable: 1}}
+    contract = {id: {type: 'number', nullable: 1}}
+    record = new Record {id: 1}, {contract}
+    expect(record._options.contract.id.nullable).toBe true
+
+    contract = {id: {type: 'number'}, x: {contract: 1}}
     expect(-> new Record {id: 1}, {contract}).toThrow()
 
-    contract = contract: {id: {type: 'number'}, x: {contract: 1}}
-    expect(-> new Record {id: 1}, {contract}).toThrow()
+    contract = {id: {type: 'object'}}
+    expect(-> new Record null, {contract}).toThrow()
 
-    contract = contract: {id: {contract: {a: {type: 'number'}}, default: null}}
+    contract = {id: {contract: {a: {type: 'number'}}, type: 'string'}}
+    expect(-> new Record null, {contract}).toThrow()
+
+    contract = {id: {type: 'joke'}}
+    expect(-> new Record null, {contract}).toThrow()
+
+    contract = {id: {contract: 1}}
+    expect(-> new Record null, {contract}).toThrow()
+
+    contract = {id: {contract: {a: {type: 'number'}}, default: null}}
     expect(-> new Record {id: 1}, {contract}).toThrow()

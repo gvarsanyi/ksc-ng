@@ -181,14 +181,15 @@ describe 'EditableRecord', ->
 
   it 'Contract record', ->
     contract =
-      id: {type: 'number', nullable: false}
-      a: {type: 'string'}
-      b: {type: 'string', nullable: false}
-      c: {type: 'boolean'}
-      d: {contract: {a: {type: 'number'}}}
-      e: {type: 'object', nullable: false, contract: {
+      id: {type: 'number'}
+      a: {type: 'string', nullable: true}
+      b: {type: 'string'}
+      c: {type: 'boolean', nullable: true}
+      d: {contract: {a: {type: 'number', nullable: true}}, nullable: true}
+      e: {type: 'object', contract: {
             a: {type: 'number', default: 1},
-            b: {nullable: false, contract: {x: {type: 'number'}}}}}
+            b: {nullable: false, contract:
+                x: {type: 'number', nullable: true}}}}
 
     record = new EditableRecord {id: 1}, {contract}
     expect(-> record.id = 'wsd').toThrow()
