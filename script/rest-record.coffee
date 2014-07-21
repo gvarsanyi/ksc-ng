@@ -1,19 +1,18 @@
 
 app.factory 'ksc.RestRecord', [
-  '$http', 'ksc.EditableRecord', 'ksc.RestUtils',
-  ($http, EditableRecord, RestUtils) ->
+  '$http', 'ksc.Record', 'ksc.RestUtils',
+  ($http, Record, RestUtils) ->
 
-    async = (record, promise, callback) ->
-      RestUtils.wrapPromise promise, (err, raw_response) ->
-        if not err and raw_response.data
-          record._replace raw_response.data
-        callback? err, raw_response
-
-
-    class RestRecord extends EditableRecord
+    class RestRecord extends Record
       _restLoad: (callback) ->
-        async @, $http.get(@_restOptions.url), callback
+        unless endpoint = @_options.endpoint
+          throw new Error 'Missing endpoint'
 
-      _restSave: (callback) ->
-        async @, $http.put(@_restOptions.url, @_entity()), callback
+        RestRecord.async @, $http.get(endpoint.url), callback
+
+      @async: (record, promise, callback) ->
+        RestUtils.wrapPromise promise, (err, raw_response) ->
+          if not err and raw_response.data
+            record._replace raw_response.data
+          callback? err, raw_response
 ]

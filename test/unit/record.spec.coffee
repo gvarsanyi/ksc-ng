@@ -11,13 +11,6 @@ describe 'Record', ->
   it 'Does not accept property names starting with underscore', ->
     expect(-> new Record _a: 1).toThrow()
 
-  it 'Requires 1+ properties', ->
-    expect(-> new Record {}).toThrow()
-
-  it 'Data is required', ->
-    expect(-> new Record).toThrow()
-    expect(-> new Record {}).toThrow()
-
   it 'Options arg must be null/undefined/Object', ->
     expect(-> new Record {a: 1}, 'fds').toThrow()
 

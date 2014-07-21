@@ -20,7 +20,7 @@ app.factory 'ksc.Record', [
       # - _primaryId:   object
       # - _saved:       object
 
-      constructor: (data, options={}, parent, parent_key) ->
+      constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object data
           throw new Error 'First argument (data) must be null or object'
 
@@ -119,6 +119,7 @@ app.factory 'ksc.Record', [
 
 
       @setId: (record) ->
+        # set IDs only for records in list (no stand-alones, no subrecords)
         return if record[PARENT_KEY]
 
         key = 'idProperty'
@@ -129,8 +130,7 @@ app.factory 'ksc.Record', [
             options[key] = k
             break
 
-        unless (id_property = options[key])
-          throw new Error 'Could not identify ._options.idProperty'
+        return unless (id_property = options[key])
 
         if Array.isArray id_property
           unless primary_id = record[id_property[0]]

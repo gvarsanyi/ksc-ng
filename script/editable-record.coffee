@@ -19,7 +19,7 @@ app.factory 'ksc.EditableRecord', [
 
 
     class EditableRecord extends Record
-      constructor: (data, options={}, parent, parent_key) ->
+      constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
           throw new Error 'Argument options must be null or object'
         options.subtreeClass = EditableRecord
