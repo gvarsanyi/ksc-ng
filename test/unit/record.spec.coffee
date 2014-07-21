@@ -96,3 +96,53 @@ describe 'Record', ->
 
     # Parent_key requires parent object
     expect(-> new Record {id: 1}, null, null, 'x').toThrow()
+
+  it 'Contract record', ->
+    contract =
+      id: {type: 'number', nullable: false}
+      a: {type: 'string'}
+      b: {type: 'string', nullable: false}
+      c: {type: 'string', default: ':)'}
+      d: {type: 'boolean'}
+      e: {type: 'boolean', default: true}
+      f: {type: 'boolean', nullable: false}
+      g: {contract: {a: {type: 'number'}}}
+      h: {type: 'object', nullable: false, contract: {
+            a: {type: 'number', default: 1},
+            b: {nullable: false, contract: {x: {type: 'number'}}}}}
+
+    record = new Record {id: 1}, {contract}
+    expect(record._id).toBe 1
+    expect(record.id).toBe 1
+    expect(record.a).toBe null
+    expect(record.b).toBe ''
+    expect(record.c).toBe ':)'
+    expect(record.d).toBe null
+    expect(record.e).toBe true
+    expect(record.f).toBe false
+    expect(record.g).toBe null
+    expect(record.h.a).toBe 1
+    expect(record.h.b.x).toBe null
+
+    expect(-> new Record {id: 1}, {contract: 1}).toThrow()
+
+    contract = contract: {id: {type: 'string'}}
+    expect(-> new Record {id: 1}, {contract}).toThrow()
+
+    contract = contract: {id: {type: 'number', nullable: false}}
+    expect(-> new Record {id: null}, {contract}).toThrow()
+
+    contract = contract: {x: {type: 'number'}}
+    expect(-> new Record {id: 1}, {contract}).toThrow()
+
+    contract = contract: {id: {type: 'number'}, _id: {type: 'number'}}
+    expect(-> new Record {id: 1}, {contract}).toThrow()
+
+    contract = contract: {id: {type: 'number', nullable: 1}}
+    expect(-> new Record {id: 1}, {contract}).toThrow()
+
+    contract = contract: {id: {type: 'number'}, x: {contract: 1}}
+    expect(-> new Record {id: 1}, {contract}).toThrow()
+
+    contract = contract: {id: {contract: {a: {type: 'number'}}, default: null}}
+    expect(-> new Record {id: 1}, {contract}).toThrow()

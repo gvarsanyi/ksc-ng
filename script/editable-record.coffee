@@ -17,6 +17,7 @@ app.factory 'ksc.EditableRecord', [
     is_enumerable = Utils.isEnumerable
     is_object     = Utils.isObject
 
+
     class EditableRecord extends Record
       constructor: (data, options={}, parent, parent_key) ->
         unless is_object options
@@ -24,11 +25,19 @@ app.factory 'ksc.EditableRecord', [
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
-        define_value @, DELETED_KEYS, {}
-
       # virtual properties:
-      # - _changes: 0
-      # - _changedKeys: {}
+      # - _changedKeys: object
+      # - _changes:     number
+      # - _deletedKeys: object
+      # - _edited:      object
+      # - _pseudoId:    number
+      # virtual properties of Record
+      # - _id:          object
+      # - _options:     object
+      # - _parent:      object
+      # - _parentKey:   number|string
+      # - _primaryId:   object
+      # - _saved:       object
 
       _clone: (return_plain_object=false, saved_only=false) ->
         if saved_only
@@ -81,82 +90,89 @@ app.factory 'ksc.EditableRecord', [
         define_value record, EDITED, {}
         define_value record, CHANGES, 0
         define_value record, CHANGED_KEYS, {}
-
-        set_property = (key, saved, edited) ->
-          update_id = -> # update _id if needed
-            act = ->
-              old_id = record[ID]
-              Record.setId record
-              record[PARENT]?.recordIdChanged? record, old_id
-
-            if has_own record, ID
-              if Array.isArray id_property = record._options.idProperty
-                if id_property.indexOf(key) > -1
-                  act()
-              else if key is id_property
-                act()
-
-          getter = ->
-            if has_own edited, key
-              return edited[key]
-            saved[key]
-
-          setter = (update) ->
-            if typeof update is 'function'
-              throw new Error 'Property must not be a function'
-
-            if Utils.identical saved[key], update
-              delete edited[key]
-            else
-              res = update
-              if is_object update
-                if is_object saved[key]
-                  res = saved[key]
-
-                  for k of res # delete properties not in the update
-                    if is_enumerable(res, k) and not has_own update, k
-                      res._delete k
-                else
-                  res = new EditableRecord {}, null, record, key
-                for k, v of update
-                  res[k] = v
-
-              edited[key] = res
-
-            if edited[key] is saved[key]
-              delete edited[key]
-
-            was_changed = record[CHANGED_KEYS][key]
-
-            if (is_object(saved[key]) and saved[key]._changes) or
-            (has_own(edited, key) and not Utils.identical saved[key], edited[key])
-              unless was_changed
-                define_value record, CHANGES, record[CHANGES] + 1
-                define_value record[CHANGED_KEYS], key, true, 1, 1
-            else if was_changed
-              define_value record, CHANGES, record[CHANGES] - 1
-              delete record[CHANGED_KEYS][key]
-
-            if record[PARENT_KEY]
-              record[PARENT]._subChanges record[PARENT_KEY], record[CHANGES]
-
-            Object.defineProperty record, key, enumerable: true
-
-            update_id()
-
-          # not enumerable if value is undefined
-          Utils.defineGetSet record, key, getter, setter, 1
+        define_value record, DELETED_KEYS, {}
 
         for key of record[SAVED]
-          set_property key, record[SAVED], record[EDITED]
+          EditableRecord.setProperty record, key
 
         return
 
       _revert: ->
         @_replace @[SAVED]
 
-      _subChanges: (key, n) ->
-        record = @
+
+      @setProperty: (record, key) ->
+        saved  = record[SAVED]
+        edited = record[EDITED]
+
+        update_id = -> # update _id if needed
+          act = ->
+            old_id = record[ID]
+            Record.setId record
+            record[PARENT]?.recordIdChanged? record, old_id
+
+          if has_own record, ID
+            if Array.isArray id_property = record._options.idProperty
+              if id_property.indexOf(key) > -1
+                act()
+            else if key is id_property
+              act()
+
+        getter = ->
+          if has_own edited, key
+            return edited[key]
+          saved[key]
+
+        setter = (update) ->
+          if typeof update is 'function'
+            throw new Error 'Property must not be a function'
+
+          if Utils.identical saved[key], update
+            delete edited[key]
+          else
+            record._options.contract?._match key, update
+
+            res = update
+            if is_object update
+              if is_object saved[key]
+                res = saved[key]
+
+                for k of res # delete properties not in the update
+                  if is_enumerable(res, k) and not has_own update, k
+                    res._delete k
+              else
+                res = new EditableRecord {}, null, record, key
+              for k, v of update
+                res[k] = v
+
+            edited[key] = res
+
+          if edited[key] is saved[key]
+            delete edited[key]
+
+          was_changed = record[CHANGED_KEYS][key]
+
+          if (is_object(saved[key]) and saved[key]._changes) or
+          (has_own(edited, key) and not Utils.identical saved[key], edited[key])
+            unless was_changed
+              define_value record, CHANGES, record[CHANGES] + 1
+              define_value record[CHANGED_KEYS], key, true, 1, 1
+          else if was_changed
+            define_value record, CHANGES, record[CHANGES] - 1
+            delete record[CHANGED_KEYS][key]
+
+          if record[PARENT_KEY]
+            EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
+                                      record[CHANGES]
+
+          Object.defineProperty record, key, enumerable: true
+
+          update_id()
+
+        # not enumerable if value is undefined
+        Utils.defineGetSet record, key, getter, setter, 1
+
+      @subChanges: (record, key, n) ->
         if record[CHANGED_KEYS][key]
           unless n
             define_value record, CHANGES, record[CHANGES] - 1
@@ -168,5 +184,6 @@ app.factory 'ksc.EditableRecord', [
           changed = true
 
         if changed and record[PARENT_KEY]
-          record[PARENT]._subChanges record[PARENT_KEY], record[CHANGES]
+          EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
+                                    record[CHANGES]
 ]
