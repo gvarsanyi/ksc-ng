@@ -1,4 +1,4 @@
-.PHONY: all test clean
+.PHONY: all test clean doc
 
 test:
 	@coffee --no-header -b -o test/tmp/pre script/
@@ -11,4 +11,5 @@ test:
 	@rm -rf test/tmp
 
 doc:
-	codo script/
+	@rm -rf doc/
+	@codo script/

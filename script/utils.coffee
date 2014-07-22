@@ -3,11 +3,6 @@ app.factory 'ksc.Utils', ->
 
   class Utils
 
-    @isObject: (refs...) ->
-      for ref in refs
-        return false unless ref and typeof ref is 'object'
-      true
-
     @defineGetSet: (obj, key, getter, setter, visible=false) ->
       if typeof setter isnt 'function'
         visible = setter
@@ -29,6 +24,9 @@ app.factory 'ksc.Utils', ->
         value:        value
         writable:     !read_only
 
+    @hasOwn = (obj, key) ->
+      Utils.isObject(obj) and obj.hasOwnProperty key
+
     @identical: (obj1, obj2) ->
       unless Utils.isObject obj1, obj2
         return obj1 is obj2
@@ -44,5 +42,12 @@ app.factory 'ksc.Utils', ->
         return !!(Object.getOwnPropertyDescriptor obj, key)?.enumerable
       false
 
-    @hasOwn = (obj, key) ->
-      Utils.isObject(obj) and obj.hasOwnProperty key
+    @isFunction: (refs...) ->
+      for ref in refs or ['']
+        return false unless ref and typeof ref is 'function'
+      true
+
+    @isObject: (refs...) ->
+      for ref in refs or ['']
+        return false unless ref and typeof ref is 'object'
+      true

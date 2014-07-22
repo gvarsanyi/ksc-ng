@@ -9,12 +9,12 @@ app.factory 'ksc.RestList', [
     Load, save and delete records in bulks or individually
 
     @example
-      list = new RestList
-        endpoint:
-          url: '/api/MyEndpoint'
-        record:
+        list = new RestList
           endpoint:
-            url: '/api/MyEndpoint/<id>'
+            url: '/api/MyEndpoint'
+          record:
+            endpoint:
+              url: '/api/MyEndpoint/<id>'
 
     Options that may be used by methods of ksc.RestList
     - .options.endpoint.bulkDelete (delete 2+ records in 1 request)
@@ -287,16 +287,16 @@ app.factory 'ksc.RestList', [
           url    = list.options.record?.endpoint?.url
           if save_type
             method = 'put'
-# TODO: cover new records saving
-#             unless (id = record._id) and id isnt 'pseudo'
-#               method = 'post'
-#               id = null
-#               url = list.options?.endpoint?.url
+            # TODO: cover new records saving
+            #             unless (id = record._id) and id isnt 'pseudo'
+            #               method = 'post'
+            #               id = null
+            #               url = list.options?.endpoint?.url
 
           unless url
             throw new Error 'Could not identify endpoint url'
 
-#           if id?
+          # if id?
           url = url.replace '<id>', id
 
           args = [url]

@@ -1,33 +1,63 @@
-RecordContract
+----------------------------
+classes
+----------------------------
+
+cached-rest-record
+  - implement class
+  - add coffeedoc
+  - add unit tests
+
+cached-editable-rest-record
+  - implement class
+  - add coffeedoc
+  - add unit tests
+
+editable-record
+  - add coffeedoc
+
+editable-rest-record
+  - add coffeedoc
+
+event-emitter
+  - bind to other classes
+  - add unit tests
+
+list
+  - add pseudo/new elements logic
+  - add sort logic
+
+list-filter
+  - implement class
+  - add coffeedoc
+  - add unit tests
+
+record-contract
   - add array type
+  - add coffeedoc
+  - add unit tests
 
-New/pseudo elemnts concept for List
-  - create logic
+record
+  - add coffeedoc
 
-Sorting list
-  - implement sort logic
+rest-list
+  - fix test coverage
 
-ListFilter
-  - create class and logic
+rest-record
+  - add coffeedoc
+  - fix test coverage
 
-EventEmitter
-  - create class, bindings and logic
+rest-utils
+  - add coffeedoc
+  - add unit tests
 
-CachedRestRecord
-  - create
+utils
+  - add coffeedoc
+  - add unit tests
 
-CachedEditableRestRecord
-  - create
-
-Generic list cache logic
-  - evaluate
-
-Error subclasses
-  - create types, update code and tests
-
-Figure out a good/better name for List
-  - XArray? HashArray? Set?
-
-Proper CODO coverage for all
-
-Proper unit test coverage for all
+----------------------------
+research
+----------------------------
+  - making preventExtension optional for records with contract?
+  - generic list cache logic options
+  - error subclasses: types needed
+  - better name for List (XArray? HashArray? Set?)
