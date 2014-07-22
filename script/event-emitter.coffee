@@ -27,15 +27,13 @@ app.factory 'ksc.EventEmitter', [
       @param [*] args... optional arguments to be passed to the callback fn
       @return [bool] indicates if at least one callback fn was called
       ###
-      emit: (name, args...) =>
+      emit: (name, args...) ->
         block = (@names[name] ?= {})
         callback_found = false
         block.fired = (block.fired or 0) + 1
         block.lastArgs = args
-        console.log 'pre', name, args
-        for once in [0, 1]
-          for id, callback of block[once] or {} when is_function callback
-            console.log 'xx', once, name, args, id, callback
+        for once in [0, 1] when block[once]
+          for id, callback of block[once] when is_function callback
             callback_found = true
             if once
               delete block[once][id]
@@ -52,7 +50,7 @@ app.factory 'ksc.EventEmitter', [
       @param [function] callback
       @return [bool] indicates if a callback fn was called
       ###
-      instantCall: (name, callback) =>
+      instantCall: (name, callback) ->
         if @names[name]?.fired
           callback @names[name].lastArgs...
           return true
@@ -66,35 +64,41 @@ app.factory 'ksc.EventEmitter', [
       @param [function] callback
       @return [function] unsubscriber
       ###
-      push: (names..., once, callback) =>
-        events = @
-        ids    = []
-        once   = if once then 1 else 0
+      push: (names, once, callback) ->
+        subscriptions = @
+        ids  = []
+        once = if once then 1 else 0
         for name in names
-          @names[name] ?= {}
-          block = (@names[name][once] ?= i: 0)
+          subscriptions.names[name] ?= {}
+          block = (subscriptions.names[name][once] ?= i: 0)
           block[block.i] = callback
-          ids.push block.i
+          ids.push {name, id: block.i}
           block.i += 1
 
         unsubscribed = false
 
         # create empty unsubscriber
         fn = EventEmitter::unsubscriber()
+
         # add this event unsubscriber
         pseudo_unsubscriber = ->
           return false if unsubscribed
           unsubscribed = true
-          for id in ids
-            delete events.names[name][once][id]
+          for inf in ids
+            delete subscriptions.names[inf.name][once][inf.id]
           true
         pseudo_unsubscriber[UNSUBSCRIBER] = true
+
         fn.add pseudo_unsubscriber
         fn
 
 
+    name_check = (name) ->
+      unless name and typeof name is 'string'
+        throw new Error 'event name must be a non-empty string'
+
     subscription_decorator = (names, unsubscribe_target, callback, next) ->
-      @events ?= new EventSubscriptions
+      @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
         throw new Error 'callback function required'
@@ -105,9 +109,8 @@ app.factory 'ksc.EventEmitter', [
         names.push unsubscribe_target
         unsubscribe_target = null
 
-      for name, i in names
-        unless name and typeof name is 'string'
-          throw new Error 'event name must be a string'
+      for name in names
+        name_check name
 
       unsubscriber_fn = next.call @
 
@@ -119,6 +122,7 @@ app.factory 'ksc.EventEmitter', [
         return true
 
       unsubscriber_fn
+
 
     ###
     # EventEmitter
@@ -171,24 +175,31 @@ app.factory 'ksc.EventEmitter', [
       ###
       Emit event, e.g. call all functions subscribed for the specified event.
 
+      @throw [Error] name is not a string or empty
+
       @param [string] name event identifier
       @param [*] args... optional arguments to be passed to the callback fn
       @return [bool] indicates if anything was called
       ###
-      emit: (name, args...) =>
-        return false unless name and typeof name is 'string'
-        (@events = @events or new EventSubscriptions).emit name, args...
+      emit: (name, args...) ->
+        name_check name
+
+        (@subscriptions ?= new EventSubscriptions).emit name, args...
 
       ###
       Check if this even was emitted before by the object.
       If so, it returns an array of the arguments of last emission which is
       the "args..." part of the emit(name, args...) method.
 
+      @throw [Error] name is not a string or empty
+
       @param [string] name event identifier
       @return [bool/Array] false or Array of arguments
       ###
       emitted: (name) ->
-        if (subscriptions = @events?.names[name])?.fired
+        name_check name
+
+        if (subscriptions = @subscriptions?.names[name])?.fired
           return subscriptions.lastArgs
         false
 
@@ -214,10 +225,10 @@ app.factory 'ksc.EventEmitter', [
         subscription_decorator.call @, names, unsubscribe_target, callback, ->
           remainder = []
           for name in names
-            unless @events.instantCall name, callback
+            unless @subscriptions.instantCall name, callback
               remainder.push name
 
-          @events.push remainder..., 1, callback
+          @subscriptions.push remainder, 1, callback
 
       ###
       Subscribe for future events AND the last emission if there was one
@@ -240,9 +251,9 @@ app.factory 'ksc.EventEmitter', [
       if: (names..., unsubscribe_target, callback) =>
         subscription_decorator.call @, names, unsubscribe_target, callback, ->
           for name in names
-            @events.instantCall name, callback
+            @subscriptions.instantCall name, callback
 
-          @events.push names..., 0, callback
+          @subscriptions.push names, 0, callback
 
       ###
       Subscribe for 1 event in the future
@@ -264,7 +275,7 @@ app.factory 'ksc.EventEmitter', [
       ###
       on1: (names..., unsubscribe_target, callback) =>
         subscription_decorator.call @, names, unsubscribe_target, callback, ->
-          @events.push names..., 1, callback
+          @subscriptions.push names, 1, callback
 
       ###
       Subscribe for events in the future
@@ -286,7 +297,7 @@ app.factory 'ksc.EventEmitter', [
       ###
       on: (names..., unsubscribe_target, callback) =>
         subscription_decorator.call @, names, unsubscribe_target, callback, ->
-          @events.push names..., 0, callback
+          @subscriptions.push names, 0, callback
 
       ###
       Get an empty unsubscriber function you can add unsubscribers to
@@ -310,14 +321,14 @@ app.factory 'ksc.EventEmitter', [
         ###
         fn = ->
           status = null
-          for node of attached
+          for id, node of attached
             if is_function node
               status = false unless node()
-            else if is_function node?.then
+            else # if is_function node?.then
               if node.$$intervalId?
-                status = false unless $interval.cancel node
-              else if node.$$timeoutId?
-                status = false unless $timeout.cancel node
+                $interval.cancel node
+              else # if node.$$timeoutId?
+                $timeout.cancel node
           status
 
         fn[UNSUBSCRIBER] = true
@@ -331,8 +342,8 @@ app.factory 'ksc.EventEmitter', [
               throw new Error 'unknown addition to unsubscriber ' + value
 
             if is_object unsubscriber
-              if unsubscriber.$$timeoutId? and unsubscriber.then?
-                unsubscriber.then del
+              if unsubscriber.$$timeoutId? and unsubscriber.finally?
+                unsubscriber.finally del
               else if unsubscriber.$$intervalId? and unsubscriber.finally?
                 unsubscriber.finally del
               else
@@ -343,7 +354,7 @@ app.factory 'ksc.EventEmitter', [
             attached[increment] = unsubscriber
 
           increment += 1
-          return
+          true
 
         fn
 ]

@@ -20,7 +20,6 @@ editable-rest-record
 
 event-emitter
   - bind to other classes
-  - add unit tests
 
 list
   - add pseudo/new elements logic
