@@ -39,7 +39,8 @@ record
   - add coffeedoc
 
 rest-list
-  - fix test coverage
+  - deal with primaryId / composite ID save/delete aftermath
+  - fix test coverage (HTTP error cases)
 
 rest-record
   - add coffeedoc
