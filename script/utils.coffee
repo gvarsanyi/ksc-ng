@@ -3,7 +3,7 @@ app.factory 'ksc.Utils', ->
 
   class Utils
 
-    @defineGetSet: (obj, key, getter, setter, visible=false) ->
+    @defineGetSet: (obj, key, getter, setter, visible) ->
       if typeof setter isnt 'function'
         visible = setter
         setter  = ->
@@ -31,8 +31,9 @@ app.factory 'ksc.Utils', ->
       unless Utils.isObject obj1, obj2
         return obj1 is obj2
 
-      for own k, v1 of obj1 when not Utils.identical v1, obj2[k]
-        return false
+      for own k, v1 of obj1
+        unless Utils.identical(v1, obj2[k]) and Utils.hasOwn obj2, k
+          return false
       for own k of obj2 when not Utils.hasOwn obj1, k
         return false
       true
