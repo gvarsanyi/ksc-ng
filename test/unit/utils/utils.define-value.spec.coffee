@@ -11,7 +11,7 @@ describe 'app.factory', ->
         Utils = $injector.get 'ksc.Utils'
 
 
-    describe 'Method .defineGetValue()', ->
+    describe 'Method .defineValue()', ->
 
       it 'Set read-only invisible value', ->
         obj = {}
@@ -35,7 +35,7 @@ describe 'app.factory', ->
 
       it 'Set r/w invisible value', ->
         obj = {}
-        Utils.defineValue obj, 'a', 'x', false
+        Utils.defineValue obj, 'a', 'x', true
 
         found_keys = {}
         for own k of obj
@@ -55,7 +55,7 @@ describe 'app.factory', ->
 
       it 'Set r/w value', ->
         obj = {}
-        Utils.defineValue obj, 'a', 'x', false, true
+        Utils.defineValue obj, 'a', 'x', true, true
 
         found_keys = {}
         for own k of obj
@@ -74,6 +74,6 @@ describe 'app.factory', ->
         expect(obj.a).toBe 'x'
         obj.a = 2
         expect(obj.a).toBe 'x'
-        expect(-> Utils.defineValue obj, 'a', 'x', false).not.toThrow()
+        expect(-> Utils.defineValue obj, 'a', 'x', true).not.toThrow()
         obj.a = 2
         expect(obj.a).toBe 2

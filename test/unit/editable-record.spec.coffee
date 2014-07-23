@@ -152,6 +152,14 @@ describe 'EditableRecord', ->
     expect(-> record.id = 3).not.toThrow()
     expect(record._id).toBe 3
 
+  it 'Can create empty container', ->
+    record = null
+    expect(-> record = new EditableRecord).not.toThrow()
+
+    found_keys = 0
+    found_keys += 1 for k, v of record
+    expect(found_keys).toBe 0
+
   it 'Composite id changes', ->
     example = {id1: 1, id2: 2, x: 3}
     opts    = idProperty: ['id1', 'id2']

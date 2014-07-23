@@ -162,7 +162,7 @@ app.factory 'ksc.EditableRecord', [
           (has_own(edited, key) and not Utils.identical saved[key], edited[key])
             unless was_changed
               define_value record, CHANGES, record[CHANGES] + 1
-              define_value record[CHANGED_KEYS], key, true, 1, 1
+              define_value record[CHANGED_KEYS], key, true, false, true
           else if was_changed
             define_value record, CHANGES, record[CHANGES] - 1
             delete record[CHANGED_KEYS][key]
@@ -186,7 +186,7 @@ app.factory 'ksc.EditableRecord', [
             changed = true
         else if n
           define_value record, CHANGES, record[CHANGES] + 1
-          define_value record[CHANGED_KEYS], key, true, 1, 1
+          define_value record[CHANGED_KEYS], key, true, false, true
           changed = true
 
         if changed and record[PARENT_KEY]

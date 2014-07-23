@@ -101,7 +101,7 @@ app.factory 'ksc.Record', [
 
             value = new class_ref value, subopts, record, key
 
-          define_value saved, key, value, 1, 1
+          define_value saved, key, value, false, true
 
         for key, value of data
           set_property key, value
@@ -113,7 +113,7 @@ app.factory 'ksc.Record', [
         Object.freeze saved
 
         for key, value of saved
-          define_value record, key, value, 1, 1
+          define_value record, key, value, false, true
 
         return
 

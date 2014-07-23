@@ -1,6 +1,10 @@
 
 app.factory 'ksc.Utils', ->
 
+  arg_check = (args) ->
+    unless args.length
+      throw new Error '1 or more arguments required'
+
   class Utils
 
     @defineGetSet: (obj, key, getter, setter, visible) ->
@@ -14,7 +18,7 @@ app.factory 'ksc.Utils', ->
         get:          getter
         set:          setter
 
-    @defineValue: (obj, key, value, read_only=true, visible=false) ->
+    @defineValue: (obj, key, value, writable=false, visible=false) ->
       if Object.getOwnPropertyDescriptor(obj, key)?.writable is false
         Object.defineProperty obj, key, writable: true
 
@@ -22,7 +26,7 @@ app.factory 'ksc.Utils', ->
         configurable: true
         enumerable:   !!visible
         value:        value
-        writable:     !read_only
+        writable:     !!writable
 
     @hasOwn = (obj, key) ->
       Utils.isObject(obj) and obj.hasOwnProperty key
@@ -40,15 +44,17 @@ app.factory 'ksc.Utils', ->
 
     @isEnumerable: (obj, key) ->
       try
-        return !!(Object.getOwnPropertyDescriptor obj, key)?.enumerable
+        return !!(Object.getOwnPropertyDescriptor obj, key).enumerable
       false
 
     @isFunction: (refs...) ->
-      for ref in refs or ['']
+      arg_check refs
+      for ref in refs
         return false unless ref and typeof ref is 'function'
       true
 
     @isObject: (refs...) ->
-      for ref in refs or ['']
+      arg_check refs
+      for ref in refs
         return false unless ref and typeof ref is 'object'
       true

@@ -61,6 +61,11 @@ describe 'Record', ->
     expect(ent).toEqual expected
     expect(ent).not.toBe expected
 
+  it 'No _id case', ->
+    record = null
+    expect(-> record = new Record {}, {record: idProperty: 'x'}).not.toThrow()
+    expect(record._id).toBeUndefined()
+
   it 'Data separation', ->
     example_sub = {a: 3}
     example = {id: 1, x: 2, y: example_sub}
