@@ -1,6 +1,6 @@
 
 describe 'RestList', ->
-  $http = List = RestList = null
+  $http = EditableRecord = List = RestList = null
   expected_raw_response = list_cfg = list_response = null
 
   id_url = '/api/Test/<id>'
@@ -9,9 +9,10 @@ describe 'RestList', ->
   beforeEach ->
     module 'app'
     inject ($injector) ->
-      $http    = $injector.get '$httpBackend'
-      List     = $injector.get 'ksc.List'
-      RestList = $injector.get 'ksc.RestList'
+      $http          = $injector.get '$httpBackend'
+      EditableRecord = $injector.get 'ksc.EditableRecord'
+      List           = $injector.get 'ksc.List'
+      RestList       = $injector.get 'ksc.RestList'
 
       list_cfg =
         endpoint: {responseProperty: 'elements', url}
@@ -207,7 +208,10 @@ describe 'RestList', ->
   it 'Method .restSave()', ->
     list = new RestList
     list.push {id: 1, x: 'a'}
-    list[0].x = 'b'
+    expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url req
+
+    list = new RestList record: {}
+    list.push {id: 1, x: 'a'}
     expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url req
 
     list = new RestList list_cfg
@@ -215,7 +219,6 @@ describe 'RestList', ->
 
     expect(-> list.restSave()).toThrow() # no records passed in
 
-    expect(-> list.restSave list[0]).toThrow() # not changed
     expect(-> list.restSave 43).toThrow() # not on the list
 
     list[0].x = 'b'
@@ -371,3 +374,90 @@ describe 'RestList', ->
     $http.flush()
 
     expect(list.length).toBe 1
+
+  it 'Save error', ->
+    list = new RestList
+      endpoint: {url}
+      record: endpoint: url: id_url
+
+    list.push new EditableRecord {id: 1, a: 2}
+
+    list.map[1].a = 3
+    expect(list.map[1]._changes).toBe 1
+
+    response = {error: 1}
+
+    $http.expectPUT(id_url.replace '<id>', '1').respond 500, response
+
+    cb_response = promise_response = null
+
+    promise = list.restSave 1, (err, changed_records, raw_response) ->
+      cb_response = [err, raw_response.data]
+
+    promise.then (->), (response) ->
+      promise_response = ['error', response.data]
+
+    $http.flush()
+
+    expect(list.length).toBe 1
+    expect(list.map[1].a).toBe 3
+    expect(list.map[1]._changes).toBe 1
+    expect(list.map[1]._changedKeys.a).toBe true
+    expect(cb_response[0] instanceof Error).toBe true
+    expect(cb_response[1]).toEqual response
+    expect(promise_response[0]).toBe 'error'
+    expect(promise_response[1]).toEqual response
+
+  it 'Bulk save error', ->
+    list = new RestList
+      endpoint: {url, bulkSave: true}
+
+    list.push new EditableRecord {id: 1, a: 2}
+
+    list.map[1].a = 3
+    expect(list.map[1]._changes).toBe 1
+
+    response = {error: 1}
+
+    $http.expectPUT(url).respond 500, response
+
+    cb_response = promise_response = null
+
+    promise = list.restSave 1, (err, changed_records, raw_response) ->
+      cb_response = [err, raw_response.data]
+
+    promise.then (->), (response) ->
+      promise_response = ['error', response.data]
+
+    $http.flush()
+
+    expect(list.length).toBe 1
+    expect(list.map[1].a).toBe 3
+    expect(list.map[1]._changes).toBe 1
+    expect(list.map[1]._changedKeys.a).toBe true
+    expect(cb_response[0] instanceof Error).toBe true
+    expect(cb_response[1]).toEqual response
+    expect(promise_response[0]).toBe 'error'
+    expect(promise_response[1]).toEqual response
+
+  it 'Method .restLoad() error', ->
+    list = new RestList list_cfg
+
+    response = {error: 1}
+
+    $http.expectGET(url).respond 500, response
+
+    cb_response = promise_response = null
+
+    promise = list.restLoad (err, changed_records, raw_response) ->
+      cb_response = [err, raw_response.data]
+
+    promise.then (->), (response) ->
+      promise_response = ['error', response.data]
+
+    $http.flush()
+
+    expect(cb_response[0] instanceof Error).toBe true
+    expect(cb_response[1]).toEqual response
+    expect(promise_response[0]).toBe 'error'
+    expect(promise_response[1]).toEqual response

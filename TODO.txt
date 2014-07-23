@@ -1,63 +1,40 @@
+priority to-do
 ----------------------------
-classes
+- batch-loader
+- bootloader-service
+- cached-editable-rest-record
+- cached-rest-record
+- event-emitter: bind to classes
+- list: add pseudo/new elements logic
+- list: add sort logic
+- list-filter
+- record: replace only if new data is different
+- rest-list: primaryId/composite ID save/delete aftermath
+
+to-do
 ----------------------------
+- record: add support for array property type
+- record-contract: array support
 
-cached-rest-record
-  - implement class
-  - add coffeedoc
-  - add unit tests
-
-cached-editable-rest-record
-  - implement class
-  - add coffeedoc
-  - add unit tests
-
-editable-record
-  - add coffeedoc
-
-editable-rest-record
-  - add coffeedoc
-
-event-emitter
-  - bind to other classes
-
-list
-  - add pseudo/new elements logic
-  - add sort logic
-
-list-filter
-  - implement class
-  - add coffeedoc
-  - add unit tests
-
-record-contract
-  - add array type
-  - add coffeedoc
-  - add unit tests
-
-record
-  - add coffeedoc
-
-rest-list
-  - deal with primaryId / composite ID save/delete aftermath
-  - fix test coverage (HTTP error cases)
-
-rest-record
-  - add coffeedoc
-  - fix test coverage
-
-rest-utils
-  - add coffeedoc
-  - add unit tests
-
-utils
-  - add coffeedoc
-  - add unit tests
-
+unit tests missing / partial
 ----------------------------
+- record-contract
+- rest-utils
+- utils
+
+coffeedoc missing / partial
+----------------------------
+- editable-record
+- editable-rest-record
+- record
+- record-contract
+- rest-record
+- rest-utils
+- utils
+
 research
 ----------------------------
-  - making preventExtension optional for records with contract?
-  - generic list cache logic options
-  - error subclasses: types needed
-  - better name for List (XArray? HashArray? Set?)
+- making preventExtension optional for records with contract?
+- generic list cache logic options
+- error subclasses: types needed
+- better name for List (XArray? HashArray? Set?)

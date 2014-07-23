@@ -53,3 +53,27 @@ describe 'RestRecord', ->
 
     expect(record.x).toBe 1
     expect(record.y).toBe 2
+
+  it 'Load error', ->
+    record = new RestRecord null, endpoint: {url}
+
+    response = {error: 1}
+
+    $http.expectGET(url).respond 500, response
+
+    cb_response = promise_response = null
+
+    promise = record._restLoad (err, response) ->
+      cb_response = [err, response.data]
+
+    promise.then (->), (response) ->
+      promise_response = ['error', response.data]
+
+    $http.flush()
+
+    expect(record.x).toBeUndefined()
+    expect(record.error).toBeUndefined()
+    expect(cb_response[0] instanceof Error).toBe true
+    expect(cb_response[1]).toEqual response
+    expect(promise_response[0]).toBe 'error'
+    expect(promise_response[1]).toEqual response

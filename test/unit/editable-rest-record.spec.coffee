@@ -46,3 +46,31 @@ describe 'EditableRestRecord', ->
     expect(record._changes).toBe 0
     expect(cb_response).toEqual response
     expect(promise_response).toEqual response
+
+  it 'Save error', ->
+    record = new EditableRestRecord {x: 1, y: 2}, endpoint: {url}
+
+    record.y = 3
+
+    response = {error: 1}
+
+    $http.expectPUT(url).respond 500, response
+
+    cb_response = promise_response = null
+
+    promise = record._restSave (err, response, etc...) ->
+      cb_response = [err, response.data]
+
+    promise.then (->), (response) ->
+      promise_response = ['error', response.data]
+
+    $http.flush()
+
+    expect(record.x).toBe 1
+    expect(record.y).toBe 3
+    expect(record._changes).toBe 1
+    expect(record._changedKeys.y).toBe true
+    expect(cb_response[0] instanceof Error).toBe true
+    expect(cb_response[1]).toEqual response
+    expect(promise_response[0]).toBe 'error'
+    expect(promise_response[1]).toEqual response

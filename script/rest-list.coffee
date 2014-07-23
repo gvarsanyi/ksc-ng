@@ -126,7 +126,6 @@ app.factory 'ksc.RestList', [
 
       @throw [Error] No record to save
       @throw [Error] Non-unique record was passed in
-      @throw [Error] Record has no changes to save
       @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
 
       @return [HttpPromise] Promise or chained promises returned by $http.put or
@@ -218,7 +217,6 @@ app.factory 'ksc.RestList', [
 
       @throw [Error] No record to save/delete
       @throw [Error] Non-unique record was passed in
-      @throw [Error] Record has no changes to save
       @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
 
       @return [$HttpPromise] Promise or chained promises of the HTTP action(s)
@@ -231,13 +229,13 @@ app.factory 'ksc.RestList', [
         list = @
 
         unique_record_map = {}
-        for record in records
-          record = list.map[record] unless typeof record is 'object'
-          unless (record = list.map[id = record?._id])
-            throw new Error 'record is not in the list: ' + id
+        for record, i in records
+          unless typeof record is 'object'
+            records[i] = record = list.map[record]
 
-          if save_type and not record._changes
-            throw new Error 'Record has no changes to save: ' + id
+          orig_item = record
+          unless (record = list.map[id = record?._id])
+            throw new Error 'record is not in the list: ' + orig_item
 
           if unique_record_map[id]
             throw new Error 'Record/ID is not unique: ' + id
@@ -272,13 +270,14 @@ app.factory 'ksc.RestList', [
               if save_type
                 record_list = list.push raw_response.data..., true
               else
-                record_list = list.cut records...
+                record_list = list.cut.apply list, records
             callback? err, record_list, raw_response
 
 
         # api has no collection/bulk support
         results = {}
-        finished = (err, raw_responses...) ->
+        finished = (err) ->
+          raw_responses = Array::slice.call arguments, 1
           callback? err, results, raw_responses...
 
         RestUtils.asyncSquash records, finished, (record, iteration_callback) ->
@@ -305,9 +304,9 @@ app.factory 'ksc.RestList', [
           RestUtils.wrapPromise promise, list, (err, raw_response) ->
             unless err
               if save_type
-                for k, v of list.push raw_response.data
+                for k, v of list.push raw_response.data, true
                   results[k] = (results[k] or 0) + v
               else
-                results.cut = (results.cut or 0) + (list.cut record)?.cut or 0
+                results.cut = (results.cut or 0) + list.cut(record).cut.length
             iteration_callback err, raw_response
 ]

@@ -11,7 +11,8 @@ app.factory 'ksc.RestUtils', [
         len     = records.length
         results = []
 
-        iteration_callback = (err, data, status, headers, config) ->
+        iteration_callback = (err, result) ->
+          {data, status, headers, config} = result
           count += 1
           errors.push(err) if err?
           results.push {error: err, data, status, headers, config}
@@ -50,13 +51,20 @@ app.factory 'ksc.RestUtils', [
             if rest_node[load_key] is 0
               delete rest_node[load_key]
 
-        promise.success (data, status, headers, config) ->
+        success_fn = (result) ->
           load_count_decrement rest_node
-          callback? null, {data, status, headers, config}
+          wrap = ({data, status, headers, config} = result)
+          callback? null, wrap
 
-        promise.error (data, status, headers, config) ->
+        error_fn = (result) ->
           load_count_decrement rest_node
-          err = new Error 'HTTP' + status + ': ' + config.method + ' ' +
-                          config.url
-          callback? err, {error: err, data, status, headers, config}
+          wrap = ({data, status, headers, config} = result)
+          err = new Error 'HTTP' + status + ': ' +
+                          config.method + ' ' + config.url
+          wrap.error = err
+          callback? err, wrap
+
+        promise.then success_fn, error_fn
+
+        promise
 ]
