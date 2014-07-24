@@ -31,13 +31,6 @@ app.factory 'ksc.EditableRecord', [
       # - _deletedKeys: object
       # - _edited:      object
       # - _pseudoId:    number
-      # virtual properties of Record
-      # - _id:          object
-      # - _options:     object
-      # - _parent:      object
-      # - _parentKey:   number|string
-      # - _primaryId:   object
-      # - _saved:       object
 
       _clone: (return_plain_object=false, saved_only=false) ->
         if saved_only
@@ -46,14 +39,14 @@ app.factory 'ksc.EditableRecord', [
         record = @
         if return_plain_object
           clone = {}
-          for key, value of record when is_enumerable record, key
+          for key, value of record
             if value instanceof Record
               value = value._clone 1
             clone[key] = value
           return clone
 
         clone = new (record.constructor) record[SAVED]
-        for key of record when is_enumerable record, key
+        for key of record
           if record[CHANGED_KEYS][key] or not has_own record[SAVED], key
             value = record[key]
             if is_object value

@@ -3,6 +3,9 @@ app.factory 'ksc.RestList', [
   '$http', 'ksc.List', 'ksc.RestUtils',
   ($http, List, RestUtils) ->
 
+    REST_PENDING = 'restPending'
+
+
     ###
     REST methods for ksc.List
 
@@ -32,6 +35,11 @@ app.factory 'ksc.RestList', [
     class RestList extends List
 
       ###
+      @property [number] The number of REST requests pending
+      ###
+      restPending: 0
+
+      ###
       Query list endpoint for raw data
 
       Option used:
@@ -55,7 +63,9 @@ app.factory 'ksc.RestList', [
           callback = query_parameters
           query_parameters = null
 
-        unless url = @options.endpoint?.url
+        list = @
+
+        unless url = list.options.endpoint?.url
           throw new Error 'Could not identify endpoint url'
 
         if query_parameters
@@ -64,7 +74,10 @@ app.factory 'ksc.RestList', [
           if parts.length
             url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
 
-        RestUtils.wrapPromise $http.get(url), @, callback
+        list[REST_PENDING] += 1
+        RestUtils.wrapPromise $http.get(url), (err, result) ->
+          list[REST_PENDING] -= 1
+          callback err, result
 
       ###
       Query list endpoint for records
@@ -264,8 +277,10 @@ app.factory 'ksc.RestList', [
               if record._primaryId? then record._primaryId else record._id
           args = [endpoint_options.url]
           args.push(data) unless bulk_method is 'delete'
+          list[REST_PENDING] += 1
           promise = $http[bulk_method] args...
-          return RestUtils.wrapPromise promise, list, (err, raw_response) ->
+          return RestUtils.wrapPromise promise, (err, raw_response) ->
+            list[REST_PENDING] -= 1
             unless err
               if save_type
                 record_list = list.push raw_response.data..., true
@@ -280,7 +295,7 @@ app.factory 'ksc.RestList', [
           raw_responses = Array::slice.call arguments, 1
           callback? err, results, raw_responses...
 
-        RestUtils.asyncSquash records, finished, (record, iteration_callback) ->
+        RestUtils.asyncSquash records, finished, (record) ->
           id     = if record._primaryId? then record._primaryId else record._id
           method = 'delete'
           url    = list.options.record?.endpoint?.url
@@ -300,13 +315,15 @@ app.factory 'ksc.RestList', [
 
           args = [url]
           args.push(record._entity()) if save_type
+          list[REST_PENDING] += 1
           promise = $http[method](args...)
-          RestUtils.wrapPromise promise, list, (err, raw_response) ->
+          RestUtils.wrapPromise promise, (err, raw_response) ->
+            list[REST_PENDING] -= 1
             unless err
               if save_type
                 for k, v of list.push raw_response.data, true
                   results[k] = (results[k] or 0) + v
               else
                 results.cut = (results.cut or 0) + list.cut(record).cut.length
-            iteration_callback err, raw_response
+            return
 ]

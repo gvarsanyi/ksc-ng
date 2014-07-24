@@ -55,8 +55,7 @@ app.factory 'ksc.List', [
         list.options.class = proto = @constructor.prototype
 
         for k, v of proto
-          if typeof v is 'function' and k.indexOf('constructor') is -1 and
-          k.substr(0, 2) isnt '__'
+          if k.indexOf('constructor') is -1 and k.substr(0, 2) isnt '__'
             list[k] = v
 
         return list

@@ -7,10 +7,9 @@ app.factory 'ksc.Record', [
     PARENT_KEY = '_parentKey'
     SAVED      = '_saved'
 
-    define_value  = Utils.defineValue
-    has_own       = Utils.hasOwn
-    is_enumerable = Utils.isEnumerable
-    is_object     = Utils.isObject
+    define_value = Utils.defineValue
+    has_own      = Utils.hasOwn
+    is_object    = Utils.isObject
 
 
     class Record
@@ -50,13 +49,19 @@ app.factory 'ksc.Record', [
 
         Record.setId record
 
+        # hide (set to non-enumerable) non-data properties/methods
+        ref = record
+        while is_object ref = Object.getPrototypeOf ref
+          for own key of ref
+            Object.defineProperty ref, key, enumerable: false
+
         RecordContract.finalizeRecord record
 
 
       _clone: (return_plain_object=false) ->
         clone = {}
         record = @
-        for key, value of record when is_enumerable record, key
+        for key, value of record
           if has_own record[SAVED], key
             value = record[SAVED][key]
           if is_object value

@@ -13,13 +13,13 @@ priority to-do
 
 to-do
 ----------------------------
+- event-emitter: pause/unpause+cue logic
 - record: add support for array property type
 - record-contract: array support
 
 unit tests missing / partial
 ----------------------------
 - record-contract
-- rest-utils
 
 coffeedoc missing / partial
 ----------------------------

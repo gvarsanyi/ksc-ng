@@ -1,463 +1,476 @@
 
-describe 'RestList', ->
-  $http = EditableRecord = List = RestList = null
-  expected_raw_response = list_cfg = list_response = null
+describe 'app.factory', ->
 
-  id_url = '/api/Test/<id>'
-  url    = '/api/Test/'
+  describe 'RestList', ->
 
-  beforeEach ->
-    module 'app'
-    inject ($injector) ->
-      $http          = $injector.get '$httpBackend'
-      EditableRecord = $injector.get 'ksc.EditableRecord'
-      List           = $injector.get 'ksc.List'
-      RestList       = $injector.get 'ksc.RestList'
+    $httpBackend = EditableRecord = List = RestList = null
+    expected_raw_response = list_cfg = list_response = null
 
-      list_cfg =
-        endpoint: {responseProperty: 'elements', url}
-        record:   {endpoint: {url: id_url}}
+    id_url = '/api/Test/<id>'
+    url    = '/api/Test/'
 
-      list_response =
-        success: true
-        elements: [{id: 43, x: 'a'}, {id: 24, x: 'b'}]
+    beforeEach ->
+      module 'app'
+      inject ($injector) ->
+        $httpBackend   = $injector.get '$httpBackend'
+        EditableRecord = $injector.get 'ksc.EditableRecord'
+        List           = $injector.get 'ksc.List'
+        RestList       = $injector.get 'ksc.RestList'
 
-      # this is the layout after JSON.parse(JSON.stringify(data)) wrapping that
-      # is in place for stripping functions (or turning them to nulls in arrays)
-      expected_raw_response =
-        data: list_response
-        status: 200
-        config:
-          method: 'GET'
-          transformRequest: [null]
-          transformResponse: [null]
-          url: url
-          headers:
-            Accept: 'application/json, text/plain, */*'
+        list_cfg =
+          endpoint: {responseProperty: 'elements', url}
+          record:   {endpoint: {url: id_url}}
 
+        list_response =
+          success: true
+          elements: [{id: 43, x: 'a'}, {id: 24, x: 'b'}]
 
-  it 'Constructs a vanilla Array instance', ->
-    list = new RestList
+        # this is the layout after JSON.parse(JSON.stringify(data)) wrapping
+        #  - this is in place to strip functions (or turning them to nulls in
+        #    arrays)
+        expected_raw_response =
+          data: list_response
+          status: 200
+          config:
+            method: 'GET'
+            transformRequest: [null]
+            transformResponse: [null]
+            url: url
+            headers:
+              Accept: 'application/json, text/plain, */*'
 
-    expect(Array.isArray list).toBe true
-    expect(list.length).toBe 0
 
-  it 'option.class is ksc.RestList and inherited from ksc.List', ->
-    list = new RestList
+    it 'Constructs a vanilla Array instance', ->
+      list = new RestList
 
-    expect(list.options.class instanceof List).toBe true
-    expect(list.options.class).toBe RestList.prototype
+      expect(Array.isArray list).toBe true
+      expect(list.length).toBe 0
 
-  it 'Method .restGetRaw() with query params', ->
-    list = new RestList list_cfg
+    it 'option.class is ksc.RestList and inherited from ksc.List', ->
+      list = new RestList
 
-    $http.expectGET(url).respond list_response
+      expect(list.options.class instanceof List).toBe true
+      expect(list.options.class).toBe RestList.prototype
 
-    response = null
+    it 'Method .restGetRaw() with query params', ->
+      list = new RestList list_cfg
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+      $httpBackend.expectGET(url).respond list_response
 
-    promise = list.restGetRaw (err, data) ->
-      spyable.callback err, JSON.parse JSON.stringify data
+      response = null
 
-    promise.success (data) ->
-      response = data
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    $http.flush()
+      promise = list.restGetRaw (err, data) ->
+        spyable.callback err, JSON.parse JSON.stringify data
 
-    expect(response.success).toBe true
-    expect(response.elements.length).toBe 2
-    expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
+      promise.success (data) ->
+        response = data
 
-    # prep with url that already has query str
-    list_cfg.endpoint.url            = '/api/Test?pre=1&pre2=2'
-    expected_raw_response.config.url = '/api/Test?pre=1&pre2=2&ext=1'
+      $httpBackend.flush()
 
-    list = new RestList list_cfg
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+      expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
 
-    $http.expectGET(expected_raw_response.config.url).respond list_response
+      # prep with url that already has query str
+      list_cfg.endpoint.url            = '/api/Test?pre=1&pre2=2'
+      expected_raw_response.config.url = '/api/Test?pre=1&pre2=2&ext=1'
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+      list = new RestList list_cfg
 
-    list.restGetRaw {ext: 1}, (err, data) ->
-      spyable.callback err, JSON.parse JSON.stringify data
+      target_url = expected_raw_response.config.url
+      $httpBackend.expectGET(target_url).respond list_response
 
-    $http.flush()
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
+      list.restGetRaw {ext: 1}, (err, data) ->
+        spyable.callback err, JSON.parse JSON.stringify data
 
-    # prep url without query string url
-    list_cfg.endpoint.url            = url
-    expected_raw_response.config.url = url
+      $httpBackend.flush()
 
-    list = new RestList list_cfg
+      expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
 
-    $http.expectGET(url).respond list_response
+      # prep url without query string url
+      list_cfg.endpoint.url            = url
+      expected_raw_response.config.url = url
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+      list = new RestList list_cfg
 
-    list.restGetRaw {}, (err, data) ->
-      spyable.callback err, JSON.parse JSON.stringify data
+      $httpBackend.expectGET(url).respond list_response
 
-    $http.flush()
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
+      list.restGetRaw {}, (err, data) ->
+        spyable.callback err, JSON.parse JSON.stringify data
 
-  it 'Method .restGetRaw() with query params and callback', ->
-    list = new RestList
-    expect(-> list.restGetRaw()).toThrow() # options.endpoint.url required
+      $httpBackend.flush()
 
-    list = new RestList list_cfg
+      expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
 
-    expected_url = url + '?x=1&y=2'
+    it 'Method .restGetRaw() with query params and callback', ->
+      list = new RestList
+      expect(-> list.restGetRaw()).toThrow() # options.endpoint.url required
 
-    $http.expectGET(expected_url).respond list_response
+      list = new RestList list_cfg
 
-    response = null
+      expected_url = url + '?x=1&y=2'
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+      $httpBackend.expectGET(expected_url).respond list_response
 
-    expected_raw_response.config.url = expected_url
+      response = null
 
-    promise = list.restGetRaw {x: 1, y: 2}, (err, data) ->
-      spyable.callback err, JSON.parse JSON.stringify data
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    promise.success (data) ->
-      response = data
+      expected_raw_response.config.url = expected_url
 
-    $http.flush()
+      promise = list.restGetRaw {x: 1, y: 2}, (err, data) ->
+        spyable.callback err, JSON.parse JSON.stringify data
 
-    expect(response.success).toBe true
-    expect(response.elements.length).toBe 2
-    expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
+      promise.success (data) ->
+        response = data
 
-  it 'Method .restLoad()', ->
-    list = new RestList list_cfg
+      $httpBackend.flush()
 
-    expected_url = url + '?x=1&y=2'
-    expected_url2 = url + '?x=2&y=3'
-    expected_url3 = url
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+      expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
 
-    $http.expectGET(expected_url).respond list_response
-    $http.expectGET(expected_url2).respond list_response
-    $http.expectGET(expected_url3).respond list_response
-    $http.expectGET(expected_url3).respond list_response
+    it 'Method .restLoad()', ->
+      list = new RestList list_cfg
 
-    response = null
+      expected_url = url + '?x=1&y=2'
+      expected_url2 = url + '?x=2&y=3'
+      expected_url3 = url
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+      $httpBackend.expectGET(expected_url).respond list_response
+      $httpBackend.expectGET(expected_url2).respond list_response
+      $httpBackend.expectGET(expected_url3).respond list_response
+      $httpBackend.expectGET(expected_url3).respond list_response
 
-    spyable2 = {callback: ->}
-    spyOn spyable2, 'callback'
+      expect(list.restPending).toBe 0
 
-    expected_raw_response.config.url = expected_url
+      response = null
 
-    expected_changed_records = insert: list_response.elements
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    promise = list.restLoad {x: 1, y: 2}, (err, changed_records, raw) ->
-      insert = (rec._entity() for rec in changed_records.insert)
-      spyable.callback err, {insert}, JSON.parse JSON.stringify raw
+      spyable2 = {callback: ->}
+      spyOn spyable2, 'callback'
 
-    promise.success (data) ->
-      response = data
+      expected_raw_response.config.url = expected_url
 
-    list.restLoad {x: 2, y: 3}
-    list.restLoad spyable2.callback
-    list.restLoad()
+      expected_changed_records = insert: list_response.elements
 
-    $http.flush()
+      promise = list.restLoad {x: 1, y: 2}, (err, changed_records, raw) ->
+        insert = (rec._entity() for rec in changed_records.insert)
+        spyable.callback err, {insert}, JSON.parse JSON.stringify raw
 
-    expect(response.success).toBe true
-    expect(response.elements.length).toBe 2
-    expect(spyable.callback).toHaveBeenCalledWith null,
-                                                  expected_changed_records,
-                                                  expected_raw_response
-    expect(spyable2.callback).toHaveBeenCalled()
+      promise.success (data) ->
+        response = data
 
-  it 'Method .restLoad() auto identifying array in response', ->
-    delete list_cfg.endpoint.responseProperty
+      expect(list.restPending).toBe 1
 
-    # array is one of the top-level properties
-    list = new RestList list_cfg
-    $http.expectGET(url).respond list_response
-    list.restLoad()
-    $http.flush()
-    expect(list.length).toBe 2
+      list.restLoad {x: 2, y: 3}
+      list.restLoad spyable2.callback
+      list.restLoad()
 
-    # response is just the array
-    list = new RestList list_cfg
-    $http.expectGET(url).respond list_response.elements
-    list.restLoad()
-    $http.flush()
-    expect(list.length).toBe 2
+      expect(list.restPending).toBe 4
 
-    # no array in response - fail
-    list = new RestList list_cfg
-    expected_err = null
-    $http.expectGET(url).respond {x: {a: 2}}
-    list.restLoad (err) ->
-      expected_err = err
-    $http.flush()
-    expect(expected_err instanceof Error).toBe true
+      $httpBackend.flush()
 
-  it 'Method .restSave()', ->
-    list = new RestList
-    list.push {id: 1, x: 'a'}
-    expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url req
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+      expect(spyable.callback).toHaveBeenCalledWith null,
+                                                    expected_changed_records,
+                                                    expected_raw_response
+      expect(spyable2.callback).toHaveBeenCalled()
+      expect(list.restPending).toBe 0
 
-    list = new RestList record: {}
-    list.push {id: 1, x: 'a'}
-    expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url req
+    it 'Method .restLoad() auto identifying array in response', ->
+      delete list_cfg.endpoint.responseProperty
 
-    list = new RestList list_cfg
-    list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+      # array is one of the top-level properties
+      list = new RestList list_cfg
+      $httpBackend.expectGET(url).respond list_response
+      list.restLoad()
+      $httpBackend.flush()
+      expect(list.length).toBe 2
 
-    expect(-> list.restSave()).toThrow() # no records passed in
+      # response is just the array
+      list = new RestList list_cfg
+      $httpBackend.expectGET(url).respond list_response.elements
+      list.restLoad()
+      $httpBackend.flush()
+      expect(list.length).toBe 2
 
-    expect(-> list.restSave 43).toThrow() # not on the list
+      # no array in response - fail
+      list = new RestList list_cfg
+      expected_err = null
+      $httpBackend.expectGET(url).respond {x: {a: 2}}
+      list.restLoad (err) ->
+        expected_err = err
+      $httpBackend.flush()
+      expect(expected_err instanceof Error).toBe true
 
-    list[0].x = 'b'
-    list[1].x = 'c'
-    expect(-> list.restSave list[0], list[0]).toThrow() # not unique
+    it 'Method .restSave()', ->
+      list = new RestList
+      list.push {id: 1, x: 'a'}
+      expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
 
-    expected_url1 = id_url.replace '<id>', '1'
-    expected_url2 = id_url.replace '<id>', '2'
-    $http.expectPUT(expected_url1).respond {id: 1, x: 'b', y: 'y'}
-    $http.expectPUT(expected_url2).respond {id: 2, x: 'c', z: 'z'}
+      list = new RestList record: {}
+      list.push {id: 1, x: 'a'}
+      expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
 
-    list.restSave list[0], list[1]
+      list = new RestList list_cfg
+      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
 
-    $http.flush()
-    expect(list[0].y).toBe 'y'
-    expect(list[1].z).toBe 'z'
+      expect(-> list.restSave()).toThrow() # no records passed in
 
-  it 'Method .restSave() with bulkSave', ->
-    list = new RestList endpoint: {bulkSave: 'POST'}
-    list.push {id: 1, x: 'a'}
-    list[0].x = 'b'
-    expect(-> list.restSave list[0]).toThrow() # options.endpoint.url required
+      expect(-> list.restSave 43).toThrow() # not on the list
 
-    list = new RestList endpoint: {url, bulkSave: 'POST'}
+      list[0].x = 'b'
+      list[1].x = 'c'
+      expect(-> list.restSave list[0], list[0]).toThrow() # not unique
 
-    list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
-    list[0].x = 'x'
-    list[1].x = 'x'
+      expected_url1 = id_url.replace '<id>', '1'
+      expected_url2 = id_url.replace '<id>', '2'
+      $httpBackend.expectPUT(expected_url1).respond {id: 1, x: 'b', y: 'y'}
+      $httpBackend.expectPUT(expected_url2).respond {id: 2, x: 'c', z: 'z'}
 
-    $http.expectPOST(url).respond [{id: 1, x: 'x'}, {id: 2, x: 'y', ext: 1}]
+      list.restSave list[0], list[1]
 
-    list.restSave list[1], list[0], ->
+      $httpBackend.flush()
+      expect(list[0].y).toBe 'y'
+      expect(list[1].z).toBe 'z'
 
-    $http.flush()
+    it 'Method .restSave() with bulkSave', ->
+      list = new RestList endpoint: {bulkSave: 'POST'}
+      list.push {id: 1, x: 'a'}
+      list[0].x = 'b'
+      expect(-> list.restSave list[0]).toThrow() # options.endpoint.url required
 
-    expect(list.length).toBe 3
-    expect(list.map[2].ext).toBe 1
-    expect(list.map[1].x).toBe 'x'
-    expect(list.map[2].x).toBe 'y'
-    expect(list.map[1]._changes).toBe 0
-    expect(list.map[2]._changes).toBe 0
+      list = new RestList endpoint: {url, bulkSave: 'POST'}
 
-    list.options.endpoint.bulkSave = true # should be PUT not POST
-    list[0].x = 'a'
-    list[1].x = 'a'
+      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+      list[0].x = 'x'
+      list[1].x = 'x'
 
-    $http.expectPUT(url).respond [{id: 1, x: 'a'}, {id: 2, x: 'a'}]
+      $httpBackend.expectPOST(url).respond [{id: 1, x: 'x'},
+                                            {id: 2, x: 'y', ext: 1}]
 
-    list.restSave list[1], list[0], ->
+      list.restSave list[1], list[0], ->
 
-    $http.flush()
+      $httpBackend.flush()
 
-    expect(list.length).toBe 3
-    expect(list.map[2].ext).toBeUndefined()
-    expect(list.map[1].x).toBe 'a'
-    expect(list.map[2].x).toBe 'a'
-    expect(list.map[1]._changes).toBe 0
-    expect(list.map[2]._changes).toBe 0
-    expect(list.map[3]._changes).toBe 0
+      expect(list.length).toBe 3
+      expect(list.map[2].ext).toBe 1
+      expect(list.map[1].x).toBe 'x'
+      expect(list.map[2].x).toBe 'y'
+      expect(list.map[1]._changes).toBe 0
+      expect(list.map[2]._changes).toBe 0
 
-  it 'Method .restSave() with composite IDs', ->
-    list = new RestList
-      endpoint: {url}
-      record:
-        idProperty: ['id1', 'id2']
-        endpoint: url: id_url
+      list.options.endpoint.bulkSave = true # should be PUT not POST
+      list[0].x = 'a'
+      list[1].x = 'a'
 
-    list.push {id1: 1, id2: 2, x: 'a'}
-    list[0].x = 'b'
+      $httpBackend.expectPUT(url).respond [{id: 1, x: 'a'}, {id: 2, x: 'a'}]
 
-    expect(list[0]._id).toBe '1-2'
-    expect(list[0]._primaryId).toBe 1
+      list.restSave list[1], list[0], ->
 
-    expected_url = id_url.replace '<id>', '1'
-    $http.expectPUT(expected_url).respond {id1: 1, id2: 2, x: 'b'}
+      $httpBackend.flush()
 
-    list.restSave list[0], ->
+      expect(list.length).toBe 3
+      expect(list.map[2].ext).toBeUndefined()
+      expect(list.map[1].x).toBe 'a'
+      expect(list.map[2].x).toBe 'a'
+      expect(list.map[1]._changes).toBe 0
+      expect(list.map[2]._changes).toBe 0
+      expect(list.map[3]._changes).toBe 0
 
-    $http.flush()
+    it 'Method .restSave() with composite IDs', ->
+      list = new RestList
+        endpoint: {url}
+        record:
+          idProperty: ['id1', 'id2']
+          endpoint: url: id_url
 
-    expect(list[0]._saved.x).toBe 'b'
+      list.push {id1: 1, id2: 2, x: 'a'}
+      list[0].x = 'b'
 
-  it 'Method .restDelete()', ->
-    list = new RestList
-      endpoint: {url}
-      record: endpoint: url: id_url
+      expect(list[0]._id).toBe '1-2'
+      expect(list[0]._primaryId).toBe 1
 
-    list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
-    list[0].x = 'x'
+      expected_url = id_url.replace '<id>', '1'
+      $httpBackend.expectPUT(expected_url).respond {id1: 1, id2: 2, x: 'b'}
 
-    expect(-> list.restDelete()).toThrow() # no record passed in
+      list.restSave list[0], ->
 
-    $http.expectDELETE(id_url.replace '<id>', '1').respond {a: 1}
-    $http.expectDELETE(id_url.replace '<id>', '2').respond {b: 1}
+      $httpBackend.flush()
 
-    responses = null
+      expect(list[0]._saved.x).toBe 'b'
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+    it 'Method .restDelete()', ->
+      list = new RestList
+        endpoint: {url}
+        record: endpoint: url: id_url
 
-    promise = list.restDelete list.map[1], list.map[2], spyable.callback
-    promise.then (_responses) -> # success path
-      responses = _responses
+      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+      list[0].x = 'x'
 
-    $http.flush()
+      expect(-> list.restDelete()).toThrow() # no record passed in
 
-    expect(list.length).toBe 1
-    expect(responses.length).toBe 2
-    expect(responses[0].data).toEqual {a: 1}
-    expect(responses[0].config.url).toBe id_url.replace '<id>', '1'
-    expect(responses[1].data).toEqual {b: 1}
-    expect(responses[1].config.url).toBe id_url.replace '<id>', '2'
-    expect(promise.success).toBeUndefined() # chained promises don't have
-                                            # HttpPromise specific stuff
-    expect(spyable.callback).toHaveBeenCalled()
+      $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {a: 1}
+      $httpBackend.expectDELETE(id_url.replace '<id>', '2').respond {b: 1}
 
-  it 'Method .restDelete() with bulkDelete', ->
-    list = new RestList endpoint: {url, bulkDelete: true}
+      responses = null
 
-    list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
-    list[0].x = 'x'
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    $http.expectDELETE(url).respond {x: 'ee'}
+      promise = list.restDelete list.map[1], list.map[2], spyable.callback
+      promise.then (_responses) -> # success path
+        responses = _responses
 
-    spyable = {callback: ->}
-    spyOn spyable, 'callback'
+      $httpBackend.flush()
 
-    list.restDelete list[2], list[1], spyable.callback
+      expect(list.length).toBe 1
+      expect(responses.length).toBe 2
+      expect(responses[0].data).toEqual {a: 1}
+      expect(responses[0].config.url).toBe id_url.replace '<id>', '1'
+      expect(responses[1].data).toEqual {b: 1}
+      expect(responses[1].config.url).toBe id_url.replace '<id>', '2'
+      expect(promise.success).toBeUndefined() # chained promises don't have
+                                              # HttpPromise specific stuff
+      expect(spyable.callback).toHaveBeenCalled()
 
-    $http.flush()
+    it 'Method .restDelete() with bulkDelete', ->
+      list = new RestList endpoint: {url, bulkDelete: true}
 
-    expect(list.length).toBe 1
-    expect(list.map[2]).toBeUndefined()
-    expect(list.map[3]).toBeUndefined()
-    expect(list.map[1].x).toBe 'x'
-    expect(list.map[1]._changes).toBe 1
-    expect(spyable.callback).toHaveBeenCalled()
+      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+      list[0].x = 'x'
 
-  it 'Method .restDelete() with bulkDelete and composite IDs', ->
-    list = new RestList
-      endpoint: {url, bulkDelete: 1}
-      record: idProperty: ['id1', 'id2']
+      $httpBackend.expectDELETE(url).respond {x: 'ee'}
 
-    list.push {id1: 1, id2: 2, x: 'a'}, {id1: 2, id2: 3, x: 'a'}
+      spyable = {callback: ->}
+      spyOn spyable, 'callback'
 
-    expect(list[0]._id).toBe '1-2'
-    expect(list[0]._primaryId).toBe 1
+      list.restDelete list[2], list[1], spyable.callback
 
-    $http.expectDELETE(url).respond {yo: 1}
+      $httpBackend.flush()
 
-    list.restDelete list[0]
+      expect(list.length).toBe 1
+      expect(list.map[2]).toBeUndefined()
+      expect(list.map[3]).toBeUndefined()
+      expect(list.map[1].x).toBe 'x'
+      expect(list.map[1]._changes).toBe 1
+      expect(spyable.callback).toHaveBeenCalled()
 
-    $http.flush()
+    it 'Method .restDelete() with bulkDelete and composite IDs', ->
+      list = new RestList
+        endpoint: {url, bulkDelete: 1}
+        record: idProperty: ['id1', 'id2']
 
-    expect(list.length).toBe 1
+      list.push {id1: 1, id2: 2, x: 'a'}, {id1: 2, id2: 3, x: 'a'}
 
-  it 'Save error', ->
-    list = new RestList
-      endpoint: {url}
-      record: endpoint: url: id_url
+      expect(list[0]._id).toBe '1-2'
+      expect(list[0]._primaryId).toBe 1
 
-    list.push new EditableRecord {id: 1, a: 2}
+      $httpBackend.expectDELETE(url).respond {yo: 1}
 
-    list.map[1].a = 3
-    expect(list.map[1]._changes).toBe 1
+      list.restDelete list[0]
 
-    response = {error: 1}
+      $httpBackend.flush()
 
-    $http.expectPUT(id_url.replace '<id>', '1').respond 500, response
+      expect(list.length).toBe 1
 
-    cb_response = promise_response = null
+    it 'Save error', ->
+      list = new RestList
+        endpoint: {url}
+        record: endpoint: url: id_url
 
-    promise = list.restSave 1, (err, changed_records, raw_response) ->
-      cb_response = [err, raw_response.data]
+      list.push new EditableRecord {id: 1, a: 2}
 
-    promise.then (->), (response) ->
-      promise_response = ['error', response.data]
+      list.map[1].a = 3
+      expect(list.map[1]._changes).toBe 1
 
-    $http.flush()
+      response = {error: 1}
 
-    expect(list.length).toBe 1
-    expect(list.map[1].a).toBe 3
-    expect(list.map[1]._changes).toBe 1
-    expect(list.map[1]._changedKeys.a).toBe true
-    expect(cb_response[0] instanceof Error).toBe true
-    expect(cb_response[1]).toEqual response
-    expect(promise_response[0]).toBe 'error'
-    expect(promise_response[1]).toEqual response
+      $httpBackend.expectPUT(id_url.replace '<id>', '1').respond 500, response
 
-  it 'Bulk save error', ->
-    list = new RestList
-      endpoint: {url, bulkSave: true}
+      cb_response = promise_response = null
 
-    list.push new EditableRecord {id: 1, a: 2}
+      promise = list.restSave 1, (err, changed_records, raw_response) ->
+        cb_response = [err, raw_response.data]
 
-    list.map[1].a = 3
-    expect(list.map[1]._changes).toBe 1
+      promise.then (->), (response) ->
+        promise_response = ['error', response.data]
 
-    response = {error: 1}
+      $httpBackend.flush()
 
-    $http.expectPUT(url).respond 500, response
+      expect(list.length).toBe 1
+      expect(list.map[1].a).toBe 3
+      expect(list.map[1]._changes).toBe 1
+      expect(list.map[1]._changedKeys.a).toBe true
+      expect(cb_response[0] instanceof Error).toBe true
+      expect(cb_response[1]).toEqual response
+      expect(promise_response[0]).toBe 'error'
+      expect(promise_response[1]).toEqual response
 
-    cb_response = promise_response = null
+    it 'Bulk save error', ->
+      list = new RestList
+        endpoint: {url, bulkSave: true}
 
-    promise = list.restSave 1, (err, changed_records, raw_response) ->
-      cb_response = [err, raw_response.data]
+      list.push new EditableRecord {id: 1, a: 2}
 
-    promise.then (->), (response) ->
-      promise_response = ['error', response.data]
+      list.map[1].a = 3
+      expect(list.map[1]._changes).toBe 1
 
-    $http.flush()
+      response = {error: 1}
 
-    expect(list.length).toBe 1
-    expect(list.map[1].a).toBe 3
-    expect(list.map[1]._changes).toBe 1
-    expect(list.map[1]._changedKeys.a).toBe true
-    expect(cb_response[0] instanceof Error).toBe true
-    expect(cb_response[1]).toEqual response
-    expect(promise_response[0]).toBe 'error'
-    expect(promise_response[1]).toEqual response
+      $httpBackend.expectPUT(url).respond 500, response
 
-  it 'Method .restLoad() error', ->
-    list = new RestList list_cfg
+      cb_response = promise_response = null
 
-    response = {error: 1}
+      promise = list.restSave 1, (err, changed_records, raw_response) ->
+        cb_response = [err, raw_response.data]
 
-    $http.expectGET(url).respond 500, response
+      promise.then (->), (response) ->
+        promise_response = ['error', response.data]
 
-    cb_response = promise_response = null
+      $httpBackend.flush()
 
-    promise = list.restLoad (err, changed_records, raw_response) ->
-      cb_response = [err, raw_response.data]
+      expect(list.length).toBe 1
+      expect(list.map[1].a).toBe 3
+      expect(list.map[1]._changes).toBe 1
+      expect(list.map[1]._changedKeys.a).toBe true
+      expect(cb_response[0] instanceof Error).toBe true
+      expect(cb_response[1]).toEqual response
+      expect(promise_response[0]).toBe 'error'
+      expect(promise_response[1]).toEqual response
 
-    promise.then (->), (response) ->
-      promise_response = ['error', response.data]
+    it 'Method .restLoad() error', ->
+      list = new RestList list_cfg
 
-    $http.flush()
+      response = {error: 1}
 
-    expect(cb_response[0] instanceof Error).toBe true
-    expect(cb_response[1]).toEqual response
-    expect(promise_response[0]).toBe 'error'
-    expect(promise_response[1]).toEqual response
+      $httpBackend.expectGET(url).respond 500, response
+
+      cb_response = promise_response = null
+
+      promise = list.restLoad (err, changed_records, raw_response) ->
+        cb_response = [err, raw_response.data]
+
+      promise.then (->), (response) ->
+        promise_response = ['error', response.data]
+
+      $httpBackend.flush()
+
+      expect(cb_response[0] instanceof Error).toBe true
+      expect(cb_response[1]).toEqual response
+      expect(promise_response[0]).toBe 'error'
+      expect(promise_response[1]).toEqual response

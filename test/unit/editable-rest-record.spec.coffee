@@ -1,76 +1,79 @@
 
-describe 'EditableRestRecord', ->
-  $http = EditableRestRecord = Record = url = null
+describe 'app.factory', ->
 
-  beforeEach ->
-    module 'app'
-    inject ($injector) ->
-      $http              = $injector.get '$httpBackend'
-      EditableRestRecord = $injector.get 'ksc.EditableRestRecord'
-      Record             = $injector.get 'ksc.Record'
+  describe 'EditableRestRecord', ->
 
-      url = '/api/Test'
+    $httpBackend = EditableRestRecord = Record = url = null
+
+    beforeEach ->
+      module 'app'
+      inject ($injector) ->
+        $httpBackend       = $injector.get '$httpBackend'
+        EditableRestRecord = $injector.get 'ksc.EditableRestRecord'
+        Record             = $injector.get 'ksc.Record'
+
+        url = '/api/Test'
 
 
-  it 'Instace of Record', ->
-    record = new EditableRestRecord
-    expect(record instanceof Record).toBe true
+    it 'Instace of Record', ->
+      record = new EditableRestRecord
+      expect(record instanceof Record).toBe true
 
-  it 'Save', ->
-    expect(-> (new EditableRestRecord)._restSave()).toThrow() # missing endpoint
+    it 'Save', ->
+      expect(-> (new EditableRestRecord)._restSave()).toThrow() # missing endpnt
 
-    record = new EditableRestRecord {x: 1, y: 2}, endpoint: {url}
+      record = new EditableRestRecord {x: 1, y: 2}, endpoint: {url}
 
-    record.y = 3
+      record.y = 3
 
-    expect(record.y).toBe 3
-    expect(record._changes).toBe 1
-    expect(record._changedKeys.y).toBe true
+      expect(record.y).toBe 3
+      expect(record._changes).toBe 1
+      expect(record._changedKeys.y).toBe true
 
-    response = {x: 1, y: 3}
+      response = {x: 1, y: 3}
 
-    $http.expectPUT(url).respond response
+      $httpBackend.expectPUT(url).respond response
 
-    cb_response = promise_response = null
+      cb_response = promise_response = null
 
-    promise = record._restSave (err, response) ->
-      cb_response = response.data
+      promise = record._restSave (err, response) ->
+        cb_response = response.data
 
-    promise.then (response) ->
-      promise_response = response.data
+      promise.then (response) ->
+        promise_response = response.data
 
-    $http.flush()
+      $httpBackend.flush()
 
-    expect(record.x).toBe 1
-    expect(record.y).toBe 3
-    expect(record._changes).toBe 0
-    expect(cb_response).toEqual response
-    expect(promise_response).toEqual response
+      expect(record.x).toBe 1
+      expect(record.y).toBe 3
+      expect(record._changes).toBe 0
+      expect(cb_response).toEqual response
+      expect(promise_response).toEqual response
 
-  it 'Save error', ->
-    record = new EditableRestRecord {x: 1, y: 2}, endpoint: {url}
+    it 'Save error', ->
+      record = new EditableRestRecord {x: 1, y: 2}, endpoint: {url}
 
-    record.y = 3
+      record.y = 3
 
-    response = {error: 1}
+      response = {error: 1}
 
-    $http.expectPUT(url).respond 500, response
+      $httpBackend.expectPUT(url).respond 500, response
 
-    cb_response = promise_response = null
+      cb_response = promise_response = null
 
-    promise = record._restSave (err, response, etc...) ->
-      cb_response = [err, response.data]
+      promise = record._restSave (err, response, etc...) ->
+        cb_response = [err, response.data]
 
-    promise.then (->), (response) ->
-      promise_response = ['error', response.data]
+      promise.then (->), (response) ->
+        promise_response = ['error', response.data]
 
-    $http.flush()
+      $httpBackend.flush()
 
-    expect(record.x).toBe 1
-    expect(record.y).toBe 3
-    expect(record._changes).toBe 1
-    expect(record._changedKeys.y).toBe true
-    expect(cb_response[0] instanceof Error).toBe true
-    expect(cb_response[1]).toEqual response
-    expect(promise_response[0]).toBe 'error'
-    expect(promise_response[1]).toEqual response
+      expect(record.x).toBe 1
+      expect(record.y).toBe 3
+      expect(record._changes).toBe 1
+      expect(record._changedKeys.y).toBe true
+      expect(cb_response[0] instanceof Error).toBe true
+      expect(cb_response[1]).toEqual response
+      expect(promise_response[0]).toBe 'error'
+      expect(promise_response[1]).toEqual response

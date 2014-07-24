@@ -60,6 +60,3 @@ describe 'app.factory', ->
           found_keys[k] = true
 
         expect(found_keys.a).toBe true
-
-    describe 'Method .defineGetSet()', ->
-

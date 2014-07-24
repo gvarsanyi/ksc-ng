@@ -27,42 +27,24 @@ app.factory 'ksc.RestUtils', [
             done_callback error, results...
 
         promises = for record in records
-          iteration_fn record, iteration_callback
+          RestUtils.wrapPromise iteration_fn(record), iteration_callback
 
         if promises.length < 2
           return promises[0]
         $q.all promises # chained promises
 
 
-      @wrapPromise: (promise, rest_node, callback) ->
-        if typeof rest_node is 'function'
-          callback = rest_node
-          rest_node = null
-
-        prefix = if rest_node instanceof Array then '' else '_'
-        load_key = prefix + 'restLoading'
-
-        if rest_node
-          rest_node[load_key] = (rest_node[load_key] or 0) + 1
-
-        load_count_decrement = ->
-          if rest_node
-            rest_node[load_key] -= 1
-            if rest_node[load_key] is 0
-              delete rest_node[load_key]
-
+      @wrapPromise: (promise, callback) ->
         success_fn = (result) ->
-          load_count_decrement rest_node
           wrap = ({data, status, headers, config} = result)
-          callback? null, wrap
+          callback null, wrap
 
         error_fn = (result) ->
-          load_count_decrement rest_node
           wrap = ({data, status, headers, config} = result)
           err = new Error 'HTTP' + status + ': ' +
                           config.method + ' ' + config.url
           wrap.error = err
-          callback? err, wrap
+          callback err, wrap
 
         promise.then success_fn, error_fn
 

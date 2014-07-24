@@ -1,248 +1,251 @@
 
-describe 'EventEmitter', ->
-  $interval = $scope = $timeout = EventEmitter = null
-
-  beforeEach ->
-    module 'app'
-    inject ($injector) ->
-      $rootScope   = $injector.get '$rootScope'
-
-      $interval    = $injector.get '$interval'
-      $scope       = $rootScope.$new().$new()
-      $timeout     = $injector.get '$timeout'
-      EventEmitter = $injector.get 'ksc.EventEmitter'
-
-  it 'Methods .emit(), .on(), unsubscribe()', ->
-    event = new EventEmitter
-    emits = []
-
-    event.emit 'a'
-    event.emit 'b'
-
-    unsubscriber = event.on 'a', 'b', (args...) ->
-      emits.push args
-
-    expect(-> event.emit()).toThrow()
-
-    event.emit 'a'
-    event.emit 'a', 'x'
-    event.emit 'a', 'y', 'y2'
-    event.emit 'b', 'z'
-    event.emit 'c', 'xxx'
-
-    expect(emits.length).toBe 4
-    expect(emits[0][0]).toBeUndefined()
-    expect(emits[1][0]).toBe 'x'
-    expect(emits[1][1]).toBeUndefined()
-    expect(emits[2][0]).toBe 'y'
-    expect(emits[2][1]).toBe 'y2'
-    expect(emits[3][0]).toBe 'z'
-    expect(typeof unsubscriber).toBe 'function'
-
-    unsubscriber()
-
-    event.emit 'a'
-    event.emit 'b', 'z'
-    expect(emits.length).toBe 4
-
-  it 'Method .on1()', ->
-    event = new EventEmitter
-    emits = []
-
-    event.emit 'a'
-    event.emit 'b'
+describe 'app.factory', ->
+
+  describe 'EventEmitter', ->
+
+    $interval = $scope = $timeout = EventEmitter = null
+
+    beforeEach ->
+      module 'app'
+      inject ($injector) ->
+        $rootScope   = $injector.get '$rootScope'
+
+        $interval    = $injector.get '$interval'
+        $scope       = $rootScope.$new().$new()
+        $timeout     = $injector.get '$timeout'
+        EventEmitter = $injector.get 'ksc.EventEmitter'
 
-    unsubscriber = event.on1 'a', 'b', (args...) ->
-      emits.push args
+    it 'Methods .emit(), .on(), unsubscribe()', ->
+      event = new EventEmitter
+      emits = []
+
+      event.emit 'a'
+      event.emit 'b'
+
+      unsubscriber = event.on 'a', 'b', (args...) ->
+        emits.push args
+
+      expect(-> event.emit()).toThrow()
 
-    event.emit 'a'
-    event.emit 'a', 'x'
-    event.emit 'a', 'y', 'y2'
+      event.emit 'a'
+      event.emit 'a', 'x'
+      event.emit 'a', 'y', 'y2'
+      event.emit 'b', 'z'
+      event.emit 'c', 'xxx'
 
-    expect(emits.length).toBe 1
-    expect(emits[0][0]).toBeUndefined()
+      expect(emits.length).toBe 4
+      expect(emits[0][0]).toBeUndefined()
+      expect(emits[1][0]).toBe 'x'
+      expect(emits[1][1]).toBeUndefined()
+      expect(emits[2][0]).toBe 'y'
+      expect(emits[2][1]).toBe 'y2'
+      expect(emits[3][0]).toBe 'z'
+      expect(typeof unsubscriber).toBe 'function'
 
-    expect(-> unsubscriber()).not.toThrow()
+      unsubscriber()
 
-    event.emit 'a'
-    expect(emits.length).toBe 1
+      event.emit 'a'
+      event.emit 'b', 'z'
+      expect(emits.length).toBe 4
 
-  it 'Method .if()', ->
-    event = new EventEmitter
-    emits = []
+    it 'Method .on1()', ->
+      event = new EventEmitter
+      emits = []
 
-    event.emit 'a', 'xx'
-    event.emit 'a'
-    event.emit 'b', 'b'
+      event.emit 'a'
+      event.emit 'b'
 
-    unsubscriber = event.if 'a', 'b', (args...) ->
-      emits.push args
+      unsubscriber = event.on1 'a', 'b', (args...) ->
+        emits.push args
 
-    event.emit 'a'
-    event.emit 'a', 'x'
-    event.emit 'a', 'y', 'y2'
-    event.emit 'b', 'z'
-    event.emit 'c', 'xxx'
+      event.emit 'a'
+      event.emit 'a', 'x'
+      event.emit 'a', 'y', 'y2'
 
-    expect(emits.length).toBe 6
-    expect(emits[0][0]).toBeUndefined()
-    expect(emits[1][0]).toBe 'b'
-    expect(emits[2][0]).toBeUndefined()
-    expect(emits[3][0]).toBe 'x'
-    expect(emits[3][1]).toBeUndefined()
-    expect(emits[4][0]).toBe 'y'
-    expect(emits[4][1]).toBe 'y2'
-    expect(emits[5][0]).toBe 'z'
-    expect(typeof unsubscriber).toBe 'function'
-    unsubscriber()
+      expect(emits.length).toBe 1
+      expect(emits[0][0]).toBeUndefined()
 
-    event.emit 'a'
-    event.emit 'b', 'z'
-    expect(emits.length).toBe 6
+      expect(-> unsubscriber()).not.toThrow()
 
-  it 'Method .if1()', ->
-    event = new EventEmitter
-    emits = []
+      event.emit 'a'
+      expect(emits.length).toBe 1
 
-    event.emit 'a', 'xx'
-    event.emit 'a'
+    it 'Method .if()', ->
+      event = new EventEmitter
+      emits = []
 
-    unsubscriber = event.if1 'a', 'b', (args...) ->
-      emits.push args
+      event.emit 'a', 'xx'
+      event.emit 'a'
+      event.emit 'b', 'b'
 
-    event.emit 'a'
-    event.emit 'a', 'x'
-    event.emit 'a', 'y', 'y2'
-    event.emit 'b', 'y', 'y2'
-    event.emit 'b', 'y3'
+      unsubscriber = event.if 'a', 'b', (args...) ->
+        emits.push args
 
-    expect(emits.length).toBe 2
-    expect(emits[0][0]).toBeUndefined()
-    expect(emits[1][1]).toBe 'y2'
+      event.emit 'a'
+      event.emit 'a', 'x'
+      event.emit 'a', 'y', 'y2'
+      event.emit 'b', 'z'
+      event.emit 'c', 'xxx'
 
-    expect(-> unsubscriber()).not.toThrow()
+      expect(emits.length).toBe 6
+      expect(emits[0][0]).toBeUndefined()
+      expect(emits[1][0]).toBe 'b'
+      expect(emits[2][0]).toBeUndefined()
+      expect(emits[3][0]).toBe 'x'
+      expect(emits[3][1]).toBeUndefined()
+      expect(emits[4][0]).toBe 'y'
+      expect(emits[4][1]).toBe 'y2'
+      expect(emits[5][0]).toBe 'z'
+      expect(typeof unsubscriber).toBe 'function'
+      unsubscriber()
 
-    event.emit 'a'
-    expect(emits.length).toBe 2
+      event.emit 'a'
+      event.emit 'b', 'z'
+      expect(emits.length).toBe 6
 
-  it 'Scope unsubscriber', ->
-    event = new EventEmitter
-    emits = []
+    it 'Method .if1()', ->
+      event = new EventEmitter
+      emits = []
 
-    event.emit 'a', 'x'
+      event.emit 'a', 'xx'
+      event.emit 'a'
 
-    response = event.on 'a', 'b', $scope, (args...) ->
-      emits.push args
-    expect(response).toBe true
+      unsubscriber = event.if1 'a', 'b', (args...) ->
+        emits.push args
 
-    event.emit 'a'
-    event.emit 'b', 'y', 'y2'
-    event.emit 'b', 'y3'
+      event.emit 'a'
+      event.emit 'a', 'x'
+      event.emit 'a', 'y', 'y2'
+      event.emit 'b', 'y', 'y2'
+      event.emit 'b', 'y3'
 
-    expect(emits.length).toBe 3
-    expect(emits[0][0]).toBeUndefined()
-    expect(emits[1][1]).toBe 'y2'
-    expect(emits[2][0]).toBe 'y3'
+      expect(emits.length).toBe 2
+      expect(emits[0][0]).toBeUndefined()
+      expect(emits[1][1]).toBe 'y2'
 
-    $scope.$destroy()
+      expect(-> unsubscriber()).not.toThrow()
 
-    event.emit 'a'
-    expect(emits.length).toBe 3
+      event.emit 'a'
+      expect(emits.length).toBe 2
 
-  it 'Subscription edge cases', ->
-    event = new EventEmitter
+    it 'Scope unsubscriber', ->
+      event = new EventEmitter
+      emits = []
 
-    expect(-> event.emitted 'a').not.toThrow()
+      event.emit 'a', 'x'
 
-    expect(-> event.on 1, ->).toThrow()
-    expect(-> event.on 'xx').toThrow()
-    expect(-> event.on 'xx', 1).toThrow()
-    expect(-> event.on 'xx', {}, (->)).toThrow()
-    expect(-> event.on 'xx', null, (->)).toThrow()
-    expect(-> event.on 'xx', (->), (->)).toThrow()
+      response = event.on 'a', 'b', $scope, (args...) ->
+        emits.push args
+      expect(response).toBe true
 
-    expect(-> event.on()).toThrow()
-    expect(-> event.on1()).toThrow()
-    expect(-> event.if()).toThrow()
-    expect(-> event.if1()).toThrow()
+      event.emit 'a'
+      event.emit 'b', 'y', 'y2'
+      event.emit 'b', 'y3'
 
-    expect(-> event.emit 1).toThrow()
+      expect(emits.length).toBe 3
+      expect(emits[0][0]).toBeUndefined()
+      expect(emits[1][1]).toBe 'y2'
+      expect(emits[2][0]).toBe 'y3'
 
-    unsubscribe = event.on 'a', ->
-    unsubscribe.add event.on 'a', ->
-    unsubscribe()
-    expect(-> unsubscribe()).not.toThrow()
+      $scope.$destroy()
 
-  it 'Unsubscribe target argument', ->
-    unsubscriber = EventEmitter::unsubscriber()
+      event.emit 'a'
+      expect(emits.length).toBe 3
 
-    event = new EventEmitter
-    emits = []
+    it 'Subscription edge cases', ->
+      event = new EventEmitter
 
-    event.emit 'a', 'x'
+      expect(-> event.emitted 'a').not.toThrow()
 
-    response = event.on 'a', 'b', unsubscriber, (args...) ->
-      emits.push args
+      expect(-> event.on 1, ->).toThrow()
+      expect(-> event.on 'xx').toThrow()
+      expect(-> event.on 'xx', 1).toThrow()
+      expect(-> event.on 'xx', {}, (->)).toThrow()
+      expect(-> event.on 'xx', null, (->)).toThrow()
+      expect(-> event.on 'xx', (->), (->)).toThrow()
 
-    expect(response).toBe true
+      expect(-> event.on()).toThrow()
+      expect(-> event.on1()).toThrow()
+      expect(-> event.if()).toThrow()
+      expect(-> event.if1()).toThrow()
 
-    event.emit 'a'
-    event.emit 'b', 'y', 'y2'
-    event.emit 'b', 'y3'
+      expect(-> event.emit 1).toThrow()
 
-    expect(emits.length).toBe 3
-    expect(emits[0][0]).toBeUndefined()
-    expect(emits[1][1]).toBe 'y2'
-    expect(emits[2][0]).toBe 'y3'
+      unsubscribe = event.on 'a', ->
+      unsubscribe.add event.on 'a', ->
+      unsubscribe()
+      expect(-> unsubscribe()).not.toThrow()
 
-    unsubscriber()
+    it 'Unsubscribe target argument', ->
+      unsubscriber = EventEmitter::unsubscriber()
 
-    event.emit 'a'
-    expect(emits.length).toBe 3
+      event = new EventEmitter
+      emits = []
 
-  it 'Method .emitted()', ->
-    event = new EventEmitter
+      event.emit 'a', 'x'
 
-    event.emit 'a', 'x'
+      response = event.on 'a', 'b', unsubscriber, (args...) ->
+        emits.push args
 
-    expect(-> event.emitted()).toThrow()
+      expect(response).toBe true
 
-    expect(event.emitted('a')[0]).toBe 'x'
-    expect(event.emitted('b')).toBe false
+      event.emit 'a'
+      event.emit 'b', 'y', 'y2'
+      event.emit 'b', 'y3'
 
-  it 'Unsubscribes $timeout and $interval', ->
-    unsubscriber = EventEmitter::unsubscriber()
+      expect(emits.length).toBe 3
+      expect(emits[0][0]).toBeUndefined()
+      expect(emits[1][1]).toBe 'y2'
+      expect(emits[2][0]).toBe 'y3'
 
-    unsubscriber.add (to2 = $timeout (-> timeout_flushed += 1)), 1000
-    unsubscriber()
+      unsubscriber()
 
-    interval_flushed = 0
-    timeout_flushed  = 0
+      event.emit 'a'
+      expect(emits.length).toBe 3
 
-    unsubscriber.add $interval (-> interval_flushed += 1), 1000
-    unsubscriber.add (to1 = $timeout (-> timeout_flushed += 1)), 1000
-    unsubscriber.add $timeout (-> timeout_flushed += 1), 1000
+    it 'Method .emitted()', ->
+      event = new EventEmitter
 
-    $timeout.cancel to1
+      event.emit 'a', 'x'
 
-    $interval.flush 1001
-    $timeout.flush 1001
+      expect(-> event.emitted()).toThrow()
 
-    unsubscriber.add $timeout (-> timeout_flushed += 1), 1000
+      expect(event.emitted('a')[0]).toBe 'x'
+      expect(event.emitted('b')).toBe false
 
-    $interval.flush 1001
-    $timeout.flush 1001
+    it 'Unsubscribes $timeout and $interval', ->
+      unsubscriber = EventEmitter::unsubscriber()
 
-    unsubscriber()
+      unsubscriber.add (to2 = $timeout (-> timeout_flushed += 1)), 1000
+      unsubscriber()
 
-    $interval.flush 1001
-    $timeout.flush 1001
+      interval_flushed = 0
+      timeout_flushed  = 0
 
-    expect(interval_flushed).toBe 2
-    expect(timeout_flushed).toBe 2
+      unsubscriber.add $interval (-> interval_flushed += 1), 1000
+      unsubscriber.add (to1 = $timeout (-> timeout_flushed += 1)), 1000
+      unsubscriber.add $timeout (-> timeout_flushed += 1), 1000
 
-    expect(-> unsubscriber()).not.toThrow()
+      $timeout.cancel to1
 
-    expect(-> unsubscriber.add 1).toThrow()
-    expect(-> unsubscriber.add ->).toThrow()
-    expect(-> unsubscriber.add {}).toThrow()
+      $interval.flush 1001
+      $timeout.flush 1001
+
+      unsubscriber.add $timeout (-> timeout_flushed += 1), 1000
+
+      $interval.flush 1001
+      $timeout.flush 1001
+
+      unsubscriber()
+
+      $interval.flush 1001
+      $timeout.flush 1001
+
+      expect(interval_flushed).toBe 2
+      expect(timeout_flushed).toBe 2
+
+      expect(-> unsubscriber()).not.toThrow()
+
+      expect(-> unsubscriber.add 1).toThrow()
+      expect(-> unsubscriber.add ->).toThrow()
+      expect(-> unsubscriber.add {}).toThrow()

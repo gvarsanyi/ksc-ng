@@ -1,79 +1,86 @@
 
-describe 'RestRecord', ->
-  $http = RestRecord = Record = url = null
+describe 'app.factory', ->
 
-  beforeEach ->
-    module 'app'
-    inject ($injector) ->
-      $http      = $injector.get '$httpBackend'
-      RestRecord = $injector.get 'ksc.RestRecord'
-      Record     = $injector.get 'ksc.Record'
+  describe 'RestRecord', ->
 
-      url = '/api/Test'
+    $httpBackend = RestRecord = Record = url = null
 
+    beforeEach ->
+      module 'app'
+      inject ($injector) ->
+        $httpBackend = $injector.get '$httpBackend'
+        RestRecord   = $injector.get 'ksc.RestRecord'
+        Record       = $injector.get 'ksc.Record'
 
-  it 'Instace of Record', ->
-    record = new RestRecord
-    expect(record instanceof Record).toBe true
-
-  it 'Load', ->
-    expect(-> (new RestRecord)._restLoad()).toThrow() # missing endpoint
-
-    record = new RestRecord null, endpoint: {url}
-
-    response = {x: 1, y: 2}
-
-    $http.expectGET(url).respond response
-
-    cb_response = promise_response = null
-
-    promise = record._restLoad (err, response) ->
-      cb_response = response.data
-
-    promise.then (response) ->
-      promise_response = response.data
-
-    $http.flush()
-
-    expect(record.x).toBe 1
-    expect(record.y).toBe 2
-    expect(cb_response).toEqual response
-    expect(promise_response).toEqual response
+        url = '/api/Test'
 
 
-    record = new RestRecord null, endpoint: {url}
+    it 'Instace of Record', ->
+      record = new RestRecord
+      expect(record instanceof Record).toBe true
 
-    response = {x: 1, y: 2}
+    it 'Load', ->
+      expect(-> (new RestRecord)._restLoad()).toThrow() # missing endpoint
 
-    $http.expectGET(url).respond response
+      record = new RestRecord null, endpoint: {url}
 
-    record._restLoad()
+      response = {x: 1, y: 2}
 
-    $http.flush()
+      $httpBackend.expectGET(url).respond response
 
-    expect(record.x).toBe 1
-    expect(record.y).toBe 2
+      cb_response = promise_response = null
 
-  it 'Load error', ->
-    record = new RestRecord null, endpoint: {url}
+      expect(record._restPending).toBe 0
 
-    response = {error: 1}
+      promise = record._restLoad (err, response) ->
+        cb_response = response.data
 
-    $http.expectGET(url).respond 500, response
+      promise.then (response) ->
+        promise_response = response.data
 
-    cb_response = promise_response = null
+      expect(record._restPending).toBe 1
 
-    promise = record._restLoad (err, response) ->
-      cb_response = [err, response.data]
+      $httpBackend.flush()
 
-    promise.then (->), (response) ->
-      promise_response = ['error', response.data]
+      expect(record.x).toBe 1
+      expect(record.y).toBe 2
+      expect(cb_response).toEqual response
+      expect(promise_response).toEqual response
+      expect(record._restPending).toBe 0
 
-    $http.flush()
+      record = new RestRecord null, endpoint: {url}
 
-    expect(record.x).toBeUndefined()
-    expect(record.error).toBeUndefined()
-    expect(cb_response[0] instanceof Error).toBe true
-    expect(cb_response[1]).toEqual response
-    expect(promise_response[0]).toBe 'error'
-    expect(promise_response[1]).toEqual response
+      response = {x: 1, y: 2}
+
+      $httpBackend.expectGET(url).respond response
+
+      record._restLoad()
+
+      $httpBackend.flush()
+
+      expect(record.x).toBe 1
+      expect(record.y).toBe 2
+
+    it 'Load error', ->
+      record = new RestRecord null, endpoint: {url}
+
+      response = {error: 1}
+
+      $httpBackend.expectGET(url).respond 500, response
+
+      cb_response = promise_response = null
+
+      promise = record._restLoad (err, response) ->
+        cb_response = [err, response.data]
+
+      promise.then (->), (response) ->
+        promise_response = ['error', response.data]
+
+      $httpBackend.flush()
+
+      expect(record.x).toBeUndefined()
+      expect(record.error).toBeUndefined()
+      expect(cb_response[0] instanceof Error).toBe true
+      expect(cb_response[1]).toEqual response
+      expect(promise_response[0]).toBe 'error'
+      expect(promise_response[1]).toEqual response
