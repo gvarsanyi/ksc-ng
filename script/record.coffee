@@ -5,11 +5,13 @@ app.factory 'ksc.Record', [
 
     OPTIONS    = '_options'
     PARENT_KEY = '_parentKey'
+    SAVED      = '_saved'
 
     define_value  = Utils.defineValue
     has_own       = Utils.hasOwn
     is_enumerable = Utils.isEnumerable
     is_object     = Utils.isObject
+
 
     class Record
       # virtual properties:
@@ -55,8 +57,8 @@ app.factory 'ksc.Record', [
         clone = {}
         record = @
         for key, value of record when is_enumerable record, key
-          if has_own record._saved, key
-            value = record._saved[key]
+          if has_own record[SAVED], key
+            value = record[SAVED][key]
           if is_object value
             value = value._clone true
           clone[key] = value
@@ -78,10 +80,21 @@ app.factory 'ksc.Record', [
 
         contract = options.contract
 
-        for key of record._saved or {}
-          delete record[key]
+        # check if data is changing with the replacement
+        saved = record[SAVED]
+        changed = true
+        if not record._changes and saved
+          changed = false
 
-        define_value record, '_saved', saved = {}
+          for key, value of data when not Utils.identical saved[key], value
+            changed = true
+            break
+
+          unless changed
+            for key of saved when not has_own data, key
+              if not contract or contract._default(key) isnt saved[key]
+                changed = true
+                break
 
         set_property = (key, value) ->
           if typeof value is 'function'
@@ -103,19 +116,26 @@ app.factory 'ksc.Record', [
 
           define_value saved, key, value, false, true
 
-        for key, value of data
-          set_property key, value
+        if changed
+          if saved and not contract
+            for key of saved
+              delete record[key]
 
-        if contract
-          for own key, value of contract when not has_own saved, key
-            set_property key, contract._default key
+          define_value record, SAVED, saved = {}
 
-        Object.freeze saved
+          for key, value of data
+            set_property key, value
 
-        for key, value of saved
-          define_value record, key, value, false, true
+          if contract
+            for own key, value of contract when not has_own saved, key
+              set_property key, contract._default key
 
-        return
+          Object.freeze saved
+
+          for key, value of saved
+            define_value record, key, value, false, true
+
+        changed
 
 
       @setId: (record) ->
@@ -126,7 +146,7 @@ app.factory 'ksc.Record', [
         options = record[OPTIONS]
 
         unless options[key] # assign first as ID
-          for k of record._saved
+          for k of record[SAVED]
             options[key] = k
             break
 

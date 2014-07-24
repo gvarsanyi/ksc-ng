@@ -61,6 +61,30 @@ describe 'Record', ->
     expect(ent).toEqual expected
     expect(ent).not.toBe expected
 
+  it 'Will not replace if not needed', ->
+    record = new Record {a: 1}
+
+    saved = record._saved
+    record._replace {a: 1}
+    expect(record._saved).toBe saved
+
+    record._replace {a: 1, b: 2}
+    expect(record._saved).not.toBe saved
+
+    # with contract
+    record = new Record null, {contract: {a: default: 1}}
+
+    saved = record._entity()
+
+    record._replace {}
+    expect(record._entity()).toEqual saved
+
+    record._replace {a: 2}
+    expect(record._entity()).not.toEqual saved
+
+    record._replace {}
+    expect(record._entity()).toEqual saved
+
   it 'No _id case', ->
     record = null
     expect(-> record = new Record {}, {record: idProperty: 'x'}).not.toThrow()

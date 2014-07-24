@@ -157,8 +157,28 @@ describe 'EditableRecord', ->
     expect(-> record = new EditableRecord).not.toThrow()
 
     found_keys = 0
-    found_keys += 1 for k, v of record
+    found_keys += 1 for own k, v of record
     expect(found_keys).toBe 0
+
+  it 'Will not replace if not needed', ->
+    record = new EditableRecord {a: 1}
+
+    saved = record._saved
+    record._replace {a: 1}
+    expect(record._saved).toBe saved
+
+    record._replace {a: 1, b: 2}
+    expect(record._saved).not.toBe saved
+
+    # with contract
+    record = new EditableRecord null, {contract: {a: default: 1}}
+
+    saved = record._saved
+    record._replace {}
+    expect(record._saved).toBe saved
+
+    record._replace {a: 2}
+    expect(record._saved).not.toBe saved
 
   it 'Composite id changes', ->
     example = {id1: 1, id2: 2, x: 3}
