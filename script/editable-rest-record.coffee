@@ -3,12 +3,48 @@ app.factory 'ksc.EditableRestRecord', [
   '$http', 'ksc.EditableRecord', 'ksc.RestRecord',
   ($http, EditableRecord, RestRecord) ->
 
+    ###
+    Stateful record with REST bindings (load and save)
+
+    @example
+        record = new EditableRestRecord {a: 1, b: 1}, {endpoint: {url: '/test'}}
+        record._restSave (err, raw_response) ->
+          console.log 'Done with', err, 'error'
+
+    Option used:
+    - .options.endpoint.url
+
+    @author Greg Varsanyi
+    ###
     class EditableRestRecord extends EditableRecord
+
+      # Mixin method from RestRecord, see: {RestRecord#_restLoad}
       _restLoad: RestRecord::_restLoad
 
-      _restSave: (callback) ->
-        unless endpoint = @_options.endpoint
-          throw new Error 'Missing endpoint'
+      ###
+      Trigger saving data to the record-style endpoint specified in
+      _options.endpoint.url
 
-        RestRecord.async @, $http.put(endpoint.url, @_entity()), callback
+      Uses PUT method
+
+      Bumps up ._restPending counter by 1 when starting to load (and will
+      decrease by 1 when done)
+
+      @param [function] callback (optional) will call back with signiture:
+        (err, raw_response) ->
+      @option raw_response [Error] error (optional) $http error
+      @option raw_response [Object] data HTTP response data in JSON
+      @option raw_response [number] status HTTP rsponse status
+      @option raw_response [Object] headers HTTP response headers
+      @option raw_response [Object] config $http request configuration
+
+      @throw [ValueError] Missing endpoint url value
+      @throw [TypeError] Endpoint url is not a string
+
+      @return [HttpPromise] promise object created by $http
+      ###
+      _restSave: (callback) ->
+        url = RestRecord.getUrl @
+
+        RestRecord.async @, $http.put(url, @_entity()), callback
 ]

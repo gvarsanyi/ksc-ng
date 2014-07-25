@@ -61,6 +61,16 @@ describe 'app.factory', ->
       expect(record.x).toBe 1
       expect(record.y).toBe 2
 
+    it 'Error handling for _option.endpoint.url', ->
+      record = new RestRecord null
+      expect(-> record._restLoad()).toThrow() # missing endpoint
+
+      record = new RestRecord null, endpoint: {}
+      expect(-> record._restLoad()).toThrow() # missing url
+
+      record = new RestRecord null, endpoint: url: {}
+      expect(-> record._restLoad()).toThrow() # url is not string
+
     it 'Load error', ->
       record = new RestRecord null, endpoint: {url}
 

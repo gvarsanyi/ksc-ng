@@ -24,9 +24,7 @@ unit tests missing / partial
 
 coffeedoc missing / partial
 ----------------------------
-- editable-rest-record
 - record-contract
-- rest-record
 - rest-utils
 - utils
 
