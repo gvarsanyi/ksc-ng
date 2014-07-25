@@ -1,7 +1,9 @@
 
 app.factory 'ksc.EditableRecord', [
-  'ksc.Record', 'ksc.Utils',
-  (Record, Utils) ->
+  'ksc.ArgumentTypeError', 'ksc.MissingArgumentError', 'ksc.Record',
+  'ksc.TypeError', 'ksc.Utils',
+  (ArgumentTypeError, MissingArgumentError, Record,
+   TypeError, Utils) ->
 
     ID           = '_id'
     CHANGES      = '_changes'
@@ -18,20 +20,66 @@ app.factory 'ksc.EditableRecord', [
     is_object     = Utils.isObject
 
 
+    ###
+    Stateful record overrides and extensions
+
+    @example
+        record = new EditableRecord {a: 1, b: 1}
+        record.a = 2
+        console.log record._changes # 1
+        console.log record._changedKeys # {a: true}
+        record._revert()
+        console.log record.a # 1
+        console.log record._changes # 0
+
+    Options that may be used
+    - .options.contract
+    - .options.idProperty
+    - .options.subtreeClass
+
+    @author Greg Varsanyi
+    ###
     class EditableRecord extends Record
+
+      ###
+      Create the record instance with initial data and options
+
+      @throw [ArgumentTypeError] option is not an object
+
+      @param [object] data (optional) initital (saved) data set for the record
+      @param [object] options (optional) options to define endpoint, contract,
+        id key property etc
+      @param [object] parent (optional) reference to parent (list or
+        parent record)
+      @param [number|string] parent_key (optional) parent record's key
+      ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          throw new Error 'Argument options must be null or object'
+          throw new ArgumentTypeError 'data', 1, data, 'object'
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
-      # virtual properties:
-      # - _changedKeys: object
-      # - _changes:     number
-      # - _deletedKeys: object
-      # - _edited:      object
-      # - _pseudoId:    number
+      # @property [object] dictionary of changed keys
+      _changedKeys: null
 
+      # @property [number] number of editions in the data set
+      _changes: 0
+
+      # @property [object] dictionary of deleted keys
+      _deletedKeys: null
+
+      # @property [object] dictionary of edited keys and new values
+      _edited: null
+
+
+      ###
+      Clone record or contents
+
+      @param [boolean] return_plain_object (optional) return a vanilla js Object
+      @param [boolean] saved_only (optional) return only saved-state data
+
+      @return [Object/EditableRecord] the new instance with identical data
+      ###
       _clone: (return_plain_object=false, saved_only=false) ->
         if saved_only
           return super
@@ -54,13 +102,30 @@ app.factory 'ksc.EditableRecord', [
             clone[key] = value
         clone
 
+      ###
+      Mark property as deleted, remove it from the object, but keep the original
+      data (saved status) for the property.
+
+      @throw [MissingArgumentError] No key was provided
+      @throw [ArgumentTypeError] Provided key is not string or number
+
+      @param [string|number] keys... One or more keys to delete
+
+      @return [boolean] delete success indicator
+      ###
       _delete: (keys...) ->
         unless keys.length
-          throw new Error 'Key not defined'
+          throw new MissingArgumentError 'key', 1
 
         record = @
 
-        for key in keys
+        if record._options.contract
+          return false # can't delete on contracts
+
+        for key, i in keys
+          unless typeof key in ['number', 'string']
+            throw new ArgumentTypeError 'keys', i + 1, key, 'number', 'string'
+
           if has_own record[SAVED], key
             unless record[DELETED_KEYS][key]
               record[DELETED_KEYS][key] = true
@@ -70,9 +135,9 @@ app.factory 'ksc.EditableRecord', [
             if is_enumerable record, key
               delete record[key]
             else
-              throw new Error 'Can not remove ' + key
+              return false
 
-        return
+        true
 
       # may define setter that calls parent (List) recordIdChanged(record, old)
       _replace: (data) ->
@@ -120,7 +185,7 @@ app.factory 'ksc.EditableRecord', [
 
         setter = (update) ->
           if typeof update is 'function'
-            throw new Error 'Property must not be a function'
+            throw new TypeError update, 'function', true
 
           if Utils.identical saved[key], update
             delete edited[key]

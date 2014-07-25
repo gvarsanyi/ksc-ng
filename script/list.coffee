@@ -34,7 +34,7 @@ app.factory 'ksc.List', [
     - .options.record.class (class reference for record objects)
     - .options.record.idProperty (property/properties that define record ID)
 
-    @author Greg Varsanyi <greg.varsanyi@kareo.com>
+    @author Greg Varsanyi
     ###
     class List
 

@@ -102,7 +102,8 @@ describe 'app.factory', ->
       expect(record.hasOwnProperty 'xx').toBe false
 
       # special properties can't be deleted
-      expect(-> record._delete '_changes').toThrow()
+      expect(record._delete '_changes').toBe false
+      expect(typeof record._changes).toBe 'number'
 
     it 'Method ._clone()', ->
       example = {id: 1, x: 2, y: {a: 3}, z: null}
