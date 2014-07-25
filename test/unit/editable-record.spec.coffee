@@ -236,3 +236,20 @@ describe 'app.factory', ->
       expect(-> record.d = null).not.toThrow()
       expect(record.d).toBe null
       expect(-> record.e = null).toThrow()
+
+    it 'Method ._delete() fails with returning false when contracted', ->
+      record = new EditableRecord {id: 1}, contract: id: type: 'number'
+      record.id = 2
+      res = record._delete 'id'
+      expect(res).toBe false
+      expect(record.id).toBe 2
+      expect(record._deletedKeys.id).toBeUndefined()
+
+    it 'Method ._delete() throws error if key is invalid', ->
+      record = new EditableRecord {id: 1}, contract: id: type: 'number'
+      expect(-> record._delete null).toThrow()
+      expect(-> record._delete {}).toThrow()
+      expect(-> record._delete true).toThrow()
+      expect(-> record._delete false).toThrow()
+      expect(-> record._delete()).toThrow()
+

@@ -19,13 +19,12 @@ to-do
 
 unit tests missing / partial
 ----------------------------
+- _errors
 - record-contract
 
 coffeedoc missing / partial
 ----------------------------
-- editable-record
 - editable-rest-record
-- record
 - record-contract
 - rest-record
 - rest-utils

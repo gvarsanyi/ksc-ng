@@ -21,7 +21,9 @@ app.factory 'ksc.EditableRecord', [
 
 
     ###
-    Stateful record overrides and extensions
+    Stateful record (overrides and extensions for {Record})
+
+    Also supports contracts (see: {RecordContract})
 
     @example
         record = new EditableRecord {a: 1, b: 1}
@@ -41,24 +43,6 @@ app.factory 'ksc.EditableRecord', [
     ###
     class EditableRecord extends Record
 
-      ###
-      Create the record instance with initial data and options
-
-      @throw [ArgumentTypeError] option is not an object
-
-      @param [object] data (optional) initital (saved) data set for the record
-      @param [object] options (optional) options to define endpoint, contract,
-        id key property etc
-      @param [object] parent (optional) reference to parent (list or
-        parent record)
-      @param [number|string] parent_key (optional) parent record's key
-      ###
-      constructor: (data={}, options={}, parent, parent_key) ->
-        unless is_object options
-          throw new ArgumentTypeError 'data', 1, data, 'object'
-        options.subtreeClass = EditableRecord
-        super data, options, parent, parent_key
-
       # @property [object] dictionary of changed keys
       _changedKeys: null
 
@@ -71,6 +55,27 @@ app.factory 'ksc.EditableRecord', [
       # @property [object] dictionary of edited keys and new values
       _edited: null
 
+      ###
+      Create the EditableRecord instance with initial data and options
+
+      @throw [ArgumentTypeError] data, options, parent, parent_key type mismatch
+
+      Possible errors thrown at {Record#_replace}
+      @throw [TypeError] Can not take functions as values
+      @throw [KeyError] Keys can not start with underscore
+
+      @param [object] data (optional) initital (saved) data set for the record
+      @param [object] options (optional) options to define endpoint, contract,
+        id key property etc
+      @param [object] parent (optional) reference to parent (list or
+        parent record)
+      @param [number|string] parent_key (optional) parent record's key
+      ###
+      constructor: (data={}, options={}, parent, parent_key) ->
+        unless is_object options
+          throw new ArgumentTypeError 'options', 2, options, 'object'
+        options.subtreeClass = EditableRecord
+        super data, options, parent, parent_key
 
       ###
       Clone record or contents
@@ -78,7 +83,7 @@ app.factory 'ksc.EditableRecord', [
       @param [boolean] return_plain_object (optional) return a vanilla js Object
       @param [boolean] saved_only (optional) return only saved-state data
 
-      @return [Object/EditableRecord] the new instance with identical data
+      @return [Object|EditableRecord] the new instance with identical data
       ###
       _clone: (return_plain_object=false, saved_only=false) ->
         if saved_only
@@ -119,12 +124,12 @@ app.factory 'ksc.EditableRecord', [
 
         record = @
 
-        if record._options.contract
-          return false # can't delete on contracts
-
         for key, i in keys
           unless typeof key in ['number', 'string']
             throw new ArgumentTypeError 'keys', i + 1, key, 'number', 'string'
+
+          if not i and record._options.contract
+            return false # can't delete on contracts
 
           if has_own record[SAVED], key
             unless record[DELETED_KEYS][key]
@@ -139,26 +144,49 @@ app.factory 'ksc.EditableRecord', [
 
         true
 
-      # may define setter that calls parent (List) recordIdChanged(record, old)
+      ###
+      (Re)define the initial data set (and drop changes)
+
+      Possible errors thrown at {Record#_replace}
+      @throw [TypeError] Can not take functions as values
+      @throw [KeyError] Keys can not start with underscore
+
+      @param [object] data Key-value map of data
+
+      @return [boolean] indicates change in data
+      ###
       _replace: (data) ->
-        super
+        if changed = super
+          record = @
 
-        record = @
+          define_value record, EDITED, {}
+          define_value record, CHANGES, 0
+          define_value record, CHANGED_KEYS, {}
+          define_value record, DELETED_KEYS, {}
 
-        define_value record, EDITED, {}
-        define_value record, CHANGES, 0
-        define_value record, CHANGED_KEYS, {}
-        define_value record, DELETED_KEYS, {}
+          for key of record[SAVED]
+            EditableRecord.setProperty record, key
 
-        for key of record[SAVED]
-          EditableRecord.setProperty record, key
+        changed
 
-        return
+      ###
+      Return to saved state
 
+      @return [boolean] indicates change in data
+      ###
       _revert: ->
         @_replace @[SAVED]
 
 
+      ###
+      Define getter/setter property on record based on {Record#_saved} and
+      {EditableRecord#_edited} and {EditableRecord#_deleted}
+
+      @param [object] record reference to object
+      @param [string|number] key on record (and ._saved map)
+
+      @return [undefined]
+      ###
       @setProperty: (record, key) ->
         saved    = record[SAVED]
         edited   = record[EDITED]
@@ -235,7 +263,20 @@ app.factory 'ksc.EditableRecord', [
 
         # not enumerable if value is undefined
         Utils.defineGetSet record, key, getter, setter, 1
+        return
 
+
+      ###
+      Event handler for child-object data change events
+      Also triggers change event call upwards if state of changes gets modified
+      in this level.
+
+      @param [object] record reference to record or subrecord object
+      @param [string|number] key key on this layer (e.g. parent) record
+      @param [number] n number of changes in the child record
+
+      @return [undefined]
+      ###
       @subChanges: (record, key, n) ->
         if record[CHANGED_KEYS][key]
           unless n
@@ -250,4 +291,5 @@ app.factory 'ksc.EditableRecord', [
         if changed and record[PARENT_KEY]
           EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
                                     record[CHANGES]
+        return
 ]

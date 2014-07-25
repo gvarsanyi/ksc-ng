@@ -1,7 +1,9 @@
 
 app.factory 'ksc.Record', [
-  'ksc.RecordContract', 'ksc.Utils',
-  (RecordContract, Utils) ->
+  'ksc.ArgumentTypeError', 'ksc.KeyError', 'ksc.RecordContract', 'ksc.Utils',
+  'ksc.ValueError',
+  (ArgumentTypeError, KeyError, RecordContract, Utils,
+   ValueError) ->
 
     OPTIONS    = '_options'
     PARENT_KEY = '_parentKey'
@@ -11,22 +13,75 @@ app.factory 'ksc.Record', [
     has_own      = Utils.hasOwn
     is_object    = Utils.isObject
 
+    undef = {}.undef # guaranteed undefined
 
+    ###
+    Read-only key-value style record with supporting methods and optional
+    multi-level hieararchy.
+
+    Supporting methods and properties start with '_' and are not enumerable
+    (e.g. hidden when doing `for k of record`, but will match
+    record.hasOwnProperty('special_key_name') )
+
+    Also supports contracts (see: {RecordContract})
+
+    @example
+        record = new Record {a: 1, b: 1}
+        console.log record.a # 1
+        try
+          record.a = 2 # try overriding
+        console.log record.a # 1
+
+    Options that may be used
+    - .options.contract
+    - .options.idProperty
+    - .options.subtreeClass
+
+    @author Greg Varsanyi
+    ###
     class Record
-      # virtual properties:
-      # - _id:          object
-      # - _options:     object
-      # - _parent:      object
-      # - _parentKey:   number|string
-      # - _primaryId:   object
-      # - _saved:       object
 
+      # @property [number|string] record id
+      _id: undef
+
+      # @property [number|string] first chunk of id if _id is composite
+      _primaryId: undef
+
+      # @property [object] number of editions in the data set
+      _options: null
+
+      # @property [object] reference to parent record or list
+      _parent: undef
+
+      # @property [number|string] key on parent record
+      _parent_key: undef
+
+      # @property [object] dictionary of keys and values that define the record
+      _saved: null
+
+
+      ###
+      Create the Record instance with initial data and options
+
+      @throw [ArgumentTypeError] data, options, parent, parent_key type mismatch
+
+      Possible errors thrown at {Record#_replace}
+      @throw [TypeError] Can not take functions as values
+      @throw [KeyError] Keys can not start with underscore
+
+      @param [object] data (optional) initital (saved) data set for the record
+      @param [object] options (optional) options to define endpoint, contract,
+        id key property etc
+      @param [object] parent (optional) reference to parent (list or
+        parent record)
+      @param [number|string] parent_key (optional) parent record's key
+      ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object data
-          throw new Error 'First argument (data) must be null or object'
+          throw new ArgumentTypeError 'data', 1, data, 'object'
 
         unless is_object options
-          throw new Error 'Second argument (options) must be null or object'
+          throw new ArgumentTypeError 'options', 2, options, 'object'
 
         record = @
 
@@ -37,12 +92,13 @@ app.factory 'ksc.Record', [
 
         if parent? or parent_key?
           unless is_object parent
-            throw new Error 'Parent must be an object'
+            throw new ArgumentTypeError 'parent', 3, options, 'object'
           define_value record, '_parent', parent
 
           if parent_key?
             unless typeof parent_key in ['string', 'number']
-              throw new Error 'Parent key must be a string or a number'
+              throw new ArgumentTypeError 'parent_key', 3, parent_key,
+                                          'string', 'number'
             define_value record, PARENT_KEY, parent_key
 
         record._replace data
@@ -57,7 +113,13 @@ app.factory 'ksc.Record', [
 
         RecordContract.finalizeRecord record
 
+      ###
+      Clone record or contents
 
+      @param [boolean] return_plain_object (optional) return a vanilla js Object
+
+      @return [Object|Record] the new instance with identical data
+      ###
       _clone: (return_plain_object=false) ->
         clone = {}
         record = @
@@ -72,12 +134,32 @@ app.factory 'ksc.Record', [
 
         return new record.constructor clone
 
+      ###
+      Get the entity of the object, e.g. a vanilla Object with the data set
+      This method should be overridden by any extending classes that have their
+      own idea about the entity (e.g. it does not match the data set)
+      This may be the most useful if you can not have a contract.
+
+      Defaults to cloning to a vanilla Object instance.
+
+      @return [Object] the new Object instance with the copied data
+      ###
       _entity: ->
         @_clone true
 
+      ###
+      (Re)define the initial data set
+
+      @throw [TypeError] Can not take functions as values
+      @throw [KeyError] Keys can not start with underscore
+
+      @param [object] data Key-value map of data
+
+      @return [boolean] indicates change in data
+      ###
       _replace: (data) ->
         for key of data when key.substr(0, 1) is '_'
-          throw new Error 'property names must not start with underscore ' + key
+          throw new KeyError key, 'can not start with underscore'
 
         record = @
 
@@ -103,7 +185,7 @@ app.factory 'ksc.Record', [
 
         set_property = (key, value) ->
           if typeof value is 'function'
-            throw new Error 'Property must not be a function'
+            throw new ArgumentTypeError 'value', 2, value, 'function', true
 
           contract?._match key, value
 
@@ -143,6 +225,13 @@ app.factory 'ksc.Record', [
         changed
 
 
+      ###
+      Define _id (and _primaryId for composite IDs) for the record
+
+      @param [Record] record record instance to be updated
+
+      @return [undefined]
+      ###
       @setId: (record) ->
         # set IDs only for records in list (no stand-alones, no subrecords)
         return if record[PARENT_KEY]
@@ -159,10 +248,13 @@ app.factory 'ksc.Record', [
 
         if Array.isArray id_property
           unless primary_id = record[id_property[0]]
-            throw new Error 'First part of the idProperty must have a value'
+            throw new ValueError id_property, 'First element of idProperty ' +
+                                              'must have a value'
           parts = (record[pt] for pt in id_property when record[pt]?)
           define_value record, '_id', parts.join '-'
           define_value record, '_primaryId', primary_id
         else
           define_value record, '_id', record[id_property]
+
+        return
 ]
