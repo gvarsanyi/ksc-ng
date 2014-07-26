@@ -1,7 +1,9 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.List', 'ksc.RestUtils',
-  ($http, List, RestUtils) ->
+  '$http', 'ksc.KeyError', 'ksc.List', 'ksc.MissingArgumentError',
+  'ksc.RestUtils', 'ksc.TypeError', 'ksc.ValueError',
+  ($http, KeyError, List, MissingArgumentError,
+   RestUtils, TypeError, ValueError) ->
 
     REST_PENDING = 'restPending'
 
@@ -48,13 +50,14 @@ app.factory 'ksc.RestList', [
       @param [Object] query_parameters (optional) Query string arguments
       @param [function] callback (optional) Callback function with signiture:
         (err, raw_response) ->
-      @option raw_response [Error] error (optional) $http error
+      @option raw_response [HttpError] error (optional) errorous response info
       @option raw_response [Object] data HTTP response data in JSON
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
 
-      @throw [Error] No .options.endpoint.url
+      @throw [ValueError] No .options.endpoint.url
+      @throw [TypeError] .options.endpoint.url is not a string
 
       @return [$HttpPromise] Promise returned by $http
       ###
@@ -65,8 +68,11 @@ app.factory 'ksc.RestList', [
 
         list = @
 
-        unless url = list.options.endpoint?.url
-          throw new Error 'Could not identify endpoint url'
+        unless (endpoint = list.options.endpoint) and (url = endpoint.url)?
+          throw new ValueError 'Missing options.endpoint.url'
+
+        unless typeof url is 'string'
+          throw new TypeError 'options.endpoint.url', 'string'
 
         if query_parameters
           parts = for k, v of query_parameters
@@ -93,11 +99,14 @@ app.factory 'ksc.RestList', [
         (err, record_list, raw_response) ->
       @option record_list [Array] insert (optional) List of inserted records
       @option record_list [Array] update (optional) List of updated records
-      @option raw_response [Error] error (optional) $http error
+      @option raw_response [HttpError] error (optional) errorous response info
       @option raw_response [Object] data HTTP response data in JSON
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
+
+      @throw [ValueError] No .options.endpoint.url
+      @throw [TypeError] .options.endpoint.url is not a string
 
       @return [$HttpPromise] Promise returned by $http
       ###
@@ -131,15 +140,16 @@ app.factory 'ksc.RestList', [
         (err, record_list, raw_response) ->
       @option record_list [Array] insert (optional) List of new records
       @option record_list [Array] update (optional) List of updated records
-      @option raw_response [Error] error (optional) $http error
+      @option raw_response [HttpError] error (optional) errorous response info
       @option raw_response [Object] data HTTP response data in JSON
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
 
-      @throw [Error] No record to save
-      @throw [Error] Non-unique record was passed in
-      @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
+      @throw [MissingArgumentError] No record to save
+      @throw [ValueError] No .options(.record).endpoint.url
+      @throw [ValueError] Non-unique record was passed in
+      @throw [TypeError] .options(.record).endpoint.url is not a string
 
       @return [HttpPromise] Promise or chained promises returned by $http.put or
       $http.post
@@ -162,15 +172,16 @@ app.factory 'ksc.RestList', [
         (err, record_list, raw_response) ->
       @option record_list [Array] insert (optional) List of new records
       @option record_list [Array] update (optional) List of updated records
-      @option raw_response [Error] error (optional) $http error
+      @option raw_response [HttpError] error (optional) errorous response info
       @option raw_response [Object] data HTTP response data in JSON
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
       @option raw_response [Object] config $http request configuration
 
-      @throw [Error] No record to delete
-      @throw [Error] Non-unique record was passed in
-      @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
+      @throw [MissingArgumentError] No record to delete
+      @throw [ValueError] No .options(.record).endpoint.url
+      @throw [ValueError] Non-unique record was passed in
+      @throw [TypeError] .options(.record).endpoint.url is not a string
 
       @return [HttpPromise] Promise or chained promises returned by $http.delete
       ###
@@ -190,7 +201,7 @@ app.factory 'ksc.RestList', [
 
       @param [Object] data Response object from REST API for list GET request
 
-      @throw [Error] Array not found in data
+      @throw [ValueError] Array not found in data
 
       @return [Array] List of raw records (property of data or data itself)
       ###
@@ -210,7 +221,8 @@ app.factory 'ksc.RestList', [
           data = data[endpoint_options[key]]
 
         unless data instanceof Array
-          throw new Error 'Could not identify options.endpoint.responseProperty'
+          throw new ValueError 'Could not identify ' +
+                               'options.endpoint.responseProperty'
 
         data
 
@@ -228,9 +240,10 @@ app.factory 'ksc.RestList', [
       @param [function] callback (optional) Callback function with signiture:
         (err, record_list, raw_response) ->
 
-      @throw [Error] No record to save/delete
-      @throw [Error] Non-unique record was passed in
-      @throw [Error] Missing options.endpoint.url or options.record.endpoint.url
+      @throw [MissingArgumentError] No record to delete
+      @throw [ValueError] No .options(.record).endpoint.url
+      @throw [ValueError] Non-unique record was passed in
+      @throw [TypeError] .options(.record).endpoint.url is not a string
 
       @return [$HttpPromise] Promise or chained promises of the HTTP action(s)
       ###
@@ -248,15 +261,15 @@ app.factory 'ksc.RestList', [
 
           orig_item = record
           unless (record = list.map[id = record?._id])
-            throw new Error 'record is not in the list: ' + orig_item
+            throw new KeyError record, 'no such element', orig_item
 
           if unique_record_map[id]
-            throw new Error 'Record/ID is not unique: ' + id
+            throw new ValueError id, 'not unique'
 
           unique_record_map[id] = record
 
         unless records.length
-          throw new Error 'No records to send to the REST interface'
+          throw new MissingArgumentError 'record'
 
         endpoint_options = list.options.endpoint or {}
 
@@ -268,7 +281,10 @@ app.factory 'ksc.RestList', [
           bulk_method = 'delete'
         if bulk_method
           unless endpoint_options.url
-            throw new Error 'Could not identify endpoint url'
+            throw new ValueError 'Missing options.endpoint.url'
+
+          unless typeof endpoint_options.url is 'string'
+            throw new TypeError 'options.endpoint.url', 'string'
 
           if save_type
             data = (record._entity() for record in records)
@@ -308,7 +324,10 @@ app.factory 'ksc.RestList', [
             #               url = list.options?.endpoint?.url
 
           unless url
-            throw new Error 'Could not identify endpoint url'
+            throw new ValueError 'Missing options.endpoint.url'
+
+          unless typeof url is 'string'
+            throw new TypeError 'options.endpoint.url', 'string'
 
           # if id?
           url = url.replace '<id>', id

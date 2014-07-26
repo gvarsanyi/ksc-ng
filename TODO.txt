@@ -2,6 +2,7 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
+- break down error subclasses
 - cached-editable-rest-record
 - cached-rest-record
 - event-emitter: bind to classes
@@ -14,12 +15,11 @@ priority to-do
 to-do
 ----------------------------
 - event-emitter: pause/unpause+cue logic
-- record: add support for array property type
-- record-contract: array support
+- record: support for array property type (+ record-contract, editable-record)
 
 unit tests missing / partial
 ----------------------------
-- _errors
+- errors
 - record-contract
 
 coffeedoc missing / partial
@@ -32,5 +32,4 @@ research
 ----------------------------
 - making preventExtension optional for records with contract?
 - generic list cache logic options
-- error subclasses: types needed
 - better name for List (XArray? HashArray? Set?)

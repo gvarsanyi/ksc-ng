@@ -1,7 +1,9 @@
 
 app.factory 'ksc.List', [
-  'ksc.EditableRecord', 'ksc.Record', 'ksc.Utils',
-  (EditableRecord, Record, Utils) ->
+  'ksc.EditableRecord', 'ksc.KeyError', 'ksc.MissingArgumentError',
+  'ksc.Record', 'ksc.Utils', 'ksc.TypeError',
+  (EditableRecord, KeyError, MissingArgumentError,
+   Record, Utils, TypeError) ->
 
     is_object = Utils.isObject
 
@@ -69,14 +71,14 @@ app.factory 'ksc.List', [
 
       @param [Record] records... Record(s) or record ID(s) to be removed
 
-      @throw [Error] if element can't be found
-      @throw [Error] if not record reference argument is provided
+      @throw [KeyError] element can not be found
+      @throw [MissingArgumentError] record reference argument not provided
 
       @return [Object] returns list of affected records: {cut: [records...]}
       ###
       cut: (records...) ->
         unless records.length
-          throw new Error 'At least one record reference argument is required'
+          throw new MissingArgumentError 'record'
 
         cut      = []
         deleting = {}
@@ -86,7 +88,7 @@ app.factory 'ksc.List', [
             record = list.map[record]
 
           unless list.map[record?._id]
-            throw new Error 'Could not find element: ' + record
+            throw new KeyError record, 'no such element'
 
           delete list.map[record._id]
           deleting[record._id] = true
@@ -137,6 +139,9 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
+      @throw [TypeError] non-object element pushed
+      @throw [MissingArgumentError] no items were pushed
+
       @overload push(items...)
         @param [Object] items... Record or vanilla object that will be turned
         into a Record (based on .options.record.class)
@@ -153,7 +158,7 @@ app.factory 'ksc.List', [
         @return [Object] Affected records
       ###
       push: (items..., return_records) ->
-        List::__add.call @, 'push', items..., return_records
+        List::__add.call @, 'push', items, return_records
 
 
       ###
@@ -176,6 +181,9 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
+      @throw [TypeError] non-object element pushed
+      @throw [MissingArgumentError] no items were pushed
+
       @overload unshift(items...)
         @param [Object] items... Record or vanilla object that will be turned
         into a Record (based on .options.record.class)
@@ -192,7 +200,7 @@ app.factory 'ksc.List', [
         @return [Object] Affected records
       ###
       unshift: (items..., return_records) ->
-        List::__add.call @, 'unshift', items..., return_records
+        List::__add.call @, 'unshift', items, return_records
 
 
       ###
@@ -202,17 +210,23 @@ app.factory 'ksc.List', [
       - .options.record.idProperty (property/properties that define record ID)
 
       @param [string] orig_fn 'push' or 'unshift'
-      @param [Object] items... Record or vanilla object to be added
+      @param [Array] items Record or vanilla objects to be added
       @param [string] return_records Triggers stat object response (not .length)
+
+      @throw [TypeError] non-object element pushed
+      @throw [MissingArgumentError] no items were pushed
 
       @return [number|Object] list.length or {insert: [...], update: [...]}
       ###
-      __add: (orig_fn, items..., return_records) ->
+      __add: (orig_fn, items, return_records) ->
         if typeof return_records is 'boolean'
           return_records = {}
         else
           items.push return_records
           return_records = null
+
+        unless items.length
+          throw new MissingArgumentError 'item'
 
         list = @
 
@@ -221,8 +235,7 @@ app.factory 'ksc.List', [
         record_class = record_opts?.class or EditableRecord
         for item in items
           unless is_object item
-            throw new Error 'List can only contain objects. `' + item +
-                            '` is ' + (typeof item) + 'type.'
+            throw new TypeError item, 'object'
 
           unless item instanceof record_class
             if item instanceof Record

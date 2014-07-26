@@ -32,7 +32,7 @@ app.factory 'ksc.EditableRestRecord', [
 
       @param [function] callback (optional) will call back with signiture:
         (err, raw_response) ->
-      @option raw_response [Error] error (optional) $http error
+      @option raw_response [HttpError] error (optional) errorous response info
       @option raw_response [Object] data HTTP response data in JSON
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers

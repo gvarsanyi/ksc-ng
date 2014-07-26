@@ -115,6 +115,9 @@ describe 'app.factory', ->
       list = new RestList
       expect(-> list.restGetRaw()).toThrow() # options.endpoint.url required
 
+      list = new RestList endpoint: url: 1
+      expect(-> list.restGetRaw()).toThrow() # options.endpoint.url to be string
+
       list = new RestList list_cfg
 
       expected_url = url + '?x=1&y=2'
@@ -222,6 +225,12 @@ describe 'app.factory', ->
       list.push {id: 1, x: 'a'}
       expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
 
+      list = new RestList record: endpoint: url: 1
+      list.push {id: 1, x: 'a'}
+      # options.record.endpoint.url to be string
+      expect(-> list.restSave list[0]).toThrow()
+
+
       list = new RestList record: {}
       list.push {id: 1, x: 'a'}
       expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
@@ -253,6 +262,11 @@ describe 'app.factory', ->
       list.push {id: 1, x: 'a'}
       list[0].x = 'b'
       expect(-> list.restSave list[0]).toThrow() # options.endpoint.url required
+
+      list = new RestList endpoint: {url: 1, bulkSave: 'POST'}
+      list.push {id: 1, x: 'a'}
+      # options.endpoint.url to be string
+      expect(-> list.restSave list[0]).toThrow()
 
       list = new RestList endpoint: {url, bulkSave: 'POST'}
 

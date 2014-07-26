@@ -158,6 +158,7 @@ describe 'app.factory', ->
       expect(-> event.emitted 'a').not.toThrow()
 
       expect(-> event.on 1, ->).toThrow()
+      expect(-> event.on '', ->).toThrow()
       expect(-> event.on 'xx').toThrow()
       expect(-> event.on 'xx', 1).toThrow()
       expect(-> event.on 'xx', {}, (->)).toThrow()

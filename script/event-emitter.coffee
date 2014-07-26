@@ -1,7 +1,9 @@
 
 app.factory 'ksc.EventEmitter', [
-  '$interval', '$rootScope', '$timeout', 'ksc.Utils',
-  ($interval, $rootScope, $timeout, Utils) ->
+  '$interval', '$rootScope', '$timeout', 'ksc.ArgumentTypeError', 'ksc.Utils',
+  'ksc.ValueError',
+  ($interval, $rootScope, $timeout, ArgumentTypeError, Utils,
+   ValueError) ->
 
     UNSUBSCRIBER = '__unsubscriber__'
 
@@ -94,14 +96,18 @@ app.factory 'ksc.EventEmitter', [
 
 
     name_check = (name) ->
-      unless name and typeof name is 'string'
-        throw new Error 'event name must be a non-empty string'
+      unless typeof name is 'string'
+        throw new ArgumentTypeError 'event_name', null, name, 'string'
+
+      unless name
+        throw new ValueError name, 'event_name must be a non-empty string'
+
 
     subscription_decorator = (names, unsubscribe_target, callback, next) ->
       @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
-        throw new Error 'callback function required'
+        throw new ArgumentTypeError 'callback', 'last', callback, 'function'
 
       unless unsubscribe_target?[UNSUBSCRIBER] or
       (is_object(unsubscribe_target) and
@@ -175,7 +181,8 @@ app.factory 'ksc.EventEmitter', [
       ###
       Emit event, e.g. call all functions subscribed for the specified event.
 
-      @throw [Error] name is not a string or empty
+      @throw [ArgumentTypeError] name is not a string
+      @throw [ValueError] name is empty
 
       @param [string] name event identifier
       @param [*] args... optional arguments to be passed to the callback fn
@@ -191,7 +198,8 @@ app.factory 'ksc.EventEmitter', [
       If so, it returns an array of the arguments of last emission which is
       the "args..." part of the emit(name, args...) method.
 
-      @throw [Error] name is not a string or empty
+      @throw [ArgumentTypeError] name is not a string
+      @throw [ValueError] name is empty
 
       @param [string] name event identifier
       @return [bool/Array] false or Array of arguments
@@ -206,8 +214,10 @@ app.factory 'ksc.EventEmitter', [
       ###
       Subscribe for 1 event in the future OR the last emission if there was one
 
-      @throw [Error] callback function not provided
-      @throw [Error] invalid unsubscribe target
+      @throw [ArgumentTypeError] name is not a string
+      @throw [ValueError] name is empty
+      @throw [ArgumentTypeError] callback not provided or not a function
+      @throw [ArgumentTypeError] invalid unsubscribe target
 
       @overload if1(names..., unsubscribe_target, callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
@@ -233,8 +243,10 @@ app.factory 'ksc.EventEmitter', [
       ###
       Subscribe for future events AND the last emission if there was one
 
-      @throw [Error] callback function not provided
-      @throw [Error] invalid unsubscribe target
+      @throw [ArgumentTypeError] name is not a string
+      @throw [ValueError] name is empty
+      @throw [ArgumentTypeError] callback not provided or not a function
+      @throw [ArgumentTypeError] invalid unsubscribe target
 
       @overload if(names..., unsubscribe_target, callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
@@ -258,8 +270,10 @@ app.factory 'ksc.EventEmitter', [
       ###
       Subscribe for 1 event in the future
 
-      @throw [Error] callback function not provided
-      @throw [Error] invalid unsubscribe target
+      @throw [ArgumentTypeError] name is not a string
+      @throw [ValueError] name is empty
+      @throw [ArgumentTypeError] callback not provided or not a function
+      @throw [ArgumentTypeError] invalid unsubscribe target
 
       @overload on1(names..., unsubscribe_target, callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
@@ -280,8 +294,10 @@ app.factory 'ksc.EventEmitter', [
       ###
       Subscribe for events in the future
 
-      @throw [Error] callback function not provided
-      @throw [Error] invalid unsubscribe target
+      @throw [ArgumentTypeError] name is not a string
+      @throw [ValueError] name is empty
+      @throw [ArgumentTypeError] callback not provided or not a function
+      @throw [ArgumentTypeError] invalid unsubscribe target
 
       @overload on(names..., unsubscribe_target, callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
@@ -339,7 +355,8 @@ app.factory 'ksc.EventEmitter', [
               delete attached[increment]
 
             unknown = (value) ->
-              throw new Error 'unknown addition to unsubscriber ' + value
+              throw new ArgumentTypeError 'unsubscriber', 1, value,
+                                          'function', 'Promise'
 
             if is_object unsubscriber
               if unsubscriber.$$timeoutId? and unsubscriber.finally?

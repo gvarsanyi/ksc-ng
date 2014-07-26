@@ -1,4 +1,16 @@
 
+app.factory 'ksc.ContractBreakError', ->
+
+  class ContractBreakError extends Error
+
+    constructor: (key, value, contract_desc) ->
+      msg 'Value `' + value + '` breaks contract for key `' + key + '`'
+      if typeof contract_desc is 'object'
+        for k, v of contract_desc
+          msg += '\n' + k + ': ' + v
+      super msg
+
+
 app.factory 'ksc.TypeError', ->
 
   class TypeError extends Error
@@ -9,7 +21,7 @@ app.factory 'ksc.TypeError', ->
     msg: (value, acceptable_types...) ->
       msg = ''
       if arguments.length > 0
-        msg += ' for value <' + typeof value + '> `' + value + '`'
+        msg += ' for value `' + value + '`'
         if typeof acceptable_types[acceptable_types.length - 1] is 'boolean'
           unacceptable = acceptable_types.pop()
         if acceptable_types.length
@@ -57,7 +69,7 @@ app.factory 'ksc.MissingArgumentError', [
     class MissingArgumentError extends ArgumentError
 
       constructor: (name, n) ->
-        super @msg 'Missing argument' + name, n
+        super 'Missing argument' + @msg name, n
 ]
 
 app.factory 'ksc.KeyError', ->
@@ -90,3 +102,11 @@ app.factory 'ksc.ValueError', ->
       else if value
         msg += ': ' + value
       msg
+
+app.factory 'ksc.HttpError', ->
+
+  class HttpError extends Error
+
+    constructor: (http_result) ->
+      {data, status, headers, config} = http_result
+      super 'HTTP' + status + ': ' + config.method + ' ' + config.url

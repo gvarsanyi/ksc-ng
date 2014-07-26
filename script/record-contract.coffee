@@ -1,7 +1,7 @@
 
 app.factory 'ksc.RecordContract', [
-  'ksc.Utils',
-  (Utils) ->
+  'ksc.KeyError', 'ksc.TypeError', 'ksc.Utils', 'ksc.ValueError',
+  (KeyError, TypeError, Utils, ValueError) ->
 
     has_own   = Utils.hasOwn
     is_object = Utils.isObject
@@ -12,12 +12,12 @@ app.factory 'ksc.RecordContract', [
         if contract is null or contract instanceof RecordContract
           return contract
         unless is_object contract
-          throw new Error 'invalid contract definition'
+          throw new TypeError 'contract', 'object'
 
         # integrity check
         for key, desc of contract
           if key.substr(0, 1) is '_'
-            throw new Error 'contract keys must not start with underscore "_"'
+            throw new KeyError key, 'can not start with underscore'
 
           @[key] = desc
 
@@ -27,12 +27,12 @@ app.factory 'ksc.RecordContract', [
             delete desc.nullable
 
           if desc.type is 'object' and not is_object desc.contract
-            throw new Error 'subcontract specification required for objects'
+            throw new ValueError 'contract required for subobjects'
           if desc.contract
             if has_own(desc, 'type') and desc.type isnt 'object'
-              throw new Error 'subcontract must be object type'
+              throw new TypeError 'contract', 'object'
             if has_own desc, 'default'
-              throw new Error 'subcontracts can not have default values'
+              throw new ValueError 'default', 'contracts can not have defaults'
             delete desc.type
             desc.contract = new RecordContract desc.contract
           else
@@ -40,8 +40,8 @@ app.factory 'ksc.RecordContract', [
             RecordContract.typeDefaults[typeof desc.default]?
               desc.type = typeof desc.default
             unless RecordContract.typeDefaults[desc.type]?
-              throw new Error 'contract keys type unset or invalid (must be ' +
-                              'boolean, number, object or string)'
+              throw new TypeError 'type', 'boolean', 'number', 'object',
+                                  'string'
 
           @_match key, @_default key # checks default value
 
@@ -67,7 +67,7 @@ app.factory 'ksc.RecordContract', [
             return true
           if value is null and desc.nullable
             return true
-        throw new Error 'Value breaks contract for ' + key + ' = ' + value
+        throw new TypeError key, value, desc
 
 
       @finalizeRecord: (record) ->

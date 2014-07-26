@@ -41,7 +41,7 @@ app.factory 'ksc.RestRecord', [
 
       @param [function] callback (optional) will call back with signiture:
         (err, raw_response) ->
-      @option raw_response [Error] error (optional) $http error
+      @option raw_response [HttpError] error (optional) errorous response info
       @option raw_response [Object] data HTTP response data in JSON
       @option raw_response [number] status HTTP rsponse status
       @option raw_response [Object] headers HTTP response headers
@@ -91,11 +91,11 @@ app.factory 'ksc.RestRecord', [
       @return [string] url
       ###
       @getUrl: (record) ->
-        unless (endpoint = record._options.endpoint) and url = endpoint.url
-          throw new ValueError 'Missing options.endpoint.url'
+        unless (endpoint = record._options.endpoint) and (url = endpoint.url)?
+          throw new ValueError 'Missing _options.endpoint.url'
 
         unless typeof url is 'string'
-          throw new TypeError 'Missing options.endpoint.url'
+          throw new TypeError '_options.endpoint.url', 'string'
 
         url
 ]
