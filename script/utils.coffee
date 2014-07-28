@@ -1,7 +1,11 @@
 
 app.factory 'ksc.Utils', [
-  'ksc.MissingArgumentError',
-  (MissingArgumentError) ->
+  'ksc.ArgumentTypeError', 'ksc.MissingArgumentError',
+  (ArgumentTypeError, MissingArgumentError) ->
+
+    define_property             = Object.defineProperty
+    get_own_property_descriptor = Object.getOwnPropertyDescriptor
+    get_prototype_of            = Object.getPrototypeOf
 
     arg_check = (args) ->
       unless args.length
@@ -15,17 +19,17 @@ app.factory 'ksc.Utils', [
           visible = setter
           setter  = ->
 
-        Object.defineProperty obj, key,
+        define_property obj, key,
           configurable: true
           enumerable:   !!visible
           get:          getter
           set:          setter
 
       @defineValue: (obj, key, value, writable=false, visible=false) ->
-        if Object.getOwnPropertyDescriptor(obj, key)?.writable is false
-          Object.defineProperty obj, key, writable: true
+        if get_own_property_descriptor(obj, key)?.writable is false
+          define_property obj, key, writable: true
 
-        Object.defineProperty obj, key,
+        define_property obj, key,
           configurable: true
           enumerable:   !!visible
           value:        value
@@ -33,22 +37,28 @@ app.factory 'ksc.Utils', [
 
       @getProperties = (obj) ->
         properties = {}
+
         while Utils.isObject obj
+          checked = true
           for own key of obj
             unless Array.isArray properties[key]
               properties[key] = []
             properties[key].push obj
-          obj = Object.getPrototypeOf obj
+          obj = get_prototype_of obj
+
+        unless checked
+          throw new ArgumentTypeError 'obj', 1, obj, 'object'
+
         properties
 
       @hasOwn = (obj, key) ->
-        Utils.isObject(obj) and obj.hasOwnProperty key
+        obj and obj.hasOwnProperty key
 
       @hasProperty = (obj, key) ->
         while obj
           if obj.hasOwnProperty key
             return true
-          obj = Object.getPrototypeOf obj
+          obj = get_prototype_of obj
         false
 
       @identical: (obj1, obj2) ->
@@ -64,7 +74,7 @@ app.factory 'ksc.Utils', [
 
       @isEnumerable: (obj, key) ->
         try
-          return !!(Object.getOwnPropertyDescriptor obj, key).enumerable
+          return !!(get_own_property_descriptor obj, key).enumerable
         false
 
       @isFunction: (refs...) ->
