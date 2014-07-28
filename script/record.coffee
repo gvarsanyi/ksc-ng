@@ -106,9 +106,8 @@ app.factory 'ksc.Record', [
         Record.setId record
 
         # hide (set to non-enumerable) non-data properties/methods
-        ref = record
-        while is_object ref = Object.getPrototypeOf ref
-          for own key of ref
+        for key, refs of Utils.getProperties Object.getPrototypeOf record
+          for ref in refs
             Object.defineProperty ref, key, enumerable: false
 
         RecordContract.finalizeRecord record

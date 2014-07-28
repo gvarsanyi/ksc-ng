@@ -1,7 +1,7 @@
 
 app.factory 'ksc.EditableRestRecord', [
-  '$http', 'ksc.EditableRecord', 'ksc.RestRecord',
-  ($http, EditableRecord, RestRecord) ->
+  '$http', 'ksc.EditableRecord', 'ksc.Mixin', 'ksc.RestRecord',
+  ($http, EditableRecord, Mixin, RestRecord) ->
 
     ###
     Stateful record with REST bindings (load and save)
@@ -18,8 +18,8 @@ app.factory 'ksc.EditableRestRecord', [
     ###
     class EditableRestRecord extends EditableRecord
 
-      # Mixin method from RestRecord, see: {RestRecord#_restLoad}
-      _restLoad: RestRecord::_restLoad
+      # @extend RestRecord
+      Mixin.extend EditableRestRecord, RestRecord
 
       ###
       Trigger saving data to the record-style endpoint specified in
@@ -44,7 +44,7 @@ app.factory 'ksc.EditableRestRecord', [
       @return [HttpPromise] promise object created by $http
       ###
       _restSave: (callback) ->
-        url = RestRecord.getUrl @
+        url = EditableRestRecord.getUrl @
 
-        RestRecord.async @, $http.put(url, @_entity()), callback
+        EditableRestRecord.async @, $http.put(url, @_entity()), callback
 ]

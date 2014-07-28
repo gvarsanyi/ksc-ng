@@ -24,8 +24,10 @@ describe 'app.factory', ->
 
       record = new EditableRestRecord {x: 1, y: 2}, endpoint: {url}
 
+      console.log record, record._changes, record._changedKeys
       record.y = 3
 
+      console.log record, record._changes, record._changedKeys
       expect(record.y).toBe 3
       expect(record._changes).toBe 1
       expect(record._changedKeys.y).toBe true

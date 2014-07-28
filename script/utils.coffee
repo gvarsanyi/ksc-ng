@@ -31,8 +31,25 @@ app.factory 'ksc.Utils', [
           value:        value
           writable:     !!writable
 
+      @getProperties = (obj) ->
+        properties = {}
+        while Utils.isObject obj
+          for own key of obj
+            unless Array.isArray properties[key]
+              properties[key] = []
+            properties[key].push obj
+          obj = Object.getPrototypeOf obj
+        properties
+
       @hasOwn = (obj, key) ->
         Utils.isObject(obj) and obj.hasOwnProperty key
+
+      @hasProperty = (obj, key) ->
+        while obj
+          if obj.hasOwnProperty key
+            return true
+          obj = Object.getPrototypeOf obj
+        false
 
       @identical: (obj1, obj2) ->
         unless Utils.isObject obj1, obj2
