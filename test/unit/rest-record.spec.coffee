@@ -3,12 +3,13 @@ describe 'app.factory', ->
 
   describe 'RestRecord', ->
 
-    $httpBackend = RestRecord = Record = url = null
+    $httpBackend = $rootScope = RestRecord = Record = url = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         $httpBackend = $injector.get '$httpBackend'
+        $rootScope   = $injector.get '$rootScope'
         RestRecord   = $injector.get 'ksc.RestRecord'
         Record       = $injector.get 'ksc.Record'
 
@@ -124,7 +125,7 @@ describe 'app.factory', ->
       promise3.then (raw) ->
         raw_data3p = raw.data
 
-      $scope.$apply() # fake promises .flush()
+      $rootScope.$apply() # fake promises .flush()
 
       expect(promise1).toBe promise2
       expect(raw_data1cb).toEqual raw_data2cb
