@@ -94,3 +94,74 @@ describe 'app.factory', ->
       expect(cb_response[1]).toEqual response
       expect(promise_response[0]).toBe 'error'
       expect(promise_response[1]).toEqual response
+
+    it 'Cached - load twice', ->
+      record = new RestRecord null, {cache: 1, endpoint: {url}}
+
+      response = {x: 1}
+
+      $httpBackend.expectGET(url).respond response
+
+      raw_data1cb = raw_data2cb = raw_data1p = raw_data2p = raw_data3p = null
+
+      expect(record.x).toBeUndefined()
+
+      promise1 = record._restLoad (err, raw) ->
+        raw_data1cb = raw.data
+      promise1.then (raw) ->
+        raw_data1p = raw.data
+
+      $httpBackend.flush()
+
+      expect(record.x).toBe 1
+
+      promise2 = record._restLoad (err, raw) ->
+        raw_data2cb = raw.data
+      promise2.then (raw) ->
+        raw_data2p = raw.data
+
+      promise3 = record._restLoad()
+      promise3.then (raw) ->
+        raw_data3p = raw.data
+
+      $scope.$apply() # fake promises .flush()
+
+      expect(promise1).toBe promise2
+      expect(raw_data1cb).toEqual raw_data2cb
+      expect(raw_data1p).toEqual raw_data1cb
+      expect(raw_data2p).toEqual raw_data1p
+      expect(raw_data2p).toEqual raw_data3p
+
+    it 'Cached - force load', ->
+      record = new RestRecord null, {cache: 1, endpoint: {url}}
+
+      response = {x: 1}
+
+      $httpBackend.expectGET(url).respond response
+
+      raw_data1cb = raw_data1p = raw_data2p = null
+
+      expect(record.x).toBeUndefined()
+
+      promise1 = record._restLoad (err, raw) ->
+        raw_data1cb = raw.data
+      promise1.then (raw) ->
+        raw_data1p = raw.data
+
+      $httpBackend.flush()
+
+      expect(record.x).toBe 1
+
+      $httpBackend.expectGET(url).respond response
+
+      promise2 = record._restLoad true
+      promise2.then (raw) ->
+        raw_data2p = raw.data
+
+      expect(record.x).toBe 1
+
+      $httpBackend.flush()
+
+      expect(promise1).not.toBe promise2
+      expect(raw_data1cb).toEqual raw_data1p
+      expect(raw_data1p).toEqual raw_data2p

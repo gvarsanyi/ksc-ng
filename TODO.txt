@@ -2,18 +2,16 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- break down error subclasses
-- cached-editable-rest-record
-- cached-rest-record
 - event-emitter: bind to classes
 - list: add pseudo/new elements logic
-- list: add sort logic
 - list-filter
 - record: replace only if new data is different
 - rest-list: primaryId/composite ID save/delete aftermath
 
 to-do
 ----------------------------
+- break down error subclasses
+- list: add sort logic
 - event-emitter: pause/unpause+cue logic
 - record: support for array property type (+ record-contract, editable-record)
 

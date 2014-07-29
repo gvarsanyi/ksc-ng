@@ -5,6 +5,8 @@ app.factory 'ksc.RestRecord', [
   ($http, Record, RestUtils, TypeError, Utils,
    ValueError) ->
 
+    OPTIONS      = '_options'
+    REST_CACHE   = '_restCache'
     REST_PENDING = '_restPending'
 
     define_value = Utils.defineValue
@@ -19,11 +21,15 @@ app.factory 'ksc.RestRecord', [
           console.log record # will show record with loaded values
 
     Option used:
-    - .options.endpoint.url
+    - ._options.cache
+    - ._options.endpoint.url
 
     @author Greg Varsanyi
     ###
     class RestRecord extends Record
+      # @property [object] load promise used if ._options.cache is set
+      _restCache: null
+
       # @property [number] number of pending REST requests (of any kind) - may
       # be used a load indicator
       _restPending: 0
@@ -34,11 +40,13 @@ app.factory 'ksc.RestRecord', [
 
       ###
       Trigger loading data from the record-style endpoint specified in
+      _options.cache
       _options.endpoint.url
 
       Bumps up ._restPending counter by 1 when starting to load (and will
       decrease by 1 when done)
 
+      @param [boolean] force_load (optinal) request disregarding cache
       @param [function] callback (optional) will call back with signiture:
         (err, raw_response) ->
       @option raw_response [HttpError] error (optional) errorous response info
@@ -52,10 +60,23 @@ app.factory 'ksc.RestRecord', [
 
       @return [HttpPromise] promise object created by $http
       ###
-      _restLoad: (callback) ->
-        url = RestRecord.getUrl @
+      _restLoad: (force_load, callback) ->
+        record = @
 
-        RestRecord.async @, $http.get(url), callback
+        get = ->
+          url = RestRecord.getUrl record
+          RestRecord.async record, $http.get(url), callback
+
+        unless typeof force_load is 'boolean'
+          callback = force_load
+          force_load = null
+
+        if not record[OPTIONS].cache or not record[REST_CACHE] or force_load
+          record[REST_CACHE] = get callback
+        else if callback
+          RestUtils.wrapPromise record[REST_CACHE], callback
+
+        record[REST_CACHE]
 
 
       ###
@@ -91,7 +112,7 @@ app.factory 'ksc.RestRecord', [
       @return [string] url
       ###
       @getUrl: (record) ->
-        unless (endpoint = record._options.endpoint) and (url = endpoint.url)?
+        unless (endpoint = record[OPTIONS].endpoint) and (url = endpoint.url)?
           throw new ValueError 'Missing _options.endpoint.url'
 
         unless typeof url is 'string'
