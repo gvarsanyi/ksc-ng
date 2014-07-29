@@ -1,7 +1,7 @@
 
 app.factory 'ksc.RestUtils', [
-  '$q', 'ksc.HttpError',
-  ($q, HttpError) ->
+  '$q', 'ksc.Errors',
+  ($q, Errors) ->
 
     class RestUtils
 
@@ -41,7 +41,7 @@ app.factory 'ksc.RestUtils', [
 
         error_fn = (result) ->
           wrap = ({data, status, headers, config} = result)
-          err = new HttpError result
+          err = new Errors.Http result
           wrap.error = err
           callback err, wrap
 

@@ -1,9 +1,7 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.KeyError', 'ksc.List', 'ksc.MissingArgumentError',
-  'ksc.RestUtils', 'ksc.TypeError', 'ksc.ValueError',
-  ($http, KeyError, List, MissingArgumentError,
-   RestUtils, TypeError, ValueError) ->
+  '$http', 'ksc.Errors', 'ksc.List', 'ksc.RestUtils',
+  ($http, Errors, List, RestUtils) ->
 
     REST_PENDING = 'restPending'
 
@@ -69,10 +67,10 @@ app.factory 'ksc.RestList', [
         list = @
 
         unless (endpoint = list.options.endpoint) and (url = endpoint.url)?
-          throw new ValueError 'Missing options.endpoint.url'
+          throw new Errors.Value 'Missing options.endpoint.url'
 
         unless typeof url is 'string'
-          throw new TypeError 'options.endpoint.url', 'string'
+          throw new Errors.Type 'options.endpoint.url', 'string'
 
         if query_parameters
           parts = for k, v of query_parameters
@@ -221,8 +219,8 @@ app.factory 'ksc.RestList', [
           data = data[endpoint_options[key]]
 
         unless data instanceof Array
-          throw new ValueError 'Could not identify ' +
-                               'options.endpoint.responseProperty'
+          throw new Errors.Value 'Could not identify ' +
+                                 'options.endpoint.responseProperty'
 
         data
 
@@ -261,15 +259,15 @@ app.factory 'ksc.RestList', [
 
           orig_item = record
           unless (record = list.map[id = record?._id])
-            throw new KeyError record, 'no such element', orig_item
+            throw new Errors.Key record, 'no such element', orig_item
 
           if unique_record_map[id]
-            throw new ValueError id, 'not unique'
+            throw new Errors.Value id, 'not unique'
 
           unique_record_map[id] = record
 
         unless records.length
-          throw new MissingArgumentError 'record'
+          throw new Errors.MissingArgument 'record'
 
         endpoint_options = list.options.endpoint or {}
 
@@ -281,10 +279,10 @@ app.factory 'ksc.RestList', [
           bulk_method = 'delete'
         if bulk_method
           unless endpoint_options.url
-            throw new ValueError 'Missing options.endpoint.url'
+            throw new Errors.Value 'Missing options.endpoint.url'
 
           unless typeof endpoint_options.url is 'string'
-            throw new TypeError 'options.endpoint.url', 'string'
+            throw new Errors.Type 'options.endpoint.url', 'string'
 
           if save_type
             data = (record._entity() for record in records)
@@ -324,10 +322,10 @@ app.factory 'ksc.RestList', [
             #               url = list.options?.endpoint?.url
 
           unless url
-            throw new ValueError 'Missing options.endpoint.url'
+            throw new Errors.Value 'Missing options.endpoint.url'
 
           unless typeof url is 'string'
-            throw new TypeError 'options.endpoint.url', 'string'
+            throw new Errors.Type 'options.endpoint.url', 'string'
 
           # if id?
           url = url.replace '<id>', id

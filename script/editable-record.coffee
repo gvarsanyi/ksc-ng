@@ -1,9 +1,7 @@
 
 app.factory 'ksc.EditableRecord', [
-  'ksc.ArgumentTypeError', 'ksc.MissingArgumentError', 'ksc.Record',
-  'ksc.TypeError', 'ksc.Utils',
-  (ArgumentTypeError, MissingArgumentError, Record,
-   TypeError, Utils) ->
+  'ksc.Errors', 'ksc.Record', 'ksc.Utils',
+  (Errors, Record, Utils) ->
 
     ID           = '_id'
     CHANGES      = '_changes'
@@ -73,7 +71,7 @@ app.factory 'ksc.EditableRecord', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          throw new ArgumentTypeError 'options', 2, options, 'object'
+          throw new Errors.ArgumentType 'options', 2, options, 'object'
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
@@ -120,13 +118,13 @@ app.factory 'ksc.EditableRecord', [
       ###
       _delete: (keys...) ->
         unless keys.length
-          throw new MissingArgumentError 'key', 1
+          throw new Errors.MissingArgument 'key', 1
 
         record = @
 
         for key, i in keys
           unless typeof key in ['number', 'string']
-            throw new ArgumentTypeError 'keys', i + 1, key, 'number', 'string'
+            throw new Errors.ArgumentType 'keys', i + 1, key, 'number', 'string'
 
           if not i and record._options.contract
             return false # can't delete on contracts
@@ -213,7 +211,7 @@ app.factory 'ksc.EditableRecord', [
 
         setter = (update) ->
           if typeof update is 'function'
-            throw new TypeError update, 'function', true
+            throw new Errors.Type update, 'function', true
 
           if Utils.identical saved[key], update
             delete edited[key]

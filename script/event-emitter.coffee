@@ -1,9 +1,7 @@
 
 app.factory 'ksc.EventEmitter', [
-  '$interval', '$rootScope', '$timeout', 'ksc.ArgumentTypeError', 'ksc.Utils',
-  'ksc.ValueError',
-  ($interval, $rootScope, $timeout, ArgumentTypeError, Utils,
-   ValueError) ->
+  '$interval', '$rootScope', '$timeout', 'ksc.Errors', 'ksc.Utils',
+  ($interval, $rootScope, $timeout, Errors, Utils) ->
 
     UNSUBSCRIBER = '__unsubscriber__'
 
@@ -97,17 +95,17 @@ app.factory 'ksc.EventEmitter', [
 
     name_check = (name) ->
       unless typeof name is 'string'
-        throw new ArgumentTypeError 'event_name', null, name, 'string'
+        throw new Errors.ArgumentType 'event_name', null, name, 'string'
 
       unless name
-        throw new ValueError name, 'event_name must be a non-empty string'
+        throw new Errors.Value name, 'event_name must be a non-empty string'
 
 
     subscription_decorator = (names, unsubscribe_target, callback, next) ->
       @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
-        throw new ArgumentTypeError 'callback', 'last', callback, 'function'
+        throw new Errors.ArgumentType 'callback', 'last', callback, 'function'
 
       unless unsubscribe_target?[UNSUBSCRIBER] or
       (is_object(unsubscribe_target) and
@@ -355,8 +353,8 @@ app.factory 'ksc.EventEmitter', [
               delete attached[increment]
 
             unknown = (value) ->
-              throw new ArgumentTypeError 'unsubscriber', 1, value,
-                                          'function', 'Promise'
+              throw new Errors.ArgumentType 'unsubscriber', 1, value,
+                                            'function', 'Promise'
 
             if is_object unsubscriber
               if unsubscriber.$$timeoutId? and unsubscriber.finally?

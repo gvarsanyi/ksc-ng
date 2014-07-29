@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Utils', [
-  'ksc.ArgumentTypeError', 'ksc.MissingArgumentError',
-  (ArgumentTypeError, MissingArgumentError) ->
+  'ksc.Errors',
+  (Errors) ->
 
     define_property             = Object.defineProperty
     get_own_property_descriptor = Object.getOwnPropertyDescriptor
@@ -9,7 +9,7 @@ app.factory 'ksc.Utils', [
 
     arg_check = (args) ->
       unless args.length
-        throw new MissingArgumentError 'reference', 1
+        throw new Errors.MissingArgument 'reference', 1
 
 
     class Utils
@@ -47,7 +47,7 @@ app.factory 'ksc.Utils', [
           obj = get_prototype_of obj
 
         unless checked
-          throw new ArgumentTypeError 'obj', 1, obj, 'object'
+          throw new Errors.ArgumentType 'obj', 1, obj, 'object'
 
         properties
 

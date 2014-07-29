@@ -1,9 +1,7 @@
 
 app.factory 'ksc.Record', [
-  'ksc.ArgumentTypeError', 'ksc.KeyError', 'ksc.RecordContract', 'ksc.Utils',
-  'ksc.ValueError',
-  (ArgumentTypeError, KeyError, RecordContract, Utils,
-   ValueError) ->
+  'ksc.Errors', 'ksc.RecordContract', 'ksc.Utils',
+  (Errors, RecordContract, Utils) ->
 
     OPTIONS    = '_options'
     PARENT_KEY = '_parentKey'
@@ -78,10 +76,10 @@ app.factory 'ksc.Record', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object data
-          throw new ArgumentTypeError 'data', 1, data, 'object'
+          throw new Errors.ArgumentType 'data', 1, data, 'object'
 
         unless is_object options
-          throw new ArgumentTypeError 'options', 2, options, 'object'
+          throw new Errors.ArgumentType 'options', 2, options, 'object'
 
         record = @
 
@@ -92,13 +90,13 @@ app.factory 'ksc.Record', [
 
         if parent? or parent_key?
           unless is_object parent
-            throw new ArgumentTypeError 'parent', 3, options, 'object'
+            throw new Errors.ArgumentType 'parent', 3, options, 'object'
           define_value record, '_parent', parent
 
           if parent_key?
             unless typeof parent_key in ['string', 'number']
-              throw new ArgumentTypeError 'parent_key', 3, parent_key,
-                                          'string', 'number'
+              throw new Errors.ArgumentType 'parent_key', 3, parent_key,
+                                            'string', 'number'
             define_value record, PARENT_KEY, parent_key
 
         record._replace data
@@ -184,7 +182,7 @@ app.factory 'ksc.Record', [
 
         set_property = (key, value) ->
           if typeof value is 'function'
-            throw new ArgumentTypeError 'value', 2, value, 'function', true
+            throw new Errors.ArgumentType 'value', 2, value, 'function', true
 
           contract?._match key, value
 
@@ -247,8 +245,8 @@ app.factory 'ksc.Record', [
 
         if Array.isArray id_property
           unless primary_id = record[id_property[0]]
-            throw new ValueError id_property, 'First element of idProperty ' +
-                                              'must have a value'
+            throw new Errors.Value id_property, 'First element of idProperty ' +
+                                                'must have a value'
           parts = (record[pt] for pt in id_property when record[pt]?)
           define_value record, '_id', parts.join '-'
           define_value record, '_primaryId', primary_id

@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Mixin', [
-  'ksc.TypeError', 'ksc.Utils',
-  (TypeError, Utils) ->
+  'ksc.Errors', 'ksc.Utils',
+  (Errors, Utils) ->
 
     normalize = (explicit, properties, next) ->
       if explicit?
@@ -11,7 +11,7 @@ app.factory 'ksc.Mixin', [
 
       for property in properties
         unless typeof property in ['string', 'number']
-          throw new TypeError property, 'string', 'number'
+          throw new Errors.Type property, 'string', 'number'
 
       next explicit, properties
 
