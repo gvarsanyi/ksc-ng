@@ -1,7 +1,9 @@
 
 app.factory 'ksc.RecordContract', [
-  'ksc.KeyError', 'ksc.TypeError', 'ksc.Utils', 'ksc.ValueError',
-  (KeyError, TypeError, Utils, ValueError) ->
+  'ksc.ContractBreakError', 'ksc.KeyError', 'ksc.TypeError', 'ksc.Utils',
+  'ksc.ValueError',
+  (ContractBreakError, KeyError, TypeError, Utils,
+   ValueError) ->
 
     has_own   = Utils.hasOwn
     is_object = Utils.isObject
@@ -67,7 +69,7 @@ app.factory 'ksc.RecordContract', [
             return true
           if value is null and desc.nullable
             return true
-        throw new TypeError key, value, desc
+        throw new ContractBreakError key, value, desc
 
 
       @finalizeRecord: (record) ->
