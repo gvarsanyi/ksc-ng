@@ -15,7 +15,6 @@ to-do
 
 unit tests missing / partial
 ----------------------------
-- errors
 - record-contract
 
 coffeedoc missing / partial

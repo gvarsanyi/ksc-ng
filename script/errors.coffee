@@ -1,89 +1,61 @@
 
 app.factory 'ksc.Errors', ->
 
-  class ArgumentError extends Error
-    constructor: (name, n) ->
-      super 'Argument error' + @msg name, n
+  info_to_string = (options) ->
+    # NOTE: un-remark the following line if you want even caught errors thrown
+    #       here to be displayed on console.error:
+    # console.error msg, options
 
-    msg: (name, n) ->
-      msg = ''
-      if n?
-        msg += ' #' + n
-      if name?
-        msg += ': ' + name
-      msg
+    msg = ''
+    if options and typeof options is 'object'
+      for key, value of options
+        try
+          value = JSON.stringify value, null, 2
+        catch
+          value = String value
+        msg += '\n  ' + key + ': ' + value
+    else if options?
+      msg += String options
+    msg
 
-  class ArgumentTypeError extends ArgumentError
-    constructor: (name, n, value, acceptable_types...) ->
-      msg = 'Argument type error'
-      msg += @msg name, n
-      msg += TypeError::msg value, acceptable_types...
-      super msg
+
+  class ArgumentTypeError extends Error
+    name: 'ArgumentTypeError'
+    constructor: (options) ->
+      @message = info_to_string options
 
   class ContractBreakError extends Error
-    constructor: (key, value, contract_desc) ->
-      msg 'Value `' + value + '` breaks contract for key `' + key + '`'
-      if typeof contract_desc is 'object'
-        for k, v of contract_desc
-          msg += '\n' + k + ': ' + v
-      super msg
+    name: 'ContractBreakError'
+    constructor: (options) ->
+      @message = info_to_string options
 
   class HttpError extends Error
-    constructor: (http_result) ->
-      {data, status, headers, config} = http_result
-      super 'HTTP' + status + ': ' + config.method + ' ' + config.url
+    name: 'HttpError'
+    constructor: (options) ->
+      @message = info_to_string options
 
   class KeyError extends Error
-    constructor: (key, desc) ->
-      super 'Key error' + @msg key, desc
+    name: 'KeyError'
+    constructor: (options) ->
+      @message = info_to_string options
 
-    msg: (key, desc) ->
-      msg = ''
-      if key and desc
-        msg += ': ' + key + ' - ' + desc
-      else if key
-        msg += ': ' + key
-      msg
-
-  class MissingArgumentError extends ArgumentError
-    constructor: (name, n) ->
-      super 'Missing argument' + @msg name, n
+  class MissingArgumentError extends Error
+    name: 'MissingArgumentError'
+    constructor: (options) ->
+      @message = info_to_string options
 
   class TypeError extends Error
-    constructor: (value, acceptable_types...) ->
-      super 'Type error' + @msg value, acceptable_types...
-
-    msg: (value, acceptable_types...) ->
-      msg = ''
-      if arguments.length > 0
-        msg += ' for value `' + value + '`'
-        if typeof acceptable_types[acceptable_types.length - 1] is 'boolean'
-          unacceptable = acceptable_types.pop()
-        if acceptable_types.length
-          if unacceptable
-            msg += ' vs required type'
-          else
-            msg += ' vs unacceptable type'
-          if acceptable_types.length > 1
-            msg += 's'
-          msg += ': ' + acceptable_types.join ', '
-      msg
+    name: 'TypeError'
+    constructor: (options) ->
+      @message = info_to_string options
 
   class ValueError extends Error
-    constructor: (value, desc) ->
-      super 'Value error' + @msg value, desc
-
-    msg: (value, desc) ->
-      msg = ''
-      if value and desc
-        msg += ': ' + typeof value + ' `' + value + '` - ' + desc
-      else if value
-        msg += ': ' + value
-      msg
+    name: 'ValueError'
+    constructor: (options) ->
+      @message = info_to_string options
 
 
   class Errors
-    @Argument:        ArgumentError
     @ArgumentType:    ArgumentTypeError
     @ContractBreak:   ContractBreakError
     @Http:            HttpError

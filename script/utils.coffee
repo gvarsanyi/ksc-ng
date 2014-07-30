@@ -9,7 +9,7 @@ app.factory 'ksc.Utils', [
 
     arg_check = (args) ->
       unless args.length
-        throw new Errors.MissingArgument 'reference', 1
+        throw new Errors.MissingArgument {name: 'reference', argument: 1}
 
 
     class Utils
@@ -47,8 +47,7 @@ app.factory 'ksc.Utils', [
           obj = get_prototype_of obj
 
         unless checked
-          throw new Errors.ArgumentType 'obj', 1, obj, 'object'
-
+          throw new Errors.ArgumentType {obj, argument: 1, acceptable: 'object'}
         properties
 
       @hasOwn = (obj, key, is_enumerable) ->

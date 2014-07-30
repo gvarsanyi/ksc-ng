@@ -12,12 +12,12 @@ app.factory 'ksc.RecordContract', [
         if contract is null or contract instanceof RecordContract
           return contract
         unless is_object contract
-          throw new Errors.Type 'contract', 'object'
+          throw new Errors.Type {contract, acceptable: 'object'}
 
         # integrity check
         for key, desc of contract
           if key.substr(0, 1) is '_'
-            throw new Errors.Key key, 'can not start with underscore'
+            throw new Errors.Key {key, description: 'can not start with "_"'}
 
           @[key] = desc
 
@@ -27,12 +27,18 @@ app.factory 'ksc.RecordContract', [
             delete desc.nullable
 
           if desc.type is 'object' and not is_object desc.contract
-            throw new Errors.Value 'contract required for subobjects'
+            throw new Errors.Type contract:    desc.contract
+                                  acceptable:  'object'
+                                  description: 'object type requires contract'
           if desc.contract
             if has_own(desc, 'type') and desc.type isnt 'object'
-              throw new Errors.Type 'contract', 'object'
+              throw new Errors.Type contract:   desc.contract
+                                    acceptable: 'object'
             if has_own desc, 'default'
-              throw new Errors.Value 'default', 'contract can not have default'
+              throw new Errors.Value default:     desc.default
+                                     contract:    desc.contract
+                                     description: 'subcontract can not have ' +
+                                                  'default value'
             delete desc.type
             desc.contract = new RecordContract desc.contract
           else
@@ -40,8 +46,9 @@ app.factory 'ksc.RecordContract', [
             RecordContract.typeDefaults[typeof desc.default]?
               desc.type = typeof desc.default
             unless RecordContract.typeDefaults[desc.type]?
-              throw new Errors.Type 'type', 'boolean', 'number', 'object',
-                                    'string'
+              throw new Errors.Type type:       desc.type
+                                    acceptable: ['boolean', 'number', 'object',
+                                                 'string']
 
           @_match key, @_default key # checks default value
 
@@ -67,7 +74,7 @@ app.factory 'ksc.RecordContract', [
             return true
           if value is null and desc.nullable
             return true
-        throw new Errors.ContractBreak key, value, desc
+        throw new Errors.ContractBreak {key, value, contract: desc}
 
 
       @finalizeRecord: (record) ->

@@ -12,6 +12,14 @@ app.factory 'ksc.Record', [
 
     undef = {}.undef # guaranteed undefined
 
+    object_required = (name, value, arg) ->
+      unless is_object value
+        inf = {}
+        inf[name] = value
+        inf.argument = arg
+        inf.acceptable = 'object'
+        throw new Errors.ArgumentType inf
+
     ###
     Read-only key-value style record with supporting methods and optional
     multi-level hieararchy.
@@ -68,11 +76,8 @@ app.factory 'ksc.Record', [
       @param [number|string] parent_key (optional) parent record's key
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
-        unless is_object data
-          throw new Errors.ArgumentType 'data', 1, data, 'object'
-
-        unless is_object options
-          throw new Errors.ArgumentType 'options', 2, options, 'object'
+        object_required 'data', data, 1
+        object_required 'options', options, 2
 
         record = @
 
@@ -82,14 +87,14 @@ app.factory 'ksc.Record', [
           options.contract = new RecordContract options.contract
 
         if parent? or parent_key?
-          unless is_object parent
-            throw new Errors.ArgumentType 'parent', 3, options, 'object'
+          object_required 'options', parent, 3
           define_value record, '_parent', parent
 
           if parent_key?
-            unless typeof parent_key in ['string', 'number']
-              throw new Errors.ArgumentType 'parent_key', 3, parent_key,
-                                            'string', 'number'
+            unless typeof parent_key in ['number', 'string']
+              throw new Errors.Type parent_key: parent_key
+                                    argument:   4
+                                    acceptable: ['number', 'string']
             define_value record, PARENT_KEY, parent_key
 
         # hide (set to non-enumerable) non-data properties/methods
@@ -185,9 +190,9 @@ app.factory 'ksc.Record', [
         else
           for key, value of data
             if key.substr(0, 1) is '_'
-              throw new Errors.Key key, 'can not start with underscore'
+              throw new Errors.Key {key, description: 'can not start with "_"'}
             if typeof value is 'function'
-              throw new Errors.Type 'value', 2, value, 'function', true
+              throw new Errors.Type {value, notAcceptable: 'function'}
             unless Utils.identical value, record[key]
               set_property key, value
 

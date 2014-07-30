@@ -11,7 +11,7 @@ app.factory 'ksc.Mixin', [
 
       for property in properties
         unless typeof property in ['string', 'number']
-          throw new Errors.Type property, 'string', 'number'
+          throw new Errors.Type {property, acceptable: ['string', 'number']}
 
       next explicit, properties
 

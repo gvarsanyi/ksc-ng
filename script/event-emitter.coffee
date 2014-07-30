@@ -95,17 +95,19 @@ app.factory 'ksc.EventEmitter', [
 
     name_check = (name) ->
       unless typeof name is 'string'
-        throw new Errors.ArgumentType 'event_name', null, name, 'string'
+        throw new Errors.ArgumentType {name, argument: 1, acceptable: 'string'}
 
       unless name
-        throw new Errors.Value name, 'event_name must be a non-empty string'
+        throw new Errors.Value {name, description: 'must be a non-empty string'}
 
 
     subscription_decorator = (names, unsubscribe_target, callback, next) ->
       @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
-        throw new Errors.ArgumentType 'callback', 'last', callback, 'function'
+        throw new Errors.ArgumentType callback:   callback
+                                      argument:   'last'
+                                      acceptable: 'function'
 
       unless unsubscribe_target?[UNSUBSCRIBER] or
       (is_object(unsubscribe_target) and
@@ -353,8 +355,9 @@ app.factory 'ksc.EventEmitter', [
               delete attached[increment]
 
             unknown = (value) ->
-              throw new Errors.ArgumentType 'unsubscriber', 1, value,
-                                            'function', 'Promise'
+              throw new Errors.ArgumentType unsubscriber: unsubscriber
+                                            argument:     1
+                                            acceptable:  ['function', 'Promise']
 
             if is_object unsubscriber
               if unsubscriber.$$timeoutId? and unsubscriber.finally?

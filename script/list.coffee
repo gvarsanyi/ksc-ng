@@ -94,7 +94,7 @@ app.factory 'ksc.List', [
       ###
       cut: (records...) ->
         unless records.length
-          throw new Errors.MissingArgument 'record'
+          throw new Errors.MissingArgument {name: 'record', argument: 1}
 
         cut      = []
         deleting = {}
@@ -106,7 +106,7 @@ app.factory 'ksc.List', [
             record = map[record]
 
           unless map[record?._id]
-            throw new Errors.Key record, 'no such element'
+            throw new Errors.Key {key: record, description: 'no such element'}
 
           delete map[record._id]
           deleting[record._id] = true
@@ -256,7 +256,7 @@ app.factory 'ksc.List', [
           return_records = null
 
         unless items.length
-          throw new Errors.MissingArgument 'item'
+          throw new Errors.MissingArgument {name: 'item', argument: 1}
 
         list = @
 
@@ -265,7 +265,7 @@ app.factory 'ksc.List', [
         record_class = record_opts?.class or EditableRecord
         for item in items
           unless is_object item
-            throw new Errors.Type item, 'object'
+            throw new Errors.Type {item, acceptable: 'object'}
 
           unless item instanceof record_class
             if item instanceof Record

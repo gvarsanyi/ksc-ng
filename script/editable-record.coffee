@@ -71,7 +71,9 @@ app.factory 'ksc.EditableRecord', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          throw new Errors.ArgumentType 'options', 2, options, 'object'
+          throw new Errors.ArgumentType options:    options
+                                        argument:   2
+                                        acceptable: 'object'
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
@@ -122,16 +124,18 @@ app.factory 'ksc.EditableRecord', [
       ###
       _delete: (keys...) ->
         unless keys.length
-          throw new Errors.MissingArgument 'key', 1
+          throw new Errors.MissingArgument {name: 'key', argument: 1}
 
         record = @
 
         for key, i in keys
           unless typeof key in ['number', 'string']
-            throw new Errors.ArgumentType 'keys', i + 1, key, 'number', 'string'
+            throw new Errors.ArgumentType key:        key
+                                          argument:   i + 1
+                                          acceptable: ['number', 'string']
 
           if not i and contract = record._options.contract
-            return new Errors.ContractBreak key, value, contract[key]
+            throw new Errors.ContractBreak {key, value, contract: contract[key]}
 
           if has_own record[SAVED], key
             unless record[DELETED_KEYS][key]
@@ -245,7 +249,7 @@ app.factory 'ksc.EditableRecord', [
 
         setter = (update) ->
           if typeof update is 'function'
-            throw new Errors.Type update, 'function', true
+            throw new Errors.Type {update, notAcceptable: 'function'}
 
           if Utils.identical saved[key], update
             delete edited[key]
