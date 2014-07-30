@@ -84,33 +84,37 @@ app.factory 'ksc.EditableRecord', [
       @return [Object|EditableRecord] the new instance with identical data
       ###
       _clone: (return_plain_object=false, saved_only=false) ->
-        if saved_only
-          return super
-
         record = @
+
         if return_plain_object
           clone = {}
-          for key, value of record
+          source = if saved_only then record[SAVED] else record
+          for key, value of source
             if value instanceof Record
-              value = value._clone 1
+              value = value._clone true, saved_only
             clone[key] = value
           return clone
 
         clone = new (record.constructor) record[SAVED]
-        for key of record
-          if record[CHANGED_KEYS][key] or not has_own record[SAVED], key
-            value = record[key]
-            if is_object value
-              value = value._clone 1
-            clone[key] = value
+        unless saved_only
+          for key of record
+            if record[CHANGED_KEYS][key] or not has_own record[SAVED], key
+              value = record[key]
+              if is_object value
+                value = value._clone true
+              clone[key] = value
+          if deleted_keys = record[DELETED_KEYS]
+            for key of record[DELETED_KEYS]
+              clone._delete key
         clone
 
       ###
       Mark property as deleted, remove it from the object, but keep the original
       data (saved status) for the property.
 
-      @throw [MissingArgumentError] No key was provided
       @throw [ArgumentTypeError] Provided key is not string or number
+      @throw [ContractBreakError] Tried to delete on a contracted record
+      @throw [MissingArgumentError] No key was provided
 
       @param [string|number] keys... One or more keys to delete
 
@@ -126,13 +130,19 @@ app.factory 'ksc.EditableRecord', [
           unless typeof key in ['number', 'string']
             throw new Errors.ArgumentType 'keys', i + 1, key, 'number', 'string'
 
-          if not i and record._options.contract
-            return false # can't delete on contracts
+          if not i and contract = record._options.contract
+            return new Errors.ContractBreak key, value, contract[key]
 
           if has_own record[SAVED], key
             unless record[DELETED_KEYS][key]
               record[DELETED_KEYS][key] = true
-              @[key] = {}.undef # guaranteed undefined
+
+              unless record[CHANGED_KEYS][key]
+                define_value record, CHANGES, record[CHANGES] + 1
+                define_value record[CHANGED_KEYS], key, true, false, true
+
+              delete record[EDITED][key]
+
               Object.defineProperty record, key, enumerable: false
           else if has_own record, key
             if is_enumerable record, key
@@ -154,26 +164,55 @@ app.factory 'ksc.EditableRecord', [
       @return [boolean] indicates change in data
       ###
       _replace: (data) ->
+        record = @
+
+        dropped = record._revert()
+
         if changed = super
-          record = @
+          contract = record._options.contract
 
           define_value record, EDITED, {}
           define_value record, CHANGES, 0
           define_value record, CHANGED_KEYS, {}
-          define_value record, DELETED_KEYS, {}
+          define_value record, DELETED_KEYS, if contract then null else {}
+          define_value record, SAVED, {}
 
-          for key of record[SAVED]
+          for key, value of record
+            define_value record[SAVED], key, value, false, true
             EditableRecord.setProperty record, key
 
-        changed
+          Object.freeze record[SAVED]
+
+        dropped or changed
 
       ###
       Return to saved state
 
+      Drops deletions, edited and added properties (if any)
+
       @return [boolean] indicates change in data
       ###
       _revert: ->
-        @_replace @[SAVED]
+        changed = false
+
+        record = @
+        for key of record[DELETED_KEYS]
+          delete record[DELETED_KEYS][key]
+          delete record[CHANGED_KEYS][key]
+          changed = true
+
+        for key of record[EDITED]
+          delete record[EDITED][key]
+          delete record[CHANGED_KEYS][key]
+          changed = true
+
+        for key of record when not has_own record[SAVED], key
+          delete record[key]
+          changed = true
+
+        define_value record, CHANGES, 0
+
+        changed
 
 
       ###
@@ -205,6 +244,8 @@ app.factory 'ksc.EditableRecord', [
               act()
 
         getter = ->
+          if not contract and record[DELETED_KEYS][key]
+            return
           if has_own edited, key
             return edited[key]
           saved[key]

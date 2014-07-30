@@ -116,6 +116,8 @@ describe 'app.factory', ->
 
       expect(record.x).toBe 1
 
+      console.log '---'
+
       promise2 = record._restLoad (err, raw) ->
         raw_data2cb = raw.data
       promise2.then (raw) ->

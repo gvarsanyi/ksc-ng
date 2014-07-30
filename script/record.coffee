@@ -5,7 +5,6 @@ app.factory 'ksc.Record', [
 
     OPTIONS    = '_options'
     PARENT_KEY = '_parentKey'
-    SAVED      = '_saved'
 
     define_value = Utils.defineValue
     has_own      = Utils.hasOwn
@@ -45,7 +44,7 @@ app.factory 'ksc.Record', [
       # @property [number|string] first chunk of id if _id is composite
       _primaryId: undef
 
-      # @property [object] number of editions in the data set
+      # @property [object] record-related options
       _options: null
 
       # @property [object] reference to parent record or list
@@ -53,9 +52,6 @@ app.factory 'ksc.Record', [
 
       # @property [number|string] key on parent record
       _parent_key: undef
-
-      # @property [object] dictionary of keys and values that define the record
-      _saved: null
 
 
       ###
@@ -67,7 +63,7 @@ app.factory 'ksc.Record', [
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
 
-      @param [object] data (optional) initital (saved) data set for the record
+      @param [object] data (optional) data set for the record
       @param [object] options (optional) options to define endpoint, contract,
         id key property etc
       @param [object] parent (optional) reference to parent (list or
@@ -99,14 +95,14 @@ app.factory 'ksc.Record', [
                                             'string', 'number'
             define_value record, PARENT_KEY, parent_key
 
-        record._replace data
-
-        Record.setId record
-
         # hide (set to non-enumerable) non-data properties/methods
         for key, refs of Utils.getProperties Object.getPrototypeOf record
           for ref in refs
             Object.defineProperty ref, key, enumerable: false
+
+        record._replace data
+
+        Record.setId record
 
         RecordContract.finalizeRecord record
 
@@ -121,15 +117,13 @@ app.factory 'ksc.Record', [
         clone = {}
         record = @
         for key, value of record
-          if has_own record[SAVED], key
-            value = record[SAVED][key]
           if is_object value
             value = value._clone true
           clone[key] = value
         if return_plain_object
           return clone
 
-        return new record.constructor clone
+        new record.constructor clone
 
       ###
       Get the entity of the object, e.g. a vanilla Object with the data set
@@ -155,37 +149,15 @@ app.factory 'ksc.Record', [
       @return [boolean] indicates change in data
       ###
       _replace: (data) ->
-        for key of data when key.substr(0, 1) is '_'
-          throw new KeyError key, 'can not start with underscore'
-
         record = @
 
         options = record[OPTIONS]
 
         contract = options.contract
 
-        # check if data is changing with the replacement
-        saved = record[SAVED]
-        changed = true
-        if not record._changes and saved
-          changed = false
-
-          for key, value of data when not Utils.identical saved[key], value
-            changed = true
-            break
-
-          unless changed
-            for key of saved when not has_own data, key
-              if not contract or contract._default(key) isnt saved[key]
-                changed = true
-                break
+        changed = false
 
         set_property = (key, value) ->
-          if typeof value is 'function'
-            throw new Errors.ArgumentType 'value', 2, value, 'function', true
-
-          contract?._match key, value
-
           if is_object value
             if value instanceof Record
               value = value._clone 1
@@ -198,26 +170,33 @@ app.factory 'ksc.Record', [
 
             value = new class_ref value, subopts, record, key
 
-          define_value saved, key, value, false, true
+          changed = true
+          define_value record, key, value, false, true
 
-        if changed
-          if saved and not contract
-            for key of saved
-              delete record[key]
-
-          define_value record, SAVED, saved = {}
-
+        # check if data is changing with the replacement
+        if contract
           for key, value of data
-            set_property key, value
+            contract._match key, value
 
-          if contract
-            for own key, value of contract when not has_own saved, key
-              set_property key, contract._default key
+          for key of contract
+            value = if has_own(data, key)
+              data[key]
+            else
+              contract._default key
+            unless Utils.identical record[key], value
+              set_property key, value
+        else
+          for key, value of data
+            if key.substr(0, 1) is '_'
+              throw new Errors.Key key, 'can not start with underscore'
+            if typeof value is 'function'
+              throw new Errors.Type 'value', 2, value, 'function', true
+            unless Utils.identical value, record[key]
+              set_property key, value
 
-          Object.freeze saved
-
-          for key, value of saved
-            define_value record, key, value, false, true
+          for key of record when not has_own data, key
+            delete record[key]
+            changed = true
 
         changed
 
@@ -237,7 +216,7 @@ app.factory 'ksc.Record', [
         options = record[OPTIONS]
 
         unless options[key] # assign first as ID
-          for k of record[SAVED]
+          for k of record
             options[key] = k
             break
 

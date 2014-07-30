@@ -51,8 +51,9 @@ app.factory 'ksc.Utils', [
 
         properties
 
-      @hasOwn = (obj, key) ->
-        obj and obj.hasOwnProperty key
+      @hasOwn = (obj, key, is_enumerable) ->
+        obj and obj.hasOwnProperty(key) and
+        (not is_enumerable? or is_enumerable is obj.propertyIsEnumerable key)
 
       @hasProperty = (obj, key) ->
         while obj

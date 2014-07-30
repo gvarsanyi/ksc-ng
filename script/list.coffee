@@ -1,7 +1,9 @@
 
 app.factory 'ksc.List', [
-  'ksc.EditableRecord', 'ksc.Errors', 'ksc.Record', 'ksc.Utils',
-  (EditableRecord, Errors, Record, Utils) ->
+  'ksc.EditableRecord', 'ksc.Errors', 'ksc.EventEmitter', 'ksc.Record',
+  'ksc.Utils',
+  (EditableRecord, Errors, EventEmitter, Record,
+   Utils) ->
 
     is_object = Utils.isObject
 
@@ -38,6 +40,16 @@ app.factory 'ksc.List', [
     ###
     class List
 
+      # @property [EventEmitter] reference to related event-emitter instance
+      events: null
+
+      # @property [object] hash map of records (keys being the record IDs)
+      map: null
+
+      # @property [object] list-related options
+      options: null
+
+
       ###
       Creates a vanilla Array instance (e.g. []), adds methods and overrides
       pop/shift/push/unshift logic to support the special features. Will inherit
@@ -49,14 +61,17 @@ app.factory 'ksc.List', [
       ###
       constructor: (options={}) ->
         list = []
-        list.map = {}
-        list.options = angular.copy options
 
-        list.options.class = proto = @constructor.prototype
+        options = angular.copy options
 
-        for k, v of proto
+        for k, v of options.class = @constructor.prototype
           if k.indexOf('constructor') is -1 and k.substr(0, 2) isnt '__'
             list[k] = v
+
+        list.map = {}
+        list.options = options
+
+        list.events = new EventEmitter
 
         return list
 
@@ -72,6 +87,9 @@ app.factory 'ksc.List', [
       @throw [KeyError] element can not be found
       @throw [MissingArgumentError] record reference argument not provided
 
+      @event 'update' sends out message if list changes:
+        events.emit({cut: [records...]})
+
       @return [Object] returns list of affected records: {cut: [records...]}
       ###
       cut: (records...) ->
@@ -81,14 +99,16 @@ app.factory 'ksc.List', [
         cut      = []
         deleting = {}
         list     = @
+        map      = list.map
+
         for record in records
           unless is_object record
-            record = list.map[record]
+            record = map[record]
 
-          unless list.map[record?._id]
+          unless map[record?._id]
             throw new Errors.Key record, 'no such element'
 
-          delete list.map[record._id]
+          delete map[record._id]
           deleting[record._id] = true
           cut.push record
 
@@ -100,6 +120,8 @@ app.factory 'ksc.List', [
           Array::push.call list, tmp_container...
           break
 
+        list.events.emit 'update', {cut}
+
         {cut}
 
 
@@ -109,11 +131,22 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
+      @event 'update' sends out message if list changes:
+        events.emit({cut: [records...]})
+
       @return [List] returns the list array (chainable)
       ###
       empty: ->
-        for i in [0 ... @length] by 1
-          @pop()
+        list = @
+
+        cut = []
+
+        for i in [0 ... list.length] by 1
+          cut.push list.shift()
+
+        if cut.length
+          list.events.emit 'update', {cut}
+
         @
 
 
@@ -217,9 +250,8 @@ app.factory 'ksc.List', [
       @return [number|Object] list.length or {insert: [...], update: [...]}
       ###
       __add: (orig_fn, items, return_records) ->
-        if typeof return_records is 'boolean'
-          return_records = {}
-        else
+        changes = {}
+        unless typeof return_records is 'boolean'
           items.push return_records
           return_records = null
 
@@ -243,18 +275,20 @@ app.factory 'ksc.List', [
 
           if existing = list.map[item._id]
             existing._replace item._clone true
-            if return_records
-              (return_records.update ?= []).push item
+            (changes.update ?= []).push item
           else
             list.map[item._id] = item
             tmp.push item
-            if return_records
-              (return_records.insert ?= []).push item
+            (changes.insert ?= []).push item
 
         if tmp.length
           Array.prototype[orig_fn].apply list, tmp
 
-        return return_records if return_records
+        list.events.emit 'update', changes
+
+        if return_records
+          return changes
+
         list.length # default push/unshift return behavior
 
 
@@ -269,7 +303,8 @@ app.factory 'ksc.List', [
       @return [Record] Removed record
       ###
       __remove: (orig_fn) ->
-        record = Array.prototype[orig_fn].call @
-        delete @map[record._id]
+        if record = Array.prototype[orig_fn].call @
+          delete @map[record._id]
+          @events.emit 'update', {cut: [record]}
         record
 ]

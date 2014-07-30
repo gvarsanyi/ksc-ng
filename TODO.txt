@@ -2,10 +2,9 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- event-emitter: bind to classes
+- event-emitter: add emissions to Record/EditableRecord
 - list: add pseudo/new elements logic
 - list-filter
-- record: replace only if new data is different
 - rest-list: primaryId/composite ID save/delete aftermath
 
 to-do
@@ -21,12 +20,12 @@ unit tests missing / partial
 
 coffeedoc missing / partial
 ----------------------------
+- errors
 - record-contract
 - rest-utils
 - utils
 
 research
 ----------------------------
-- making preventExtension optional for records with contract?
 - generic list cache logic options
 - better name for List (XArray? HashArray? Set?)

@@ -70,7 +70,7 @@ app.factory 'ksc.RestRecord', [
           force_load = null
 
         if not record[OPTIONS].cache or not record[REST_CACHE] or force_load
-          record[REST_CACHE] = get callback
+          define_value record, REST_CACHE, get callback
         else if callback
           RestUtils.wrapPromise record[REST_CACHE], callback
 

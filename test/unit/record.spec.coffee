@@ -55,7 +55,7 @@ describe 'app.factory', ->
       expect(ent).not.toBe example
 
     it 'Method ._replace()', ->
-      example = {id: 1, x: 2, y: {a: 3}}
+      example = {id: 1, x: 2, y: {a: 3}, z: 1}
       example2 = {id: 2, x: 3, y: new Record {dds: 43, dff: 4}}
       expected = {id: 2, x: 3, y: {dds: 43, dff: 4}}
       record = new Record example
@@ -65,14 +65,13 @@ describe 'app.factory', ->
       expect(ent).not.toBe expected
 
     it 'Will not replace if not needed', ->
-      record = new Record {a: 1}
+      record = new Record {a: {x: 1}}
 
-      saved = record._saved
-      record._replace {a: 1}
-      expect(record._saved).toBe saved
+      ref = record.a
 
-      record._replace {a: 1, b: 2}
-      expect(record._saved).not.toBe saved
+      expect(record._replace {a: {x: 1}}).toBe false
+      expect(record.a).toBe ref # did not change references either
+
 
       # with contract
       record = new Record null, {contract: {a: default: 1}}

@@ -50,6 +50,9 @@ describe 'app.factory', ->
       expect(list.shift().id).toBe 3
       expect(list.length).toBe 2
       expect(list.map[1].x).toBe 'a'
+      list.pop()
+      list.pop()
+      expect(list.pop()).toBeUndefined()
 
     it 'Upsert', ->
       list = new List
@@ -105,3 +108,5 @@ describe 'app.factory', ->
 
       expect(res.length).toBe 0
       expect(res).toBe list
+
+      expect(-> list.empty()).not.toThrow()

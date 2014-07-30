@@ -27,8 +27,9 @@ describe 'app.factory', ->
       expect(record._changedKeys).toEqual {}
 
       record.a = 2
-      expect(record._changes).toBe 1
-      expect(record._changedKeys).toEqual {a: true}
+      record._delete 'b'
+      expect(record._changes).toBe 2
+      expect(record._changedKeys).toEqual {a: true, b: true}
 
       record._revert()
       expect(record._changes).toBe 0
@@ -82,6 +83,7 @@ describe 'app.factory', ->
 
       expect(-> record._delete()).toThrow() # no key
 
+      record.x = 4
       record._delete 'x'
       expect(record.x).toBeUndefined()
       expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
@@ -104,31 +106,6 @@ describe 'app.factory', ->
       # special properties can't be deleted
       expect(record._delete '_changes').toBe false
       expect(typeof record._changes).toBe 'number'
-
-    it 'Method ._clone()', ->
-      example = {id: 1, x: 2, y: {a: 3}, z: null}
-      record = new EditableRecord example
-
-      record.x = 4
-      record.y.faux = 1
-      record.z = {x: 1}
-      record.faux = 1
-
-      expected_saved  = {id: 1, x: 2, y: {a: 3, faux: 1}, z: null, faux: 1}
-      expected_edited = {id: 1, x: 4, y: {a: 3, faux: 1}, z: {x: 1}, faux: 1}
-
-      # plain object, saved
-      obj = record._clone true, true
-      expect(obj).toEqual expected_saved
-
-      # plain object, edited
-      obj = record._clone true
-      expect(obj).toEqual expected_edited
-
-      # object cloning
-      record2 = record._clone()
-      expect(record).toEqual record2
-      expect(record).not.toBe record2
 
     it 'Id changes', ->
       example = {id: 1, x: 2}
@@ -237,13 +214,10 @@ describe 'app.factory', ->
       expect(record.d).toBe null
       expect(-> record.e = null).toThrow()
 
-    it 'Method ._delete() fails with returning false when contracted', ->
+    it 'Method ._delete() forbidden when contracted', ->
       record = new EditableRecord {id: 1}, contract: id: type: 'number'
       record.id = 2
-      res = record._delete 'id'
-      expect(res).toBe false
-      expect(record.id).toBe 2
-      expect(record._deletedKeys.id).toBeUndefined()
+      expect(-> record._delete 'id').toThrow()
 
     it 'Method ._delete() throws error if key is invalid', ->
       record = new EditableRecord {id: 1}, contract: id: type: 'number'
