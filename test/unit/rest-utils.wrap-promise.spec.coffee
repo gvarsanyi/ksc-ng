@@ -1,16 +1,16 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'RestUtils', ->
+  describe 'restUtils', ->
 
-    $http = $httpBackend = RestUtils = null
+    $http = $httpBackend = restUtils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         $http        = $injector.get '$http'
         $httpBackend = $injector.get '$httpBackend'
-        RestUtils    = $injector.get 'ksc.RestUtils'
+        restUtils    = $injector.get 'ksc.restUtils'
 
 
     describe 'Method .wrapPromise()', ->
@@ -31,7 +31,7 @@ describe 'app.factory', ->
           promise_err = 1
           promise_result = result
 
-        RestUtils.wrapPromise promise, (err, result) ->
+        restUtils.wrapPromise promise, (err, result) ->
           cb_err = err
           cb_result = result
 
@@ -58,7 +58,7 @@ describe 'app.factory', ->
           promise_err = 1
           promise_result = result
 
-        RestUtils.wrapPromise promise, (err, result) ->
+        restUtils.wrapPromise promise, (err, result) ->
           cb_err = err
           cb_result = result
 

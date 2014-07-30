@@ -1,14 +1,14 @@
 
 app.factory 'ksc.Record', [
-  'ksc.Errors', 'ksc.RecordContract', 'ksc.Utils',
-  (Errors, RecordContract, Utils) ->
+  'ksc.RecordContract', 'ksc.errors', 'ksc.utils',
+  (RecordContract, errors, utils) ->
 
     OPTIONS    = '_options'
     PARENT_KEY = '_parentKey'
 
-    define_value = Utils.defineValue
-    has_own      = Utils.hasOwn
-    is_object    = Utils.isObject
+    define_value = utils.defineValue
+    has_own      = utils.hasOwn
+    is_object    = utils.isObject
 
     undef = {}.undef # guaranteed undefined
 
@@ -18,7 +18,7 @@ app.factory 'ksc.Record', [
         inf[name] = value
         inf.argument = arg
         inf.acceptable = 'object'
-        throw new Errors.ArgumentType inf
+        throw new errors.ArgumentType inf
 
     ###
     Read-only key-value style record with supporting methods and optional
@@ -92,13 +92,13 @@ app.factory 'ksc.Record', [
 
           if parent_key?
             unless typeof parent_key in ['number', 'string']
-              throw new Errors.Type parent_key: parent_key
+              throw new errors.Type parent_key: parent_key
                                     argument:   4
                                     acceptable: ['number', 'string']
             define_value record, PARENT_KEY, parent_key
 
         # hide (set to non-enumerable) non-data properties/methods
-        for key, refs of Utils.getProperties Object.getPrototypeOf record
+        for key, refs of utils.getProperties Object.getPrototypeOf record
           for ref in refs
             Object.defineProperty ref, key, enumerable: false
 
@@ -185,15 +185,15 @@ app.factory 'ksc.Record', [
               data[key]
             else
               contract._default key
-            unless Utils.identical record[key], value
+            unless utils.identical record[key], value
               set_property key, value
         else
           for key, value of data
             if key.substr(0, 1) is '_'
-              throw new Errors.Key {key, description: 'can not start with "_"'}
+              throw new errors.Key {key, description: 'can not start with "_"'}
             if typeof value is 'function'
-              throw new Errors.Type {value, notAcceptable: 'function'}
-            unless Utils.identical value, record[key]
+              throw new errors.Type {value, notAcceptable: 'function'}
+            unless utils.identical value, record[key]
               set_property key, value
 
           for key of record when not has_own data, key

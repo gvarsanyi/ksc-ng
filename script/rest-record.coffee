@@ -1,13 +1,13 @@
 
 app.factory 'ksc.RestRecord', [
-  '$http', 'ksc.Errors', 'ksc.Record', 'ksc.RestUtils', 'ksc.Utils',
-  ($http, Errors, Record, RestUtils, Utils) ->
+  '$http', 'ksc.Record', 'ksc.errors', 'ksc.restUtils', 'ksc.utils',
+  ($http, Record, errors, restUtils, utils) ->
 
     OPTIONS      = '_options'
     REST_CACHE   = '_restCache'
     REST_PENDING = '_restPending'
 
-    define_value = Utils.defineValue
+    define_value = utils.defineValue
 
     ###
     Record with REST load binding ($http GET wrapper)
@@ -72,7 +72,7 @@ app.factory 'ksc.RestRecord', [
         if not record[OPTIONS].cache or not record[REST_CACHE] or force_load
           define_value record, REST_CACHE, get callback
         else if callback
-          RestUtils.wrapPromise record[REST_CACHE], callback
+          restUtils.wrapPromise record[REST_CACHE], callback
 
         record[REST_CACHE]
 
@@ -91,7 +91,7 @@ app.factory 'ksc.RestRecord', [
       @async: (record, promise, callback) ->
         define_value record, REST_PENDING, record[REST_PENDING] + 1
 
-        RestUtils.wrapPromise promise, (err, raw_response) ->
+        restUtils.wrapPromise promise, (err, raw_response) ->
           define_value record, REST_PENDING, record[REST_PENDING] - 1
 
           if not err and raw_response.data
@@ -111,10 +111,10 @@ app.factory 'ksc.RestRecord', [
       ###
       @getUrl: (record) ->
         unless (endpoint = record[OPTIONS].endpoint) and (url = endpoint.url)?
-          throw new Errors.Value {'_options.endpoint.url': {}.undef}
+          throw new errors.Value {'_options.endpoint.url': {}.undef}
 
         unless typeof url is 'string'
-          throw new Errors.Type '_options.endpoint.url': url
+          throw new errors.Type '_options.endpoint.url': url
                                 acceptable: 'string'
 
         url

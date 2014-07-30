@@ -1,14 +1,14 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'Utils', ->
+  describe 'utils', ->
 
-    Utils = null
+    utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        Utils = $injector.get 'ksc.Utils'
+        utils = $injector.get 'ksc.utils'
 
 
     describe 'Method .getProperties()', ->
@@ -20,7 +20,7 @@ describe 'app.factory', ->
         c = Object.create b
         c.c = 3
 
-        res = Utils.getProperties c
+        res = utils.getProperties c
 
         expect(Array.isArray res.a).toBe true
         expect(res.a.length).toBe 1
@@ -32,4 +32,4 @@ describe 'app.factory', ->
         expect(res.c[0]).toBe c
 
       it 'Error case for non-object provided', ->
-        expect(-> Utils.getProperties false).toThrow()
+        expect(-> utils.getProperties false).toThrow()

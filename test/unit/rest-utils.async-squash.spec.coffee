@@ -1,22 +1,17 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'RestUtils', ->
+  describe 'restUtils', ->
 
-    $http = $httpBackend = RestUtils = null
+    $http = $httpBackend = restUtils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         $http        = $injector.get '$http'
         $httpBackend = $injector.get '$httpBackend'
-        RestUtils    = $injector.get 'ksc.RestUtils'
+        restUtils    = $injector.get 'ksc.restUtils'
 
-
-    it 'No instance use (no properties on instance)', ->
-      obj = new RestUtils
-      keys = (k for k of obj)
-      expect(keys.length).toBe 0
 
     describe 'Method .asyncSquash()', ->
 
@@ -34,7 +29,7 @@ describe 'app.factory', ->
 
         $httpBackend.expectGET('/').respond {asdf: 1}
 
-        promise = RestUtils.asyncSquash records, done_cb, (record) ->
+        promise = restUtils.asyncSquash records, done_cb, (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
 
@@ -63,7 +58,7 @@ describe 'app.factory', ->
         for item in records
           $httpBackend.expectGET('/').respond {asdf: item.x}
 
-        promise = RestUtils.asyncSquash records, done_cb, (record) ->
+        promise = restUtils.asyncSquash records, done_cb, (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
 
@@ -97,7 +92,7 @@ describe 'app.factory', ->
         $httpBackend.expectGET('/').respond 500, {fail: true}
         $httpBackend.expectGET('/').respond {asdf: 3}
 
-        promise = RestUtils.asyncSquash records, done_cb, (record) ->
+        promise = restUtils.asyncSquash records, done_cb, (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
 
@@ -133,7 +128,7 @@ describe 'app.factory', ->
         $httpBackend.expectGET('/').respond 500, {fail: true}
         $httpBackend.expectGET('/').respond 403, {asdf: 3}
 
-        promise = RestUtils.asyncSquash records, done_cb, (record) ->
+        promise = restUtils.asyncSquash records, done_cb, (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
 

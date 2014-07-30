@@ -1,14 +1,14 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'Utils', ->
+  describe 'utils', ->
 
-    Utils = null
+    utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        Utils = $injector.get 'ksc.Utils'
+        utils = $injector.get 'ksc.utils'
 
 
     describe 'Method .hasProperty()', ->
@@ -17,14 +17,14 @@ describe 'app.factory', ->
         a = {a: 1}
         b = Object.create a
 
-        expect(Utils.hasProperty a, 'a').toBe true
-        expect(Utils.hasProperty b, 'a').toBe true
-        expect(Utils.hasProperty b, 'b').toBe false
+        expect(utils.hasProperty a, 'a').toBe true
+        expect(utils.hasProperty b, 'a').toBe true
+        expect(utils.hasProperty b, 'b').toBe false
 
       it 'Check not inheried object (~= hasOwn)', ->
         a = {a: 1}
-        expect(Utils.hasProperty a, 'a').toBe true
+        expect(utils.hasProperty a, 'a').toBe true
 
       it 'Returns false when not parsable as object', ->
-        expect(Utils.hasProperty false, 'a').toBe false
-        expect(Utils.hasProperty null, 'a').toBe false
+        expect(utils.hasProperty false, 'a').toBe false
+        expect(utils.hasProperty null, 'a').toBe false

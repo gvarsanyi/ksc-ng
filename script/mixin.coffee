@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Mixin', [
-  'ksc.Errors', 'ksc.Utils',
-  (Errors, Utils) ->
+  'ksc.errors', 'ksc.utils',
+  (errors, utils) ->
 
     normalize = (explicit, properties, next) ->
       if explicit?
@@ -11,12 +11,12 @@ app.factory 'ksc.Mixin', [
 
       for property in properties
         unless typeof property in ['string', 'number']
-          throw new Errors.Type {property, acceptable: ['string', 'number']}
+          throw new errors.Type {property, acceptable: ['string', 'number']}
 
       next explicit, properties
 
     validate_key = (extensible, key, explicit, properties) ->
-      if Utils.hasProperty extensible, key
+      if utils.hasProperty extensible, key
         return false
 
       unless explicit?

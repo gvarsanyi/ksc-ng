@@ -1,21 +1,21 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'Utils', ->
+  describe 'utils', ->
 
-    Utils = null
+    utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        Utils = $injector.get 'ksc.Utils'
+        utils = $injector.get 'ksc.utils'
 
 
     describe 'Method .defineValue()', ->
 
       it 'Set read-only invisible value', ->
         obj = {}
-        Utils.defineValue obj, 'a', 'x'
+        utils.defineValue obj, 'a', 'x'
 
         found_keys = {}
         for own k of obj
@@ -35,7 +35,7 @@ describe 'app.factory', ->
 
       it 'Set r/w invisible value', ->
         obj = {}
-        Utils.defineValue obj, 'a', 'x', true
+        utils.defineValue obj, 'a', 'x', true
 
         found_keys = {}
         for own k of obj
@@ -55,7 +55,7 @@ describe 'app.factory', ->
 
       it 'Set r/w value', ->
         obj = {}
-        Utils.defineValue obj, 'a', 'x', true, true
+        utils.defineValue obj, 'a', 'x', true, true
 
         found_keys = {}
         for own k of obj
@@ -70,10 +70,10 @@ describe 'app.factory', ->
 
       it 'Reset to writable', ->
         obj = {}
-        Utils.defineValue obj, 'a', 'x'
+        utils.defineValue obj, 'a', 'x'
         expect(obj.a).toBe 'x'
         obj.a = 2
         expect(obj.a).toBe 'x'
-        expect(-> Utils.defineValue obj, 'a', 'x', true).not.toThrow()
+        expect(-> utils.defineValue obj, 'a', 'x', true).not.toThrow()
         obj.a = 2
         expect(obj.a).toBe 2

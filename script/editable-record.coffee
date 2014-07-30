@@ -1,7 +1,7 @@
 
 app.factory 'ksc.EditableRecord', [
-  'ksc.Errors', 'ksc.Record', 'ksc.Utils',
-  (Errors, Record, Utils) ->
+  'ksc.Record', 'ksc.errors', 'ksc.utils',
+  (Record, errors, utils) ->
 
     ID           = '_id'
     CHANGES      = '_changes'
@@ -12,10 +12,10 @@ app.factory 'ksc.EditableRecord', [
     PARENT_KEY   = '_parentKey'
     SAVED        = '_saved'
 
-    define_value  = Utils.defineValue
-    has_own       = Utils.hasOwn
-    is_enumerable = Utils.isEnumerable
-    is_object     = Utils.isObject
+    define_value  = utils.defineValue
+    has_own       = utils.hasOwn
+    is_enumerable = utils.isEnumerable
+    is_object     = utils.isObject
 
 
     ###
@@ -71,7 +71,7 @@ app.factory 'ksc.EditableRecord', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          throw new Errors.ArgumentType options:    options
+          throw new errors.ArgumentType options:    options
                                         argument:   2
                                         acceptable: 'object'
         options.subtreeClass = EditableRecord
@@ -124,18 +124,18 @@ app.factory 'ksc.EditableRecord', [
       ###
       _delete: (keys...) ->
         unless keys.length
-          throw new Errors.MissingArgument {name: 'key', argument: 1}
+          throw new errors.MissingArgument {name: 'key', argument: 1}
 
         record = @
 
         for key, i in keys
           unless typeof key in ['number', 'string']
-            throw new Errors.ArgumentType key:        key
+            throw new errors.ArgumentType key:        key
                                           argument:   i + 1
                                           acceptable: ['number', 'string']
 
           if not i and contract = record._options.contract
-            throw new Errors.ContractBreak {key, value, contract: contract[key]}
+            throw new errors.ContractBreak {key, value, contract: contract[key]}
 
           if has_own record[SAVED], key
             unless record[DELETED_KEYS][key]
@@ -249,9 +249,9 @@ app.factory 'ksc.EditableRecord', [
 
         setter = (update) ->
           if typeof update is 'function'
-            throw new Errors.Type {update, notAcceptable: 'function'}
+            throw new errors.Type {update, notAcceptable: 'function'}
 
-          if Utils.identical saved[key], update
+          if utils.identical saved[key], update
             delete edited[key]
           else
             contract?._match key, update
@@ -281,7 +281,7 @@ app.factory 'ksc.EditableRecord', [
           was_changed = record[CHANGED_KEYS][key]
 
           if (is_object(saved[key]) and saved[key]._changes) or
-          (has_own(edited, key) and not Utils.identical saved[key], edited[key])
+          (has_own(edited, key) and not utils.identical saved[key], edited[key])
             unless was_changed
               define_value record, CHANGES, record[CHANGES] + 1
               define_value record[CHANGED_KEYS], key, true, false, true
@@ -298,7 +298,7 @@ app.factory 'ksc.EditableRecord', [
           update_id()
 
         # not enumerable if value is undefined
-        Utils.defineGetSet record, key, getter, setter, 1
+        utils.defineGetSet record, key, getter, setter, 1
         return
 
 

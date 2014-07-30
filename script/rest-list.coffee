@@ -1,7 +1,7 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.Errors', 'ksc.List', 'ksc.RestUtils',
-  ($http, Errors, List, RestUtils) ->
+  '$http', 'ksc.List', 'ksc.errors', 'ksc.restUtils',
+  ($http, List, errors, restUtils) ->
 
     REST_PENDING = 'restPending'
 
@@ -68,7 +68,7 @@ app.factory 'ksc.RestList', [
 
         unless (endpoint = list.options.endpoint) and (url = endpoint.url) and
         typeof url is 'string'
-          throw new Errors.Type 'options.endpoint.url': url
+          throw new errors.Type 'options.endpoint.url': url
                                 acceptable: 'string'
 
         if query_parameters
@@ -78,7 +78,7 @@ app.factory 'ksc.RestList', [
             url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
 
         list[REST_PENDING] += 1
-        RestUtils.wrapPromise $http.get(url), (err, result) ->
+        restUtils.wrapPromise $http.get(url), (err, result) ->
           list[REST_PENDING] -= 1
           callback err, result
 
@@ -218,7 +218,7 @@ app.factory 'ksc.RestList', [
           data = data[endpoint_options[key]]
 
         unless data instanceof Array
-          throw new Errors.Value 'options.endpoint.responseProperty': {}.undef
+          throw new errors.Value 'options.endpoint.responseProperty': {}.undef
                                  description: 'array type property in ' +
                                               'response is not found or ' +
                                               'unspecified'
@@ -260,15 +260,15 @@ app.factory 'ksc.RestList', [
 
           orig_rec = record
           unless (record = list.map[id = record?._id])
-            throw new Errors.Key {key: orig_rec, description: 'no such element'}
+            throw new errors.Key {key: orig_rec, description: 'no such element'}
 
           if unique_record_map[id]
-            throw new Errors.Value {id, description: 'not unique'}
+            throw new errors.Value {id, description: 'not unique'}
 
           unique_record_map[id] = record
 
         unless records.length
-          throw new Errors.MissingArgument {name: 'record', argument: 1}
+          throw new errors.MissingArgument {name: 'record', argument: 1}
 
         endpoint_options = list.options.endpoint or {}
 
@@ -280,9 +280,9 @@ app.factory 'ksc.RestList', [
           bulk_method = 'delete'
         if bulk_method
           unless endpoint_options.url
-            throw new Errors.Value {'options.endpoint.url': {}.undef}
+            throw new errors.Value {'options.endpoint.url': {}.undef}
           unless typeof endpoint_options.url is 'string'
-            throw new Errors.Type 'options.endpoint.url': endpoint_options.url
+            throw new errors.Type 'options.endpoint.url': endpoint_options.url
                                   acceptable: 'string'
 
           data = for record in records
@@ -295,7 +295,7 @@ app.factory 'ksc.RestList', [
           args.push(data) unless bulk_method is 'delete'
           list[REST_PENDING] += 1
           promise = $http[bulk_method] args...
-          return RestUtils.wrapPromise promise, (err, raw_response) ->
+          return restUtils.wrapPromise promise, (err, raw_response) ->
             list[REST_PENDING] -= 1
             unless err
               if save_type
@@ -311,7 +311,7 @@ app.factory 'ksc.RestList', [
           raw_responses = Array::slice.call arguments, 1
           callback? err, results, raw_responses...
 
-        RestUtils.asyncSquash records, finished, (record) ->
+        restUtils.asyncSquash records, finished, (record) ->
           id     = record._id
           method = 'delete'
           url    = list.options.record?.endpoint?.url
@@ -324,10 +324,10 @@ app.factory 'ksc.RestList', [
             #               url = list.options?.endpoint?.url
 
           unless url
-            throw new Errors.Value {'options.endpoint.url': {}.undef}
+            throw new errors.Value {'options.endpoint.url': {}.undef}
 
           unless typeof url is 'string'
-            throw new Errors.Type 'options.record.endpoint.url': url
+            throw new errors.Type 'options.record.endpoint.url': url
                                   acceptable: 'string'
 
           # if id?
@@ -337,7 +337,7 @@ app.factory 'ksc.RestList', [
           args.push(record._entity()) if save_type
           list[REST_PENDING] += 1
           promise = $http[method](args...)
-          RestUtils.wrapPromise promise, (err, raw_response) ->
+          restUtils.wrapPromise promise, (err, raw_response) ->
             list[REST_PENDING] -= 1
             unless err
               if save_type

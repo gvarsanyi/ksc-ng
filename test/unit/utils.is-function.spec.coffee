@@ -1,26 +1,26 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'Utils', ->
+  describe 'utils', ->
 
-    Utils = null
+    utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        Utils = $injector.get 'ksc.Utils'
+        utils = $injector.get 'ksc.utils'
 
 
     describe 'Method .isFunction()', ->
 
       it 'Matches a function', ->
-        expect(Utils.isFunction (->)).toBe true
-        expect(Utils.isFunction 1).toBe false
+        expect(utils.isFunction (->)).toBe true
+        expect(utils.isFunction 1).toBe false
 
       it 'Matches multiple functions', ->
-        expect(Utils.isFunction (->), (->), (->)).toBe true
-        expect(Utils.isFunction (->), null, (->)).toBe false
-        expect(Utils.isFunction 1, (->)).toBe false
+        expect(utils.isFunction (->), (->), (->)).toBe true
+        expect(utils.isFunction (->), null, (->)).toBe false
+        expect(utils.isFunction 1, (->)).toBe false
 
       it 'Requires 1+ arguments', ->
-        expect(-> Utils.isFunction()).toThrow()
+        expect(-> utils.isFunction()).toThrow()

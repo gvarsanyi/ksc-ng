@@ -1,20 +1,15 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'Utils', ->
+  describe 'utils', ->
 
-    Utils = null
+    utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        Utils = $injector.get 'ksc.Utils'
+        utils = $injector.get 'ksc.utils'
 
-
-    it 'No instance use (no properties on instance)', ->
-      obj = new Utils
-      keys = (k for k of obj)
-      expect(keys.length).toBe 0
 
     describe 'Method .defineGetSet()', ->
 
@@ -22,7 +17,7 @@ describe 'app.factory', ->
         obj = {}
         getter = -> 1 + 1
 
-        Utils.defineGetSet obj, 'a', getter
+        utils.defineGetSet obj, 'a', getter
 
         found_keys = {}
         for own k of obj
@@ -39,7 +34,7 @@ describe 'app.factory', ->
         getter = -> 1 + 1
         setter = -> @x = 1
 
-        Utils.defineGetSet obj, 'a', getter, setter
+        utils.defineGetSet obj, 'a', getter, setter
 
         found_keys = {}
         for own k of obj
@@ -53,7 +48,7 @@ describe 'app.factory', ->
 
       it 'Set visible getter/setter', ->
         obj = {}
-        Utils.defineGetSet obj, 'a', (->), true
+        utils.defineGetSet obj, 'a', (->), true
 
         found_keys = {}
         for k of obj

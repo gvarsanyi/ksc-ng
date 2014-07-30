@@ -1,12 +1,12 @@
 
 app.factory 'ksc.EventEmitter', [
-  '$interval', '$rootScope', '$timeout', 'ksc.Errors', 'ksc.Utils',
-  ($interval, $rootScope, $timeout, Errors, Utils) ->
+  '$interval', '$rootScope', '$timeout', 'ksc.errors', 'ksc.utils',
+  ($interval, $rootScope, $timeout, errors, utils) ->
 
     UNSUBSCRIBER = '__unsubscriber__'
 
-    is_function = Utils.isFunction
-    is_object   = Utils.isObject
+    is_function = utils.isFunction
+    is_object   = utils.isObject
 
     ###
     A class used by EventEmitter to store and manage callbacks.
@@ -95,17 +95,17 @@ app.factory 'ksc.EventEmitter', [
 
     name_check = (name) ->
       unless typeof name is 'string'
-        throw new Errors.ArgumentType {name, argument: 1, acceptable: 'string'}
+        throw new errors.ArgumentType {name, argument: 1, acceptable: 'string'}
 
       unless name
-        throw new Errors.Value {name, description: 'must be a non-empty string'}
+        throw new errors.Value {name, description: 'must be a non-empty string'}
 
 
     subscription_decorator = (names, unsubscribe_target, callback, next) ->
       @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
-        throw new Errors.ArgumentType callback:   callback
+        throw new errors.ArgumentType callback:   callback
                                       argument:   'last'
                                       acceptable: 'function'
 
@@ -355,7 +355,7 @@ app.factory 'ksc.EventEmitter', [
               delete attached[increment]
 
             unknown = (value) ->
-              throw new Errors.ArgumentType unsubscriber: unsubscriber
+              throw new errors.ArgumentType unsubscriber: unsubscriber
                                             argument:     1
                                             acceptable:  ['function', 'Promise']
 

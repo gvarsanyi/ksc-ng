@@ -1,14 +1,14 @@
 
-describe 'app.factory', ->
+describe 'app.service', ->
 
-  describe 'Utils', ->
+  describe 'utils', ->
 
-    Utils = null
+    utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        Utils = $injector.get 'ksc.Utils'
+        utils = $injector.get 'ksc.utils'
 
 
     describe 'Method .hasOwn()', ->
@@ -16,20 +16,20 @@ describe 'app.factory', ->
         a = {a: 1}
         b = Object.create a
 
-        expect(Utils.hasOwn a, 'a').toBe true
+        expect(utils.hasOwn a, 'a').toBe true
         expect(b.a).toBe 1
-        expect(Utils.hasOwn b, 'a').toBe false
+        expect(utils.hasOwn b, 'a').toBe false
 
       it 'enumerable=true', ->
         a = {a: 1, b: 2}
         Object.defineProperty a, 'b', enumerable: false
 
-        expect(Utils.hasOwn a, 'a', true).toBe true
-        expect(Utils.hasOwn a, 'b', true).toBe false
+        expect(utils.hasOwn a, 'a', true).toBe true
+        expect(utils.hasOwn a, 'b', true).toBe false
 
       it 'enumerable=false', ->
         a = {a: 1, b: 2}
         Object.defineProperty a, 'b', enumerable: false
 
-        expect(Utils.hasOwn a, 'a', false).toBe false
-        expect(Utils.hasOwn a, 'b', false).toBe true
+        expect(utils.hasOwn a, 'a', false).toBe false
+        expect(utils.hasOwn a, 'b', false).toBe true
