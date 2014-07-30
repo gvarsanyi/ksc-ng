@@ -5,13 +5,13 @@ priority to-do
 - event-emitter: add emissions to Record/EditableRecord
 - list: add pseudo/new elements logic
 - list-filter
-- rest-list: primaryId/composite ID save/delete aftermath
 
 to-do
 ----------------------------
 - list: add sort logic
 - event-emitter: pause/unpause+cue logic
 - record: support for array property type (+ record-contract, editable-record)
+- rest-list: support composite ID with _primaryId and related crud operations
 
 unit tests missing / partial
 ----------------------------

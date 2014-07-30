@@ -231,17 +231,10 @@ app.factory 'ksc.EditableRecord', [
         contract = options.contract
 
         update_id = -> # update _id if needed
-          act = ->
+          if has_own(record, ID) and key is options.idProperty
             old_id = record[ID]
             Record.setId record
             record[PARENT]?.recordIdChanged? record, old_id
-
-          if has_own record, ID
-            if Array.isArray id_property = options.idProperty
-              if id_property.indexOf(key) > -1
-                act()
-            else if key is id_property
-              act()
 
         getter = ->
           if not contract and record[DELETED_KEYS][key]

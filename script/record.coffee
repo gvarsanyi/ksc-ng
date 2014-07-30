@@ -41,9 +41,6 @@ app.factory 'ksc.Record', [
       # @property [number|string] record id
       _id: undef
 
-      # @property [number|string] first chunk of id if _id is composite
-      _primaryId: undef
-
       # @property [object] record-related options
       _options: null
 
@@ -202,7 +199,7 @@ app.factory 'ksc.Record', [
 
 
       ###
-      Define _id (and _primaryId for composite IDs) for the record
+      Define _id for the record
 
       @param [Record] record record instance to be updated
 
@@ -222,15 +219,7 @@ app.factory 'ksc.Record', [
 
         return unless (id_property = options[key])
 
-        if Array.isArray id_property
-          unless primary_id = record[id_property[0]]
-            throw new Errors.Value id_property, 'First element of idProperty ' +
-                                                'must have a value'
-          parts = (record[pt] for pt in id_property when record[pt]?)
-          define_value record, '_id', parts.join '-'
-          define_value record, '_primaryId', primary_id
-        else
-          define_value record, '_id', record[id_property]
+        define_value record, '_id', record[id_property]
 
         return
 ]

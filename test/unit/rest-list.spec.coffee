@@ -306,28 +306,6 @@ describe 'app.factory', ->
       expect(list.map[2]._changes).toBe 0
       expect(list.map[3]._changes).toBe 0
 
-    it 'Method .restSave() with composite IDs', ->
-      list = new RestList
-        endpoint: {url}
-        record:
-          idProperty: ['id1', 'id2']
-          endpoint: url: id_url
-
-      list.push {id1: 1, id2: 2, x: 'a'}
-      list[0].x = 'b'
-
-      expect(list[0]._id).toBe '1-2'
-      expect(list[0]._primaryId).toBe 1
-
-      expected_url = id_url.replace '<id>', '1'
-      $httpBackend.expectPUT(expected_url).respond {id1: 1, id2: 2, x: 'b'}
-
-      list.restSave list[0], ->
-
-      $httpBackend.flush()
-
-      expect(list[0]._saved.x).toBe 'b'
-
     it 'Method .restDelete()', ->
       list = new RestList
         endpoint: {url}
@@ -384,15 +362,12 @@ describe 'app.factory', ->
       expect(list.map[1]._changes).toBe 1
       expect(spyable.callback).toHaveBeenCalled()
 
-    it 'Method .restDelete() with bulkDelete and composite IDs', ->
-      list = new RestList
-        endpoint: {url, bulkDelete: 1}
-        record: idProperty: ['id1', 'id2']
+    it 'Method .restDelete() with no callback', ->
+      list = new RestList endpoint: {url, bulkDelete: 1}
 
-      list.push {id1: 1, id2: 2, x: 'a'}, {id1: 2, id2: 3, x: 'a'}
+      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
-      expect(list[0]._id).toBe '1-2'
-      expect(list[0]._primaryId).toBe 1
+      expect(list[0]._id).toBe 1
 
       $httpBackend.expectDELETE(url).respond {yo: 1}
 

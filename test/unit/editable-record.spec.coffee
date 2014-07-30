@@ -162,29 +162,6 @@ describe 'app.factory', ->
       record._replace {a: 2}
       expect(record._saved).not.toBe saved
 
-    it 'Composite id changes', ->
-      example = {id1: 1, id2: 2, x: 3}
-      opts    = idProperty: ['id1', 'id2']
-
-      record = new EditableRecord example, opts
-      record.id1 = 4
-      record.id1 = 2
-      expect(record._id).toBe '2-2'
-
-      # report to parent
-      faux_parent = {recordIdChanged: ->}
-      spyOn faux_parent, 'recordIdChanged'
-      record = new EditableRecord example, opts, faux_parent
-      record.id1 = 2
-      expect(faux_parent.recordIdChanged).toHaveBeenCalledWith record, '1-2'
-
-      # don't report if id has not changed
-      faux_parent = {recordIdChanged: ->}
-      spyOn faux_parent, 'recordIdChanged'
-      record = new EditableRecord example, opts, faux_parent
-      record.x = 2
-      expect(faux_parent.recordIdChanged).not.toHaveBeenCalled()
-
     it 'Does not take functions', ->
       record = new EditableRecord {id: 1, x: 3}
       expect(-> record.x = ->).toThrow()

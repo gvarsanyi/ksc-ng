@@ -284,11 +284,12 @@ app.factory 'ksc.RestList', [
           unless typeof endpoint_options.url is 'string'
             throw new Errors.Type 'options.endpoint.url', 'string'
 
-          if save_type
-            data = (record._entity() for record in records)
-          else
-            data = for record in records
-              if record._primaryId? then record._primaryId else record._id
+          data = for record in records
+            if save_type
+              record._entity()
+            else
+              record._id
+
           args = [endpoint_options.url]
           args.push(data) unless bulk_method is 'delete'
           list[REST_PENDING] += 1
@@ -310,7 +311,7 @@ app.factory 'ksc.RestList', [
           callback? err, results, raw_responses...
 
         RestUtils.asyncSquash records, finished, (record) ->
-          id     = if record._primaryId? then record._primaryId else record._id
+          id     = record._id
           method = 'delete'
           url    = list.options.record?.endpoint?.url
           if save_type
