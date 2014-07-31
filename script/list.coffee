@@ -143,11 +143,11 @@ app.factory 'ksc.List', [
         cut = []
 
         list.events.halt()
-
-        for i in [0 ... list.length] by 1
-          cut.push list.shift()
-
-        list.events.unhalt()
+        try
+          for i in [0 ... list.length] by 1
+            cut.push list.shift()
+        finally
+          list.events.unhalt()
 
         if cut.length
           list.events.emit 'update', {node: list, cut}
@@ -277,16 +277,12 @@ app.factory 'ksc.List', [
 
         list = @
         if old_id?
-          unless list.map[old_id] is record
-            throw new errors.Key key:         old_id
-                                 description: 'No such record in list map'
-
           list.events.halt()
-
-          cut_response = list.cut old_id
-          response = list.push record, true
-
-          list.events.unhalt()
+          try
+            cut_response = list.cut old_id
+            response = list.push record, true
+          finally
+            list.events.unhalt()
 
           response.cut = cut_response.cut
           response.record = info

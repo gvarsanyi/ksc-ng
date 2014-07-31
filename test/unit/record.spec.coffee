@@ -182,6 +182,10 @@ describe 'app.factory', ->
       record = new Record {a: 1, b: 2}, {idProperty: 'b'}
       expect(record._id).toBe 2
 
+    it 'Undefined .options.idProperty and no data leaves _id undefined', ->
+      record = new Record
+      expect(record._id).toBeUndefined()
+
     it 'Can not _replace() subobject', ->
       record = new Record {a: 1, b: {a: 1}}
       expect(-> record.b._replace {x: 1}).toThrow()

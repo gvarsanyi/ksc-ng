@@ -3,7 +3,6 @@ app.factory 'ksc.EditableRecord', [
   'ksc.Record', 'ksc.errors', 'ksc.utils',
   (Record, errors, utils) ->
 
-    ID           = '_id'
     CHANGES      = '_changes'
     CHANGED_KEYS = '_changedKeys'
     DELETED_KEYS = '_deletedKeys'
@@ -166,7 +165,7 @@ app.factory 'ksc.EditableRecord', [
             changed.push key
 
         if changed.length
-          EditableRecord.emitUpdate record, 'delete', {keys: changed}
+          Record.emitUpdate record, 'delete', {keys: changed}
 
         !!changed.length
 
@@ -189,29 +188,29 @@ app.factory 'ksc.EditableRecord', [
 
         if events = record[EVENTS]
           events.halt()
+        try
+          dropped = record._revert()
 
-        dropped = record._revert()
+          if changed = super
+            contract = record._options.contract
 
-        if changed = super
-          contract = record._options.contract
+            define_value record, EDITED, {}
+            define_value record, CHANGES, 0
+            define_value record, CHANGED_KEYS, {}
+            define_value record, DELETED_KEYS, if contract then null else {}
+            define_value record, SAVED, {}
 
-          define_value record, EDITED, {}
-          define_value record, CHANGES, 0
-          define_value record, CHANGED_KEYS, {}
-          define_value record, DELETED_KEYS, if contract then null else {}
-          define_value record, SAVED, {}
+            for key, value of record
+              define_value record[SAVED], key, value, false, true
+              EditableRecord.setProperty record, key
 
-          for key, value of record
-            define_value record[SAVED], key, value, false, true
-            EditableRecord.setProperty record, key
-
-          Object.freeze record[SAVED]
-
-        if events
-          events.unhalt()
+            Object.freeze record[SAVED]
+        finally
+          if events
+            events.unhalt()
 
         if dropped or changed
-          EditableRecord.emitUpdate record, 'replace'
+          Record.emitUpdate record, 'replace'
 
         dropped or changed
 
@@ -245,50 +244,9 @@ app.factory 'ksc.EditableRecord', [
 
         if changed
           define_value record, CHANGES, 0
-          EditableRecord.emitUpdate record, 'revert'
+          Record.emitUpdate record, 'revert'
 
         changed
-
-
-      ###
-      Event emission - with handling complexity around subobjects
-
-      @param [object] record reference to record or subrecord object
-      @param [string] action 'revert', 'replace', 'set', 'delete' etc
-      @param [object] extra_info (optional) info to be attached to the emission
-
-      @return [undefined]
-      ###
-      @emitUpdate: (record, action, extra_info={}) ->
-        path   = []
-        source = record
-
-        until events = source[EVENTS]
-          path.unshift source._parentKey
-          source = source._parent
-
-        info = {node: record}
-        unless record is source
-          info.parent = source
-          info.path = path
-        info.action = action
-
-        for key, value of extra_info
-          info[key] = value
-
-        events.emit 'update', info
-
-        if source is record
-          old_id = null
-          if has_own source, ID
-            old_id = source[ID]
-            Record.setId source
-            if old_id is source[ID]
-              old_id = null
-
-          source[PARENT]?._recordChange? source, info, old_id
-
-        return
 
       ###
       Define getter/setter property on record based on {Record#_saved} and
@@ -363,7 +321,7 @@ app.factory 'ksc.EditableRecord', [
 
             Object.defineProperty record, key, enumerable: true
 
-            EditableRecord.emitUpdate record, 'set', {key}
+            Record.emitUpdate record, 'set', {key}
 
         # not enumerable if value is undefined
         utils.defineGetSet record, key, getter, setter, 1

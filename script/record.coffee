@@ -3,9 +3,12 @@ app.factory 'ksc.Record', [
   'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.errors', 'ksc.utils',
   (EventEmitter, RecordContract, errors, utils) ->
 
-    EVENTS     = '_events'
-    OPTIONS    = '_options'
-    PARENT_KEY = '_parentKey'
+    EVENTS      = '_events'
+    ID          = '_id'
+    ID_PROPERTY = 'idProperty'
+    OPTIONS     = '_options'
+    PARENT      = '_parent'
+    PARENT_KEY  = '_parentKey'
 
     define_value = utils.defineValue
     has_own      = utils.hasOwn
@@ -90,7 +93,7 @@ app.factory 'ksc.Record', [
 
         if parent? or parent_key?
           object_required 'options', parent, 3
-          define_value record, '_parent', parent
+          define_value record, PARENT, parent
 
           if parent_key?
             unless typeof parent_key in ['number', 'string']
@@ -98,7 +101,7 @@ app.factory 'ksc.Record', [
                                     argument:   4
                                     acceptable: ['number', 'string']
             define_value record, PARENT_KEY, parent_key
-            delete record._id
+            delete record[ID]
 
         # hide (set to non-enumerable) non-data properties/methods
         for key, refs of utils.getProperties Object.getPrototypeOf record
@@ -106,14 +109,16 @@ app.factory 'ksc.Record', [
             Object.defineProperty ref, key, enumerable: false
 
         unless parent_key?
+          define_value record, ID, undefined
           define_value record, EVENTS, new EventEmitter
+          record[EVENTS].halt()
 
         record._replace data
 
         if parent_key?
           define_value record, EVENTS, null
-
-        Record.setId record
+        else
+          record[EVENTS].unhalt()
 
         RecordContract.finalizeRecord record
 
@@ -218,9 +223,50 @@ app.factory 'ksc.Record', [
             changed = true
 
         if changed and events = record[EVENTS]
-          events.emit 'update', {node: record, action: 'replace'}
+          Record.emitUpdate record, 'replace'
 
         changed
+
+
+      ###
+      Event emission - with handling complexity around subobjects
+
+      @param [object] record reference to record or subrecord object
+      @param [string] action 'revert', 'replace', 'set', 'delete' etc
+      @param [object] extra_info (optional) info to be attached to the emission
+
+      @return [undefined]
+      ###
+      @emitUpdate: (record, action, extra_info={}) ->
+        path   = []
+        source = record
+
+        until events = source[EVENTS]
+          path.unshift source[PARENT_KEY]
+          source = source[PARENT]
+
+        info = {node: record}
+        unless record is source
+          info.parent = source
+          info.path = path
+        info.action = action
+
+        for key, value of extra_info
+          info[key] = value
+
+        events.emit 'update', info
+
+        old_id = null
+        if source is record
+          old_id = source[ID]
+          Record.setId source
+          if old_id is source[ID]
+            old_id = null
+
+        unless source[EVENTS]._halt
+          source[PARENT]?._recordChange? source, info, old_id
+
+        return
 
 
       ###
@@ -231,20 +277,14 @@ app.factory 'ksc.Record', [
       @return [undefined]
       ###
       @setId: (record) ->
-        # set IDs only for records in list (no stand-alones, no subrecords)
-        return if record[PARENT_KEY]
-
-        key = 'idProperty'
         options = record[OPTIONS]
 
-        unless options[key] # assign first as ID
+        unless options[ID_PROPERTY] # assign first as ID
           for k of record
-            options[key] = k
+            options[ID_PROPERTY] = k
             break
 
-        return unless (id_property = options[key])
-
-        define_value record, '_id', record[id_property]
+        define_value record, ID, record[options[ID_PROPERTY]]
 
         return
 ]
