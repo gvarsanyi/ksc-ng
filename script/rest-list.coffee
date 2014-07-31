@@ -68,8 +68,9 @@ app.factory 'ksc.RestList', [
 
         unless (endpoint = list.options.endpoint) and (url = endpoint.url) and
         typeof url is 'string'
-          throw new errors.Type 'options.endpoint.url': url
-                                acceptable: 'string'
+          throw new errors.Type
+            'options.endpoint.url': url
+            acceptable:             'string'
 
         if query_parameters
           parts = for k, v of query_parameters
@@ -282,8 +283,9 @@ app.factory 'ksc.RestList', [
           unless endpoint_options.url
             throw new errors.Value {'options.endpoint.url': undefined}
           unless typeof endpoint_options.url is 'string'
-            throw new errors.Type 'options.endpoint.url': endpoint_options.url
-                                  acceptable: 'string'
+            throw new errors.Type
+              'options.endpoint.url': endpoint_options.url
+              acceptable:             'string'
 
           data = for record in records
             if save_type
@@ -327,8 +329,9 @@ app.factory 'ksc.RestList', [
             throw new errors.Value {'options.endpoint.url': undefined}
 
           unless typeof url is 'string'
-            throw new errors.Type 'options.record.endpoint.url': url
-                                  acceptable: 'string'
+            throw new errors.Type
+              'options.record.endpoint.url': url
+              acceptable:                    'string'
 
           # if id?
           url = url.replace '<id>', id

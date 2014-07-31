@@ -27,18 +27,23 @@ app.factory 'ksc.RecordContract', [
             delete desc.nullable
 
           if desc.type is 'object' and not is_object desc.contract
-            throw new errors.Type contract:    desc.contract
-                                  acceptable:  'object'
-                                  description: 'object type requires contract'
+            throw new errors.Type
+              contract:    desc.contract
+              acceptable:  'object'
+              description: 'object type requires contract'
+
           if desc.contract
             if has_own(desc, 'type') and desc.type isnt 'object'
-              throw new errors.Type contract:   desc.contract
-                                    acceptable: 'object'
+              throw new errors.Type
+                contract:   desc.contract
+                acceptable: 'object'
+
             if has_own desc, 'default'
-              throw new errors.Value default:     desc.default
-                                     contract:    desc.contract
-                                     description: 'subcontract can not have ' +
-                                                  'default value'
+              throw new errors.Value
+                default:     desc.default
+                contract:    desc.contract
+                description: 'subcontract can not have default value'
+
             delete desc.type
             desc.contract = new RecordContract desc.contract
           else
@@ -46,9 +51,9 @@ app.factory 'ksc.RecordContract', [
             RecordContract.typeDefaults[typeof desc.default]?
               desc.type = typeof desc.default
             unless RecordContract.typeDefaults[desc.type]?
-              throw new errors.Type type:       desc.type
-                                    acceptable: ['boolean', 'number', 'object',
-                                                 'string']
+              throw new errors.Type
+                type:       desc.type
+                acceptable: ['boolean', 'number', 'object', 'string']
 
           @_match key, @_default key # checks default value
 

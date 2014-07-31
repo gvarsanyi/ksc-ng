@@ -124,8 +124,8 @@ describe 'app.factory', ->
         f: {type: 'boolean'}
         g: {contract: {a: {type: 'number'}}, nullable: true}
         h: {type: 'object', contract: {
-              a: {type: 'number', default: 1, nullable: true},
-              b: {contract: {x: {type: 'number', nullable: true}}}}}
+          a: {type: 'number', default: 1, nullable: true},
+          b: {contract: {x: {type: 'number', nullable: true}}}}}
 
       record = new Record {id: 1}, {contract}
 

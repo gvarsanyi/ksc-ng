@@ -97,9 +97,10 @@ app.factory 'ksc.Record', [
 
           if parent_key?
             unless typeof parent_key in ['number', 'string']
-              throw new errors.Type parent_key: parent_key
-                                    argument:   4
-                                    acceptable: ['number', 'string']
+              throw new errors.Type
+                parent_key: parent_key
+                argument:   4
+                acceptable: ['number', 'string']
             define_value record, PARENT_KEY, parent_key
             delete record[ID]
 

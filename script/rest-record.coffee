@@ -114,8 +114,9 @@ app.factory 'ksc.RestRecord', [
           throw new errors.Value {'_options.endpoint.url': undefined}
 
         unless typeof url is 'string'
-          throw new errors.Type '_options.endpoint.url': url
-                                acceptable: 'string'
+          throw new errors.Type
+            '_options.endpoint.url': url
+            acceptable:              'string'
 
         url
 ]

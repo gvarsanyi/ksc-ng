@@ -175,9 +175,9 @@ describe 'app.factory', ->
         c: {type: 'boolean', nullable: true}
         d: {contract: {a: {type: 'number', nullable: true}}, nullable: true}
         e: {type: 'object', contract: {
-              a: {type: 'number', default: 1},
-              b: {nullable: false, contract:
-                  x: {type: 'number', nullable: true}}}}
+          a: {type: 'number', default: 1},
+          b: {nullable: false, contract:
+            x: {type: 'number', nullable: true}}}}
 
       record = new EditableRecord {id: 1}, {contract}
       expect(-> record.id = 'wsd').toThrow()

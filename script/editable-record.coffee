@@ -71,9 +71,10 @@ app.factory 'ksc.EditableRecord', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          throw new errors.ArgumentType options:    options
-                                        argument:   2
-                                        acceptable: 'object'
+          throw new errors.ArgumentType
+            options:    options
+            argument:   2
+            acceptable: 'object'
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
@@ -135,9 +136,10 @@ app.factory 'ksc.EditableRecord', [
 
         for key, i in keys
           unless typeof key in ['number', 'string']
-            throw new errors.ArgumentType key:        key
-                                          argument:   i + 1
-                                          acceptable: ['number', 'string']
+            throw new errors.ArgumentType
+              key:        key
+              argument:   i + 1
+              acceptable: ['number', 'string']
 
           if not i and contract = record._options.contract
             throw new errors.ContractBreak {key, value, contract: contract[key]}

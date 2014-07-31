@@ -105,9 +105,10 @@ app.factory 'ksc.EventEmitter', [
       @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
-        throw new errors.ArgumentType callback:   callback
-                                      argument:   'last'
-                                      acceptable: 'function'
+        throw new errors.ArgumentType
+          callback:   callback
+          argument:   'last'
+          acceptable: 'function'
 
       unless unsubscribe_target?[UNSUBSCRIBER] or
       (is_object(unsubscribe_target) and
@@ -384,9 +385,10 @@ app.factory 'ksc.EventEmitter', [
               delete attached[increment]
 
             unknown = (value) ->
-              throw new errors.ArgumentType unsubscriber: unsubscriber
-                                            argument:     1
-                                            acceptable:  ['function', 'Promise']
+              throw new errors.ArgumentType
+                unsubscriber: unsubscriber
+                argument:     1
+                acceptable:   ['function', 'Promise']
 
             if is_object unsubscriber
               if unsubscriber.$$timeoutId? and unsubscriber.finally?
