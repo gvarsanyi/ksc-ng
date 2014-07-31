@@ -111,7 +111,7 @@ app.factory 'ksc.RestRecord', [
       ###
       @getUrl: (record) ->
         unless (endpoint = record[OPTIONS].endpoint) and (url = endpoint.url)?
-          throw new errors.Value {'_options.endpoint.url': {}.undef}
+          throw new errors.Value {'_options.endpoint.url': undefined}
 
         unless typeof url is 'string'
           throw new errors.Type '_options.endpoint.url': url

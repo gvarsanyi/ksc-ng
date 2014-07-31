@@ -41,7 +41,7 @@ describe 'app.service', ->
         expect(utils.identical r1, r2).toBe true
 
       it 'Comparing non-equal values', ->
-        expect(utils.identical {}.undef, null).toBe false
+        expect(utils.identical undefined, null).toBe false
         expect(utils.identical 0, null).toBe false
         expect(utils.identical false, null).toBe false
         expect(utils.identical {}, null).toBe false
@@ -51,6 +51,6 @@ describe 'app.service', ->
         expect(utils.identical 1, 'xx').toBe false
         expect(utils.identical {a: 1}, {a: 2}).toBe false
         expect(utils.identical {a: 1}, {b: 1}).toBe false
-        expect(utils.identical {a: 1, x: {}.undef}, {a: 1}).toBe false
+        expect(utils.identical {a: 1, x: undefined}, {a: 1}).toBe false
         expect(utils.identical {a: 1, b: {}}, {a: 1, b: {x: 1}}).toBe false
         expect(utils.identical {a: 1, b: {x: 1}}, {a: 1, b: {x: 2}}).toBe false

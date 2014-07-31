@@ -88,7 +88,7 @@ app.factory 'ksc.List', [
       @throw [MissingArgumentError] record reference argument not provided
 
       @event 'update' sends out message if list changes:
-        events.emit({cut: [records...]})
+        events.emit 'update', {node: list, cut: [records...]}
 
       @return [Object] returns list of affected records: {cut: [records...]}
       ###
@@ -120,7 +120,7 @@ app.factory 'ksc.List', [
           Array::push.call list, tmp_container...
           break
 
-        list.events.emit 'update', {cut}
+        list.events.emit 'update', {node: list, cut}
 
         {cut}
 
@@ -132,7 +132,7 @@ app.factory 'ksc.List', [
       - .options.record.idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes:
-        events.emit({cut: [records...]})
+        events.emit 'update', {node: list, cut: [records...]}
 
       @return [List] returns the list array (chainable)
       ###
@@ -145,7 +145,7 @@ app.factory 'ksc.List', [
           cut.push list.shift()
 
         if cut.length
-          list.events.emit 'update', {cut}
+          list.events.emit 'update', {node: list, cut}
 
         @
 
@@ -155,6 +155,9 @@ app.factory 'ksc.List', [
 
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
+
+      @event 'update' sends out message if list changes:
+        events.emit 'update', {node: list, cut: [record]}
 
       @return [Record] The removed element
       ###
@@ -172,6 +175,9 @@ app.factory 'ksc.List', [
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
+
+      @event 'update' sends out message if list changes:
+        events.emit 'update', {node: list, insert: [records], update: [records]}
 
       @overload push(items...)
         @param [Object] items... Record or vanilla object that will be turned
@@ -198,6 +204,9 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
+      @event 'update' sends out message if list changes:
+        events.emit 'update', {node: list, cut: [record]}
+
       @return [Record] The removed element
       ###
       shift: ->
@@ -214,6 +223,9 @@ app.factory 'ksc.List', [
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
+
+      @event 'update' sends out message if list changes:
+        events.emit 'update', {node: list, insert: [records], update: [records]}
 
       @overload unshift(items...)
         @param [Object] items... Record or vanilla object that will be turned
@@ -247,10 +259,13 @@ app.factory 'ksc.List', [
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
 
+      @event 'update' sends out message if list changes:
+        events.emit 'update', {node: list, insert: [records], update: [records]}
+
       @return [number|Object] list.length or {insert: [...], update: [...]}
       ###
       __add: (orig_fn, items, return_records) ->
-        changes = {}
+        changes = {node: list}
         unless typeof return_records is 'boolean'
           items.push return_records
           return_records = null
@@ -287,7 +302,10 @@ app.factory 'ksc.List', [
         list.events.emit 'update', changes
 
         if return_records
-          return changes
+          response = {}
+          for key, value of changes when key isnt 'node'
+            response[key] = value
+          return response
 
         list.length # default push/unshift return behavior
 
@@ -300,11 +318,15 @@ app.factory 'ksc.List', [
 
       @param [string] orig_fn 'pop' or 'shift'
 
+      @event 'update' sends out message if list changes:
+        events.emit 'update', {node: list, cut: [record]}
+
       @return [Record] Removed record
       ###
       __remove: (orig_fn) ->
-        if record = Array.prototype[orig_fn].call @
-          delete @map[record._id]
-          @events.emit 'update', {cut: [record]}
+        list = @
+        if record = Array.prototype[orig_fn].call list
+          delete list.map[record._id]
+          list.events.emit 'update', {node: list, cut: [record]}
         record
 ]

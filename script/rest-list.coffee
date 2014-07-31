@@ -218,7 +218,7 @@ app.factory 'ksc.RestList', [
           data = data[endpoint_options[key]]
 
         unless data instanceof Array
-          throw new errors.Value 'options.endpoint.responseProperty': {}.undef
+          throw new errors.Value 'options.endpoint.responseProperty': undefined,
                                  description: 'array type property in ' +
                                               'response is not found or ' +
                                               'unspecified'
@@ -280,7 +280,7 @@ app.factory 'ksc.RestList', [
           bulk_method = 'delete'
         if bulk_method
           unless endpoint_options.url
-            throw new errors.Value {'options.endpoint.url': {}.undef}
+            throw new errors.Value {'options.endpoint.url': undefined}
           unless typeof endpoint_options.url is 'string'
             throw new errors.Type 'options.endpoint.url': endpoint_options.url
                                   acceptable: 'string'
@@ -324,7 +324,7 @@ app.factory 'ksc.RestList', [
             #               url = list.options?.endpoint?.url
 
           unless url
-            throw new errors.Value {'options.endpoint.url': {}.undef}
+            throw new errors.Value {'options.endpoint.url': undefined}
 
           unless typeof url is 'string'
             throw new errors.Type 'options.record.endpoint.url': url

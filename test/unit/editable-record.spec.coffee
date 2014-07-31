@@ -104,8 +104,7 @@ describe 'app.factory', ->
       expect(record.hasOwnProperty 'xx').toBe false
 
       # special properties can't be deleted
-      expect(record._delete '_changes').toBe false
-      expect(typeof record._changes).toBe 'number'
+      expect(-> record._delete '_changes').toThrow()
 
     it 'Id changes', ->
       example = {id: 1, x: 2}

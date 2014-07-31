@@ -72,6 +72,14 @@ app.service 'ksc.errors', ->
   class MissingArgumentError extends CustomError
 
   ###
+  Perimission related errors
+  @example
+      if key.substr(0, 1) is '_'
+        throw new errors.Perimission {key, description: 'property is off-limit'}
+  ###
+  class PermissionError extends CustomError
+
+  ###
   Type mismatch
   @example
       if typeof param is 'function'
@@ -98,6 +106,7 @@ app.service 'ksc.errors', ->
     Http:            HttpError
     Key:             KeyError
     MissingArgument: MissingArgumentError
+    Permission:      PermissionError
     Type:            TypeError
     Value:           ValueError
 

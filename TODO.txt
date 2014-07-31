@@ -2,14 +2,13 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- event-emitter: add emissions to Record/EditableRecord
 - list: add pseudo/new elements logic
 - list-filter
 
 to-do
 ----------------------------
 - list: add sort logic
-- event-emitter: pause/unpause+cue logic
+- generic list cache logic
 - record: support for array property type (+ record-contract, editable-record)
 - rest-list: support composite ID with _primaryId and related crud operations
 
@@ -25,5 +24,4 @@ coffeedoc missing / partial
 
 research
 ----------------------------
-- generic list cache logic options
 - better name for List (XArray? HashArray? Set?)

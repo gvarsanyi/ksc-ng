@@ -1,16 +1,15 @@
 
 app.factory 'ksc.Record', [
-  'ksc.RecordContract', 'ksc.errors', 'ksc.utils',
-  (RecordContract, errors, utils) ->
+  'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.errors', 'ksc.utils',
+  (EventEmitter, RecordContract, errors, utils) ->
 
+    EVENTS     = '_events'
     OPTIONS    = '_options'
     PARENT_KEY = '_parentKey'
 
     define_value = utils.defineValue
     has_own      = utils.hasOwn
     is_object    = utils.isObject
-
-    undef = {}.undef # guaranteed undefined
 
     object_required = (name, value, arg) ->
       unless is_object value
@@ -46,17 +45,20 @@ app.factory 'ksc.Record', [
     ###
     class Record
 
+      # @property [object|null] reference to related event-emitter instance
+      _events: undefined
+
       # @property [number|string] record id
-      _id: undef
+      _id: undefined
 
       # @property [object] record-related options
-      _options: null
+      _options: undefined
 
       # @property [object] reference to parent record or list
-      _parent: undef
+      _parent: undefined
 
       # @property [number|string] key on parent record
-      _parent_key: undef
+      _parent_key: undefined
 
 
       ###
@@ -102,7 +104,14 @@ app.factory 'ksc.Record', [
           for ref in refs
             Object.defineProperty ref, key, enumerable: false
 
+        unless parent_key?
+          define_value record, EVENTS, new EventEmitter
+          record[EVENTS]._hold = 0
+
         record._replace data
+
+        if parent_key?
+          define_value record, EVENTS, null
 
         Record.setId record
 
@@ -148,10 +157,18 @@ app.factory 'ksc.Record', [
 
       @param [object] data Key-value map of data
 
+      @event 'update' sends out message on changes if _events._hold is 0:
+        events.emit {node: record, action: 'replace'}
+
       @return [boolean] indicates change in data
       ###
-      _replace: (data) ->
+      _replace: (data, rec_cmp) ->
         record = @
+
+        if record[EVENTS] is null and record[PARENT_KEY]
+          throw new errors.Permission
+            key:         record[PARENT_KEY]
+            description: 'can not replace subobject'
 
         options = record[OPTIONS]
 
@@ -199,6 +216,9 @@ app.factory 'ksc.Record', [
           for key of record when not has_own data, key
             delete record[key]
             changed = true
+
+        if changed and (events = record[EVENTS]) and not events._hold
+          events.emit 'update', {node: record, action: 'replace'}
 
         changed
 

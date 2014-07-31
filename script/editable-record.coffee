@@ -8,6 +8,8 @@ app.factory 'ksc.EditableRecord', [
     CHANGED_KEYS = '_changedKeys'
     DELETED_KEYS = '_deletedKeys'
     EDITED       = '_edited'
+    EVENTS       = '_events'
+    HOLD         = '_hold'
     PARENT       = '_parent'
     PARENT_KEY   = '_parentKey'
     SAVED        = '_saved'
@@ -114,11 +116,14 @@ app.factory 'ksc.EditableRecord', [
       Mark property as deleted, remove it from the object, but keep the original
       data (saved status) for the property.
 
+      @param [string|number] keys... One or more keys to delete
+
       @throw [ArgumentTypeError] Provided key is not string or number
       @throw [ContractBreakError] Tried to delete on a contracted record
       @throw [MissingArgumentError] No key was provided
 
-      @param [string|number] keys... One or more keys to delete
+      @event 'update' sends out message on changes if _events._hold is 0:
+        events.emit 'update', {node: record, action: 'delete', keys: [keys]}
 
       @return [boolean] delete success indicator
       ###
@@ -127,6 +132,8 @@ app.factory 'ksc.EditableRecord', [
           throw new errors.MissingArgument {name: 'key', argument: 1}
 
         record = @
+
+        changed = []
 
         for key, i in keys
           unless typeof key in ['number', 'string']
@@ -138,37 +145,51 @@ app.factory 'ksc.EditableRecord', [
             throw new errors.ContractBreak {key, value, contract: contract[key]}
 
           if has_own record[SAVED], key
-            unless record[DELETED_KEYS][key]
-              record[DELETED_KEYS][key] = true
+            if record[DELETED_KEYS][key]
+              continue
 
-              unless record[CHANGED_KEYS][key]
-                define_value record, CHANGES, record[CHANGES] + 1
-                define_value record[CHANGED_KEYS], key, true, false, true
+            record[DELETED_KEYS][key] = true
 
-              delete record[EDITED][key]
+            unless record[CHANGED_KEYS][key]
+              define_value record, CHANGES, record[CHANGES] + 1
+              define_value record[CHANGED_KEYS], key, true, false, true
 
-              Object.defineProperty record, key, enumerable: false
+            delete record[EDITED][key]
+
+            Object.defineProperty record, key, enumerable: false
+            changed.push key
+
           else if has_own record, key
-            if is_enumerable record, key
-              delete record[key]
-            else
-              return false
+            unless is_enumerable record, key
+              throw new errors.Key {key, description: 'can not be changed'}
 
-        true
+            delete record[key]
+            changed.push key
+
+        if changed.length
+          EditableRecord.emitUpdate record, 'delete', {keys: changed}
+
+        !!changed.length
 
       ###
       (Re)define the initial data set (and drop changes)
+
+      @param [object] data Key-value map of data
 
       Possible errors thrown at {Record#_replace}
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
 
-      @param [object] data Key-value map of data
+      @event 'update' sends out message on changes if _events._hold is 0:
+        events.emit 'update', {node: record, action: 'replace'}
 
       @return [boolean] indicates change in data
       ###
       _replace: (data) ->
         record = @
+
+        if events = record[EVENTS]
+          events[HOLD] += 1
 
         dropped = record._revert()
 
@@ -187,12 +208,21 @@ app.factory 'ksc.EditableRecord', [
 
           Object.freeze record[SAVED]
 
+        if events
+          events[HOLD] -= 1
+
+        if dropped or changed
+          EditableRecord.emitUpdate record, 'replace'
+
         dropped or changed
 
       ###
       Return to saved state
 
       Drops deletions, edited and added properties (if any)
+
+      @event 'update' sends out message on changes if _events._hold is 0:
+        events.emit 'update', {node: record, action: 'revert'}
 
       @return [boolean] indicates change in data
       ###
@@ -214,10 +244,42 @@ app.factory 'ksc.EditableRecord', [
           delete record[key]
           changed = true
 
-        define_value record, CHANGES, 0
+        if changed
+          define_value record, CHANGES, 0
+          EditableRecord.emitUpdate record, 'revert'
 
         changed
 
+
+      ###
+      Event emission - with handling complexity around subobjects
+
+      @param [object] record reference to record or subrecord object
+      @param [string] action 'revert', 'replace', 'set', 'delete' etc
+      @param [object] extra_info (optional) info to be attached to the emission
+
+      @return [undefined]
+      ###
+      @emitUpdate: (record, action, extra_info={}) ->
+        unless record[EVENTS]?[HOLD]
+          path   = []
+          source = record
+
+          until events = source[EVENTS]
+            path.unshift source._parentKey
+            source = source._parent
+
+          info = {node: record}
+          unless record is source
+            info.parent = source
+            info.path = path
+          info.action = action
+
+          for key, value of extra_info
+            info[key] = value
+
+          events.emit 'update', info
+        return
 
       ###
       Define getter/setter property on record based on {Record#_saved} and
@@ -253,7 +315,8 @@ app.factory 'ksc.EditableRecord', [
 
           if utils.identical saved[key], update
             delete edited[key]
-          else
+            changed = true
+          else unless utils.identical edited[key], update
             contract?._match key, update
 
             res = update
@@ -274,6 +337,7 @@ app.factory 'ksc.EditableRecord', [
                 res[k] = v
 
             edited[key] = res
+            changed = true
 
           if edited[key] is saved[key]
             delete edited[key]
@@ -295,12 +359,14 @@ app.factory 'ksc.EditableRecord', [
 
           Object.defineProperty record, key, enumerable: true
 
+          if changed
+            EditableRecord.emitUpdate record, 'set', {key}
+
           update_id()
 
         # not enumerable if value is undefined
         utils.defineGetSet record, key, getter, setter, 1
         return
-
 
       ###
       Event handler for child-object data change events

@@ -177,3 +177,17 @@ describe 'app.factory', ->
 
       contract = {id: {contract: {a: {type: 'number'}}, default: null}}
       expect(-> new Record {id: 1}, {contract}).toThrow()
+
+    it 'Can not _replace() subobject', ->
+      record = new Record {a: 1, b: {a: 1}}
+      expect(-> record.b._replace {x: 1}).toThrow()
+
+    it 'Subscribing for update events', ->
+      record = new Record {a: 1}
+      distributed = null
+      record._events.on 'update', (update) ->
+        distributed = update
+      record._replace {b: 2}
+
+      expect(distributed.node).toBe record
+      expect(distributed.action).toBe 'replace'
