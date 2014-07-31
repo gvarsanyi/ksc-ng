@@ -204,6 +204,23 @@ describe 'app.factory', ->
       event.emit 'a'
       expect(emits.length).toBe 3
 
+    it 'Methods .halt() and .unhalt()', ->
+      event = new EventEmitter
+      response = null
+      event.on 'a', (value) ->
+        response = value
+
+      event.emit 'a', 'x'
+      expect(response).toBe 'x'
+
+      event.halt()
+      event.emit 'a', 'y'
+      expect(response).toBe 'x'
+
+      event.unhalt()
+      event.emit 'a', 'z'
+      expect(response).toBe 'z'
+
     it 'Method .emitted()', ->
       event = new EventEmitter
 

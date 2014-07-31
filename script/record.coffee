@@ -98,6 +98,7 @@ app.factory 'ksc.Record', [
                                     argument:   4
                                     acceptable: ['number', 'string']
             define_value record, PARENT_KEY, parent_key
+            delete record._id
 
         # hide (set to non-enumerable) non-data properties/methods
         for key, refs of utils.getProperties Object.getPrototypeOf record
@@ -106,7 +107,6 @@ app.factory 'ksc.Record', [
 
         unless parent_key?
           define_value record, EVENTS, new EventEmitter
-          record[EVENTS]._hold = 0
 
         record._replace data
 
@@ -157,7 +157,7 @@ app.factory 'ksc.Record', [
 
       @param [object] data Key-value map of data
 
-      @event 'update' sends out message on changes if _events._hold is 0:
+      @event 'update' sends out message on changes:
         events.emit {node: record, action: 'replace'}
 
       @return [boolean] indicates change in data
@@ -217,7 +217,7 @@ app.factory 'ksc.Record', [
             delete record[key]
             changed = true
 
-        if changed and (events = record[EVENTS]) and not events._hold
+        if changed and events = record[EVENTS]
           events.emit 'update', {node: record, action: 'replace'}
 
         changed

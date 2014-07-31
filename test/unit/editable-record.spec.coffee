@@ -114,20 +114,22 @@ describe 'app.factory', ->
       expect(record._id).toBe 2
 
       # report to parent
-      faux_parent = {recordIdChanged: ->}
-      spyOn faux_parent, 'recordIdChanged'
+      faux_parent = {_recordChange: ->}
+      spyOn faux_parent, '_recordChange'
       record = new EditableRecord example, null, faux_parent
       record.id = 2
-      expect(faux_parent.recordIdChanged).toHaveBeenCalledWith record, 1
+      info = {node: record, action: 'set', key: 'id'}
+      expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, 1
 
       # don't report if id has not changed
-      faux_parent = {recordIdChanged: ->}
-      spyOn faux_parent, 'recordIdChanged'
+      faux_parent = {_recordChange: ->}
+      spyOn faux_parent, '_recordChange'
       record = new EditableRecord example, null, faux_parent
       record.x = 3
-      expect(faux_parent.recordIdChanged).not.toHaveBeenCalled()
+      info = {node: record, action: 'set', key: 'x'}
+      expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, null
 
-      # should not fail if parent has no .recordIdChanged() method
+      # should not fail if parent has no ._recordChange() method
       record = new EditableRecord example, null, {}
       expect(-> record.id = 3).not.toThrow()
       expect(record._id).toBe 3

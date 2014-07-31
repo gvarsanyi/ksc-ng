@@ -178,6 +178,10 @@ describe 'app.factory', ->
       contract = {id: {contract: {a: {type: 'number'}}, default: null}}
       expect(-> new Record {id: 1}, {contract}).toThrow()
 
+    it 'Defined .options.idProperty', ->
+      record = new Record {a: 1, b: 2}, {idProperty: 'b'}
+      expect(record._id).toBe 2
+
     it 'Can not _replace() subobject', ->
       record = new Record {a: 1, b: {a: 1}}
       expect(-> record.b._replace {x: 1}).toThrow()

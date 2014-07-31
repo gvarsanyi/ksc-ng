@@ -189,6 +189,9 @@ app.factory 'ksc.EventEmitter', [
       @return [bool] indicates if anything was called
       ###
       emit: (name, args...) ->
+        if @_halt
+          return false
+
         name_check name
 
         (@subscriptions ?= new EventSubscriptions).emit name, args...
@@ -202,7 +205,7 @@ app.factory 'ksc.EventEmitter', [
       @throw [ValueError] name is empty
 
       @param [string] name event identifier
-      @return [bool/Array] false or Array of arguments
+      @return [bool|Array] false or Array of arguments
       ###
       emitted: (name) ->
         name_check name
@@ -210,6 +213,32 @@ app.factory 'ksc.EventEmitter', [
         if (subscriptions = @subscriptions?.names[name])?.fired
           return subscriptions.lastArgs
         false
+
+      ###
+      Prevent emit() from emitting.
+
+      Bumps a counter, so you can define multi-level halters.
+
+      Warning: all halt() calls should be coupled with exactly 1 unhalt() or
+      things get messy.
+
+      @return [number] updated halt level
+      ###
+      halt: ->
+        @_halt = (@_halt or 0) + 1
+
+      ###
+      Enable emit() to emit again.
+
+      Decreases the halt a counter.
+
+      Warning: all halt() calls should be coupled with exactly 1 unhalt() or
+      things get messy.
+
+      @return [number] updated halt level
+      ###
+      unhalt: ->
+        @_halt -= 1
 
       ###
       Subscribe for 1 event in the future OR the last emission if there was one

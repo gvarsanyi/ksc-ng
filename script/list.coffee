@@ -96,29 +96,30 @@ app.factory 'ksc.List', [
         unless records.length
           throw new errors.MissingArgument {name: 'record', argument: 1}
 
-        cut      = []
-        deleting = {}
-        list     = @
-        map      = list.map
+        cut  = []
+        list = @
+        map  = list.map
 
         for record in records
-          unless is_object record
+          if is_object record
+            map_id = record._id
+          else
+            map_id = record
             record = map[record]
 
-          unless map[record?._id]
-            throw new errors.Key {key: record, description: 'no such element'}
+          unless map[map_id]
+            throw new errors.Key {key: map_id, description: 'no such element'}
 
-          delete map[record._id]
-          deleting[record._id] = true
+          delete map[map_id]
           cut.push record
 
-        for record, pos in list when deleting[record._id]?
-          tmp_container = []
-          while list.length > pos
-            item = Array::pop.call list
-            tmp_container.push(item) unless deleting[item._id]
+        tmp_container = []
+        while item = Array::pop.call list
+          unless item in cut
+            tmp_container.push item
+        if tmp_container.length
+          tmp_container.reverse()
           Array::push.call list, tmp_container...
-          break
 
         list.events.emit 'update', {node: list, cut}
 
@@ -141,8 +142,12 @@ app.factory 'ksc.List', [
 
         cut = []
 
+        list.events.halt()
+
         for i in [0 ... list.length] by 1
           cut.push list.shift()
+
+        list.events.unhalt()
 
         if cut.length
           list.events.emit 'update', {node: list, cut}
@@ -244,6 +249,51 @@ app.factory 'ksc.List', [
       ###
       unshift: (items..., return_records) ->
         List::__add.call @, 'unshift', items, return_records
+
+
+      ###
+      Catches change event from records belonging to the list
+
+      Moves or merges records in the map if record._id changed
+
+      @param [object] record reference to the changed record
+      @param [object] info record change event hashmap
+      @option info [object] node reference to the changed record or subrecord
+      @option info [object] parent (optional) appears if subrecord changed,
+        references the top-level record node
+      @option info [Array] path (optional) appears if subrecord changed,
+        provides key literals from the top-level record to changed node
+      @option info [string] action type of event: 'set', 'delete', 'revert' or
+        'replace'
+      @option info [string|number] key (optional) changed key (for 'set')
+      @option info [Array] keys (optional) changed key(s) (for 'delete')
+      @param [string|number] old_id (optional) indicates _id change if provided
+
+      @return [bool] true if list event is emitted
+      ###
+      _recordChange: (record, info, old_id) ->
+        unless record instanceof Record
+          throw new errors.Type {record, acceptable: 'Record'}
+
+        list = @
+        if old_id?
+          unless list.map[old_id] is record
+            throw new errors.Key key:         old_id
+                                 description: 'No such record in list map'
+
+          list.events.halt()
+
+          cut_response = list.cut old_id
+          response = list.push record, true
+
+          list.events.unhalt()
+
+          response.cut = cut_response.cut
+          response.record = info
+        else
+          response = {record: info}
+
+        list.events.emit 'update', response
 
 
       ###

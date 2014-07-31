@@ -9,7 +9,6 @@ app.factory 'ksc.EditableRecord', [
     DELETED_KEYS = '_deletedKeys'
     EDITED       = '_edited'
     EVENTS       = '_events'
-    HOLD         = '_hold'
     PARENT       = '_parent'
     PARENT_KEY   = '_parentKey'
     SAVED        = '_saved'
@@ -122,7 +121,7 @@ app.factory 'ksc.EditableRecord', [
       @throw [ContractBreakError] Tried to delete on a contracted record
       @throw [MissingArgumentError] No key was provided
 
-      @event 'update' sends out message on changes if _events._hold is 0:
+      @event 'update' sends out message on changes:
         events.emit 'update', {node: record, action: 'delete', keys: [keys]}
 
       @return [boolean] delete success indicator
@@ -180,7 +179,7 @@ app.factory 'ksc.EditableRecord', [
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
 
-      @event 'update' sends out message on changes if _events._hold is 0:
+      @event 'update' sends out message on changes:
         events.emit 'update', {node: record, action: 'replace'}
 
       @return [boolean] indicates change in data
@@ -189,7 +188,7 @@ app.factory 'ksc.EditableRecord', [
         record = @
 
         if events = record[EVENTS]
-          events[HOLD] += 1
+          events.halt()
 
         dropped = record._revert()
 
@@ -209,7 +208,7 @@ app.factory 'ksc.EditableRecord', [
           Object.freeze record[SAVED]
 
         if events
-          events[HOLD] -= 1
+          events.unhalt()
 
         if dropped or changed
           EditableRecord.emitUpdate record, 'replace'
@@ -221,7 +220,7 @@ app.factory 'ksc.EditableRecord', [
 
       Drops deletions, edited and added properties (if any)
 
-      @event 'update' sends out message on changes if _events._hold is 0:
+      @event 'update' sends out message on changes:
         events.emit 'update', {node: record, action: 'revert'}
 
       @return [boolean] indicates change in data
@@ -261,24 +260,34 @@ app.factory 'ksc.EditableRecord', [
       @return [undefined]
       ###
       @emitUpdate: (record, action, extra_info={}) ->
-        unless record[EVENTS]?[HOLD]
-          path   = []
-          source = record
+        path   = []
+        source = record
 
-          until events = source[EVENTS]
-            path.unshift source._parentKey
-            source = source._parent
+        until events = source[EVENTS]
+          path.unshift source._parentKey
+          source = source._parent
 
-          info = {node: record}
-          unless record is source
-            info.parent = source
-            info.path = path
-          info.action = action
+        info = {node: record}
+        unless record is source
+          info.parent = source
+          info.path = path
+        info.action = action
 
-          for key, value of extra_info
-            info[key] = value
+        for key, value of extra_info
+          info[key] = value
 
-          events.emit 'update', info
+        events.emit 'update', info
+
+        if source is record
+          old_id = null
+          if has_own source, ID
+            old_id = source[ID]
+            Record.setId source
+            if old_id is source[ID]
+              old_id = null
+
+          source[PARENT]?._recordChange? source, info, old_id
+
         return
 
       ###
@@ -295,12 +304,6 @@ app.factory 'ksc.EditableRecord', [
         edited   = record[EDITED]
         options  = record._options
         contract = options.contract
-
-        update_id = -> # update _id if needed
-          if has_own(record, ID) and key is options.idProperty
-            old_id = record[ID]
-            Record.setId record
-            record[PARENT]?.recordIdChanged? record, old_id
 
         getter = ->
           if not contract and record[DELETED_KEYS][key]
@@ -353,16 +356,14 @@ app.factory 'ksc.EditableRecord', [
             define_value record, CHANGES, record[CHANGES] - 1
             delete record[CHANGED_KEYS][key]
 
-          if record[PARENT_KEY]
-            EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
-                                      record[CHANGES]
-
-          Object.defineProperty record, key, enumerable: true
-
           if changed
-            EditableRecord.emitUpdate record, 'set', {key}
+            if record[PARENT_KEY]
+              EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
+                                        record[CHANGES]
 
-          update_id()
+            Object.defineProperty record, key, enumerable: true
+
+            EditableRecord.emitUpdate record, 'set', {key}
 
         # not enumerable if value is undefined
         utils.defineGetSet record, key, getter, setter, 1
