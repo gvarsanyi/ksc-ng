@@ -13,3 +13,6 @@ test:
 doc:
 	@rm -rf doc/
 	@codo script/
+
+lint:
+	@coffeelint script/ test/unit/
