@@ -2,7 +2,6 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- list: add pseudo/new elements logic
 - list-filter
 
 to-do
