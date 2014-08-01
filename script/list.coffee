@@ -5,7 +5,8 @@ app.factory 'ksc.List', [
   (EditableRecord, EventEmitter, Record, errors,
    utils) ->
 
-    is_object = utils.isObject
+    define_value = utils.defineValue
+    is_object    = utils.isObject
 
     ###
     Constructor for an Array instance and methods to be added to that instance
@@ -43,8 +44,11 @@ app.factory 'ksc.List', [
       # @property [EventEmitter] reference to related event-emitter instance
       events: null
 
-      # @property [object] hash map of records (keys being the record IDs)
+      # @property [object] hash map of records (keys being record ._id values)
       map: null
+
+      # @property [object] hash map of records without ._id keys
+      pseudo: null
 
       # @property [object] list-related options
       options: null
@@ -68,7 +72,10 @@ app.factory 'ksc.List', [
           if k.indexOf('constructor') is -1 and k.substr(0, 2) isnt '__'
             list[k] = v
 
-        list.map = {}
+        list.map    = {}
+        list.pseudo = {}
+        list._pseudoCount = 0
+
         list.options = options
 
         list.events = new EventEmitter
@@ -96,27 +103,39 @@ app.factory 'ksc.List', [
         unless records.length
           throw new errors.MissingArgument {name: 'record', argument: 1}
 
-        cut  = []
-        list = @
-        map  = list.map
+        cut    = []
+        list   = @
+        map    = list.map
+        pseudo = list.pseudo
 
         for record in records
           if is_object record
-            map_id = record._id
-          else
-            map_id = record
-            record = map[record]
+            unless record in list
+              throw new errors.Value {record, description: 'not found in list'}
 
-          unless map[map_id]
-            throw new errors.Key {key: map_id, description: 'no such element'}
+            if record._pseudo?
+              unless pseudo[record._pseudo]
+                throw new errors.Key {record, description: 'pseudo id error'}
+              delete pseudo[record._pseudo]
+            else
+              unless map[record._id]
+                throw new errors.Key {record, description: 'map id error'}
+              delete map[record._id]
+          else # id (maybe old_id) passed
+            id = record
+            record = map[id]
+            unless map[id]
+              throw new errors.Key {id, description: 'map id error'}
+            delete map[id]
 
-          delete map[map_id]
           cut.push record
 
         tmp_container = []
+
         while item = Array::pop.call list
           unless item in cut
             tmp_container.push item
+
         if tmp_container.length
           tmp_container.reverse()
           Array::push.call list, tmp_container...
@@ -276,18 +295,51 @@ app.factory 'ksc.List', [
           throw new errors.Type {record, acceptable: 'Record'}
 
         list = @
-        if old_id?
+        map  = list.map
+
+        remove_from_map = ->
+          delete map[old_id]
+
+        remove_from_pseudo = ->
+          delete list.pseudo[record._pseudo]
+
+        add_to_map = ->
+          define_value record, '_pseudo', null
+          map[record._id] = record
+
+        add_to_pseudo = ->
+          define_value list, '_pseudoCount', list._pseudoCount + 1
+          define_value record, '_pseudo', list._pseudoCount
+          list.pseudo[record._pseudo] = record
+
+        if old_id isnt record._id
           list.events.halt()
           try
-            cut_response = list.cut old_id
-            response = list.push record, true
+            unless record._id? # map -> pseudo
+              remove_from_map()
+              add_to_pseudo()
+            else unless old_id? # pseudo -> map
+              if map[record._id] # merge
+                list.cut record
+                list.push record
+                merged = true
+              else # no merge
+                remove_from_pseudo()
+                add_to_map()
+            else # map -> map
+              if map[record._id] # with merge
+                list.cut old_id
+                list.push record
+                merged = true
+              else # map -> map without merge
+                remove_from_map()
+                add_to_map()
           finally
             list.events.unhalt()
 
-          response.cut = cut_response.cut
-          response.record = info
-        else
-          response = {record: info}
+        response = {update: [record], record: info}
+        if merged
+          response.merged = merged
 
         list.events.emit 'update', response
 
@@ -334,11 +386,22 @@ app.factory 'ksc.List', [
             else
               item = new record_class item, record_opts, list
 
-          if existing = list.map[item._id]
-            existing._replace item._clone true
-            (changes.update ?= []).push item
+          if item._id?
+            if existing = list.map[item._id]
+              existing._replace item._clone true
+              (changes.update ?= []).push item
+            else
+              list.map[item._id] = item
+              tmp.push item
+              (changes.insert ?= []).push item
+
+            if item._pseudo
+              define_value item, '_pseudo', null
           else
-            list.map[item._id] = item
+            define_value list, '_pseudoCount', list._pseudoCount + 1
+            define_value item, '_pseudo', list._pseudoCount
+
+            list.pseudo[item._pseudo] = item
             tmp.push item
             (changes.insert ?= []).push item
 
@@ -372,7 +435,10 @@ app.factory 'ksc.List', [
       __remove: (orig_fn) ->
         list = @
         if record = Array.prototype[orig_fn].call list
-          delete list.map[record._id]
+          if record._id?
+            delete list.map[record._id]
+          else
+            delete list.pseudo[record._pseudo]
           list.events.emit 'update', {node: list, cut: [record]}
         record
 ]

@@ -127,10 +127,8 @@ describe 'app.factory', ->
 
         list.map[2].id = 3
 
-        expect(response.cut.length).toBe 1
-        expect(response.cut[0]).toBe list[1]
-        expect(response.insert.length).toBe 1
-        expect(response.insert[0]).toBe list[1]
+        expect(response.update.length).toBe 1
+        expect(response.update[0]).toBe list[1]
         expect(response.record.node._id).toBe 3
         expect(response.record.key).toBe 'id'
         expect(list.map[2]).toBeUndefined()
@@ -148,8 +146,6 @@ describe 'app.factory', ->
 
         list.map[2].id = 1
 
-        expect(response.cut.length).toBe 1
-        expect(response.cut[0]).toBe record
         expect(response.update.length).toBe 1
         expect(response.update[0]).toBe record
         expect(response.record.node._id).toBe 1

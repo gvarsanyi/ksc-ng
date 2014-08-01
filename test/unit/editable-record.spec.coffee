@@ -120,6 +120,7 @@ describe 'app.factory', ->
       record.id = 2
       info = {node: record, action: 'set', key: 'id'}
       expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, 1
+      expect(record._id).toBe 2
 
       # don't report if id has not changed
       faux_parent = {_recordChange: ->}
@@ -127,7 +128,7 @@ describe 'app.factory', ->
       record = new EditableRecord example, null, faux_parent
       record.x = 3
       info = {node: record, action: 'set', key: 'x'}
-      expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, null
+      expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, 1
 
       # should not fail if parent has no ._recordChange() method
       record = new EditableRecord example, null, {}

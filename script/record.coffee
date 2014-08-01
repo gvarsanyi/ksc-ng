@@ -9,6 +9,7 @@ app.factory 'ksc.Record', [
     OPTIONS     = '_options'
     PARENT      = '_parent'
     PARENT_KEY  = '_parentKey'
+    PSEUDO      = '_pseudo'
 
     define_value = utils.defineValue
     has_own      = utils.hasOwn
@@ -63,6 +64,9 @@ app.factory 'ksc.Record', [
       # @property [number|string] key on parent record
       _parent_key: undefined
 
+      # @property [number] record id
+      _pseudo: undefined
+
 
       ###
       Create the Record instance with initial data and options
@@ -103,6 +107,7 @@ app.factory 'ksc.Record', [
                 acceptable: ['number', 'string']
             define_value record, PARENT_KEY, parent_key
             delete record[ID]
+            delete record[PSEUDO]
 
         # hide (set to non-enumerable) non-data properties/methods
         for key, refs of utils.getProperties Object.getPrototypeOf record
@@ -111,6 +116,7 @@ app.factory 'ksc.Record', [
 
         unless parent_key?
           define_value record, ID, undefined
+          define_value record, PSEUDO, undefined
           define_value record, EVENTS, new EventEmitter
           record[EVENTS].halt()
 
@@ -257,12 +263,8 @@ app.factory 'ksc.Record', [
 
         events.emit 'update', info
 
-        old_id = null
-        if source is record
-          old_id = source[ID]
-          Record.setId source
-          if old_id is source[ID]
-            old_id = null
+        old_id = source[ID]
+        Record.setId source
 
         unless source[EVENTS]._halt
           source[PARENT]?._recordChange? source, info, old_id

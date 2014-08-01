@@ -3,7 +3,7 @@ describe 'app.factory', ->
 
   describe 'List', ->
 
-    EditableRecord = List = Record = null
+    EditableRecord = List = Record = utils = null
 
     beforeEach ->
       module 'app'
@@ -11,6 +11,7 @@ describe 'app.factory', ->
         EditableRecord = $injector.get 'ksc.EditableRecord'
         List           = $injector.get 'ksc.List'
         Record         = $injector.get 'ksc.Record'
+        utils          = $injector.get 'ksc.utils'
 
     it 'Constructs a vanilla Array instance', ->
       list = new List
@@ -88,6 +89,7 @@ describe 'app.factory', ->
       list = new List
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                 {id: 4, x: 'd'}
+
       res = list.cut 3, list.map[2]
 
       expect(res.cut.length).toBe 2
@@ -100,6 +102,29 @@ describe 'app.factory', ->
       expect(-> list.cut 32).toThrow() # no such id
       expect(-> list.cut()).toThrow() # no record argument provided
 
+    describe 'Method .cut(records...) edge cases', ->
+
+      it 'Not in the map (id)', ->
+        list = new List
+        expect(-> list.cut 2).toThrow()
+
+      it 'Not in the map (record)', ->
+        list = new List
+        record = new EditableRecord {id: 2}
+        expect(-> list.cut record).toThrow()
+
+      it 'Not in the map (tempered record._id)', ->
+        list = new List
+        list.push {id: 1}
+        utils.defineValue list[0], '_id', 11
+        expect(-> list.cut list[0]).toThrow()
+
+      it 'Not in the pseudo map (tempered record._pseudo)', ->
+        list = new List
+        list.push {id: 1}
+        utils.defineValue list[0], '_pseudo', 11
+        expect(-> list.cut list[0]).toThrow()
+
     it 'Method .empty()', ->
       list = new List
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
@@ -110,3 +135,57 @@ describe 'app.factory', ->
       expect(res).toBe list
 
       expect(-> list.empty()).not.toThrow()
+
+    describe 'New/pseudo record storage', ->
+
+      it 'Record storage', ->
+        list = new List record: idProperty: 'id'
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
+
+        expect(list._pseudoCount).toBe 0
+
+        list.push {x: 'c'}
+
+        expect(list._pseudoCount).toBe 1
+        expect(list.pseudo[1].x).toBe 'c'
+        expect(list.pseudo[1]).toBe list[2]
+
+        list.push {id: null, x: 'd'}
+
+        expect(list._pseudoCount).toBe 2
+        expect(list.pseudo[1].x).toBe 'c'
+        expect(list.pseudo[2].x).toBe 'd'
+        expect(list.pseudo[2]).toBe list[3]
+
+      it 'Moving pseudo record to map', ->
+        list = new List record: idProperty: 'id'
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: null, x: 'c'},
+                  {id: null, x: 'd'}
+
+        list[2].id = 3
+
+        expect(list.pseudo[1]).toBeUndefined()
+        expect(list.map[3]).toBe list[2]
+
+        list[3].id = 1 # merge
+        expect(list.length).toBe 3
+        expect(list.pseudo[2]).toBeUndefined()
+        expect(list.map[1].x).toBe 'd'
+
+      it 'Moving mapped record to pseudo', ->
+        list = new List record: idProperty: 'id'
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
+
+        list[1].id = null
+
+        expect(list[1]._pseudo).toBe 1
+        expect(list.pseudo[1]).toBe list[1]
+        expect(list.map[2]).toBeUndefined()
+
+      it 'Remove pseudo element', ->
+        list = new List record: idProperty: 'id'
+        list.push {id: null, x: 'a'}, {id: 2, x: 'b'}
+        list.shift()
+        expect(list.length).toBe 1
+        expect(list.pseudo[1]).toBeUndefined()
+        expect(list._pseudoCount).toBe 1
