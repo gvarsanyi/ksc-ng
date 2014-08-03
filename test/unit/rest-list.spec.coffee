@@ -164,7 +164,7 @@ describe 'app.factory', ->
       expected_changed_records = insert: list_response.elements
 
       promise = list.restLoad {x: 1, y: 2}, (err, changed_records, raw) ->
-        insert = (rec._entity() for rec in changed_records.insert)
+        insert = (rec._entity() for rec in changed_records.add)
         spyable.callback err, {insert}, JSON.parse JSON.stringify raw
 
       promise.success (data) ->

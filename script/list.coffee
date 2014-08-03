@@ -100,8 +100,11 @@ app.factory 'ksc.List', [
       @throw [KeyError] element can not be found
       @throw [MissingArgumentError] record reference argument not provided
 
-      @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, cut: [records...]}
+      @event 'update' sends out message if list changes. Note that
+        action.cutMap and action.cutPseudo are optional, one of them is
+        guaranteed to be there:
+              events.emit 'update', {node: list, action: {cut: [records...],
+              cutMap: [map_ids...], cutPseudo: [pseudo_ids...]}
 
       @return [Object] returns list of affected records: {cut: [records...]}
       ###
@@ -109,10 +112,12 @@ app.factory 'ksc.List', [
         unless records.length
           throw new errors.MissingArgument {name: 'record', argument: 1}
 
-        cut    = []
-        list   = @
-        map    = list.map
-        pseudo = list.pseudo
+        cut        = []
+        cut_map    = []
+        cut_pseudo = []
+        list       = @
+        map        = list.map
+        pseudo     = list.pseudo
 
         for record in records
           if is_object record
@@ -123,16 +128,19 @@ app.factory 'ksc.List', [
               unless pseudo[record._pseudo]
                 throw new errors.Key {record, description: 'pseudo id error'}
               delete pseudo[record._pseudo]
+              cut_pseudo.push record._pseudo
             else
               unless map[record._id]
                 throw new errors.Key {record, description: 'map id error'}
               delete map[record._id]
+              cut_map.push record._id
           else # id (maybe old_id) passed
             id = record
             record = map[id]
             unless map[id]
               throw new errors.Key {id, description: 'map id error'}
             delete map[id]
+            cut_map.push id
 
           cut.push record
 
@@ -146,9 +154,13 @@ app.factory 'ksc.List', [
           tmp_container.reverse()
           Array::push.call list, tmp_container...
 
-        list.events.emit 'update', {node: list, cut}
+        action = {cut}
+        action.cutMap    = cut_map    if cut_map.length
+        action.cutPseudo = cut_pseudo if cut_pseudo.length
 
-        {cut}
+        list.events.emit 'update', {node: list, action}
+
+        action
 
 
       ###
@@ -157,26 +169,27 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
-      @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, cut: [records...]}
+      @event 'update' sends out message if list changes (see: {List#cut})
 
-      @return [List] returns the list array (chainable)
+      @return [Array] returns the list array (chainable) or action description
       ###
-      empty: ->
+      empty: (return_action) ->
         list = @
 
-        cut = []
+        action = {cut: []}
 
         list.events.halt()
         try
           for i in [0 ... list.length] by 1
-            cut.push list.shift()
+            action.cut.push list.shift()
         finally
           list.events.unhalt()
 
-        if cut.length
-          list.events.emit 'update', {node: list, cut}
+        if action.cut.length
+          list.events.emit 'update', {node: list, action}
 
+        if return_action
+          return action
         @
 
 
@@ -186,8 +199,7 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
-      @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, cut: [record]}
+      @event 'update' sends out message if list changes (see: {List#cut})
 
       @return [Record] The removed element
       ###
@@ -211,7 +223,8 @@ app.factory 'ksc.List', [
       @throw [MissingArgumentError] no items were pushed
 
       @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, insert: [records], update: [records]}
+              events.emit 'update', {node: list, action: {add: [records...],
+              merge: [records...]}}
 
       @overload push(items...)
         @param [Object] items... Record or vanilla object that will be turned
@@ -219,17 +232,17 @@ app.factory 'ksc.List', [
 
         @return [number] New length of list
 
-      @overload push(items..., return_records)
+      @overload push(items..., return_action)
         @param [Object] items... Record or vanilla object that will be turned
         into a Record (based on .options.record.class)
-        @param [boolean] return_records Request to return an object with
+        @param [boolean] return_action Request to return an object with
         references to the affected records:
         {insert: [records...], update: [records...]}
 
         @return [Object] Affected records
       ###
-      push: (items..., return_records) ->
-        List::__add.call @, 'push', items, return_records
+      push: (items..., return_action) ->
+        List::__add.call @, 'push', items, return_action
 
 
       ###
@@ -238,8 +251,7 @@ app.factory 'ksc.List', [
       Option used:
       - .options.record.idProperty (property/properties that define record ID)
 
-      @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, cut: [record]}
+      @event 'update' sends out message if list changes (see: {List#cut})
 
       @return [Record] The removed element
       ###
@@ -263,7 +275,8 @@ app.factory 'ksc.List', [
       @throw [MissingArgumentError] no items were pushed
 
       @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, insert: [records], update: [records]}
+              events.emit 'update', {node: list, action: {add: [records...],
+              merge: [records...]}}
 
       @overload unshift(items...)
         @param [Object] items... Record or vanilla object that will be turned
@@ -271,17 +284,17 @@ app.factory 'ksc.List', [
 
         @return [number] New length of list
 
-      @overload unshift(items..., return_records)
+      @overload unshift(items..., return_action)
         @param [Object] items... Record or vanilla object that will be turned
         into a Record (based on .options.record.class)
-        @param [boolean] return_records Request to return an object with
+        @param [boolean] return_action Request to return an object with
         references to the affected records:
         {insert: [records...], update: [records...]}
 
         @return [Object] Affected records
       ###
-      unshift: (items..., return_records) ->
-        List::__add.call @, 'unshift', items, return_records
+      unshift: (items..., return_action) ->
+        List::__add.call @, 'unshift', items, return_action
 
 
       ###
@@ -301,6 +314,17 @@ app.factory 'ksc.List', [
       @option info [string|number] key (optional) changed key (for 'set')
       @option info [Array] keys (optional) changed key(s) (for 'delete')
       @param [string|number] old_id (optional) indicates _id change if provided
+
+      @event 'update' sends out message if record changes on list
+            events.emit 'update', {node: list, action: [{update: [info]}]}
+
+      @event 'update' sends out message if record id changes (no merge)
+            events.emit 'update', {node: list, action: [{update: [info],
+            move: [{from: {map|pseudo: old_id}, to: {map|pseudo: new_id}}]}]}
+
+      @event 'update' sends out message if record id changes (merge)
+            events.emit 'update', {node: list, action: [{update: [info],
+            merge: [{from: {map|pseudo: old_id}, to: merged_record}]}]}
 
       @return [boolean] true if list event is emitted
       ###
@@ -326,36 +350,46 @@ app.factory 'ksc.List', [
           define_value record, '_pseudo', list._pseudoCount
           list.pseudo[record._pseudo] = record
 
+        action = {update: [info]}
         if old_id isnt record._id
           list.events.halt()
           try
             unless record._id? # map -> pseudo
+              action.move = [
+                from: {map: old_id}
+                to:   {pseudo: record._pseudo}]
               remove_from_map()
               add_to_pseudo()
             else unless old_id? # pseudo -> map
               if map[record._id] # merge
+                action.merge = [
+                  from: {pseudo: record._pseudo}
+                  to:   map[record._id]]
                 list.cut record
                 list.push record
-                merged = true
               else # no merge
+                action.move = [
+                  from: {pseudo: record._pseudo}
+                  to:   {map: record._id}]
                 remove_from_pseudo()
                 add_to_map()
             else # map -> map
               if map[record._id] # with merge
+                action.merge = [
+                  from: {map: old_id}
+                  to:   map[record._id]]
                 list.cut old_id
                 list.push record
-                merged = true
               else # map -> map without merge
+                action.move = [
+                  from: {map: old_id}
+                  to:   {map: record._id}]
                 remove_from_map()
                 add_to_map()
           finally
             list.events.unhalt()
 
-        response = {update: [record], record: info}
-        if merged
-          response.merged = merged
-
-        list.events.emit 'update', response
+        list.events.emit 'update', {node: list, action}
 
 
       ###
@@ -372,29 +406,30 @@ app.factory 'ksc.List', [
 
       @param [string] orig_fn 'push' or 'unshift'
       @param [Array] items Record or vanilla objects to be added
-      @param [string] return_records Triggers stat object response (not .length)
+      @param [string] return_action Triggers stat object response (not .length)
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
 
       @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, insert: [records], update: [records]}
+              events.emit 'update', {node: list, action: {add: [records...],
+              merge: [records...]}}
 
       @return [number|Object] list.length or {insert: [...], update: [...]}
       ###
-      __add: (orig_fn, items, return_records) ->
-        changes = {node: list}
-        unless typeof return_records is 'boolean'
-          items.push return_records
-          return_records = null
+      __add: (orig_fn, items, return_action) ->
+        unless typeof return_action is 'boolean'
+          items.push return_action
+          return_action = null
 
         unless items.length
           throw new errors.MissingArgument {name: 'item', argument: 1}
 
         list = @
 
-        tmp = []
-        record_opts = list.options.record
+        action = {}
+        tmp    = []
+        record_opts =  list.options.record
         record_class = record_opts?.class or EditableRecord
         for item in items
           unless is_object item
@@ -409,11 +444,11 @@ app.factory 'ksc.List', [
           if item._id?
             if existing = list.map[item._id]
               existing._replace item._clone true
-              (changes.update ?= []).push item
+              (action.merge ?= []).push existing
             else
               list.map[item._id] = item
               tmp.push item
-              (changes.insert ?= []).push item
+              (action.add ?= []).push item
 
             if item._pseudo
               define_value item, '_pseudo', null
@@ -423,7 +458,7 @@ app.factory 'ksc.List', [
 
             list.pseudo[item._pseudo] = item
             tmp.push item
-            (changes.insert ?= []).push item
+            (action.add ?= []).push item
 
         if tmp.length
           if list.sorter # sorted (insert to position)
@@ -433,13 +468,10 @@ app.factory 'ksc.List', [
           else # not sorted (actual push/unshift)
             Array.prototype[orig_fn].apply list, tmp
 
-        list.events.emit 'update', changes
+        list.events.emit 'update', {node: list, action}
 
-        if return_records
-          response = {}
-          for key, value of changes when key isnt 'node'
-            response[key] = value
-          return response
+        if return_action
+          return action
 
         list.length # default push/unshift return behavior
 
@@ -453,18 +485,20 @@ app.factory 'ksc.List', [
 
       @param [string] orig_fn 'pop' or 'shift'
 
-      @event 'update' sends out message if list changes:
-        events.emit 'update', {node: list, cut: [record]}
+      @event 'update' sends out message if list changes (see: {List#cut})
 
       @return [Record] Removed record
       ###
       __remove: (orig_fn) ->
-        list = @
+        list    = @
         if record = Array.prototype[orig_fn].call list
+          action = {cut: [record]}
           if record._id?
             delete list.map[record._id]
+            action.cutMap = [record._id]
           else
             delete list.pseudo[record._pseudo]
-          list.events.emit 'update', {node: list, cut: [record]}
+            action.cutPseudo = [record._pseudo]
+          list.events.emit 'update', {node: list, action}
         record
 ]

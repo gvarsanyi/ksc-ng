@@ -85,8 +85,8 @@ describe 'app.factory', ->
       affected = list.push {id: 1, x: 'y'}, {id: 4, x: 'e'},
                            {id: 2, x: 'y'}, true
 
-      expect(affected.insert.length).toBe 1
-      expect(affected.update.length).toBe 2
+      expect(affected.add.length).toBe 1
+      expect(affected.merge.length).toBe 2
       expect(list.map[1].x).toBe 'y'
       expect(list.map[2].x).toBe 'y'
 
@@ -152,6 +152,17 @@ describe 'app.factory', ->
       expect(res).toBe list
 
       expect(-> list.empty()).not.toThrow()
+
+    it 'Method .empty(true) # returns action object', ->
+      list = new List
+      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
+      rec1 = list[0]
+      rec2 = list[1]
+
+      res = list.empty true
+      expect(res.cut.length).toBe 2
+      expect(res.cut[0]).toBe rec1
+      expect(res.cut[1]).toBe rec2
 
     describe 'New/pseudo record storage', ->
 
