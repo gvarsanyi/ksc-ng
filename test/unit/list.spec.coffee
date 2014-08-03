@@ -19,11 +19,6 @@ describe 'app.factory', ->
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
 
-    it 'option.class is ksc.List', ->
-      list = new List
-
-      expect(list.options.class).toBe List.prototype
-
     it 'Overrides pop, push, shift & unshift methods, keeps default sort', ->
       list = new List
 
@@ -54,6 +49,28 @@ describe 'app.factory', ->
       list.pop()
       list.pop()
       expect(list.pop()).toBeUndefined()
+
+    it 'Methods push/unshift on sorted list (insert to sorted position)', ->
+      list = new List
+      list.push {id: 8}, {id: 2}, {id: 5}
+      list.sorter = 'id'
+      expect(list[0].id).toBe 2
+      expect(list[1].id).toBe 5
+      expect(list[2].id).toBe 8
+      list.push {id: 3}, {id: 1}
+      expect(list[0].id).toBe 1
+      expect(list[1].id).toBe 2
+      expect(list[2].id).toBe 3
+      expect(list[3].id).toBe 5
+      expect(list[4].id).toBe 8
+      list.unshift {id: 6}, {id: 0}
+      expect(list[0].id).toBe 0
+      expect(list[1].id).toBe 1
+      expect(list[2].id).toBe 2
+      expect(list[3].id).toBe 3
+      expect(list[4].id).toBe 5
+      expect(list[5].id).toBe 6
+      expect(list[6].id).toBe 8
 
     it 'Upsert', ->
       list = new List

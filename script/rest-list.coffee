@@ -1,10 +1,11 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.List', 'ksc.errors', 'ksc.restUtils',
-  ($http, List, errors, restUtils) ->
+  '$http', 'ksc.List', 'ksc.errors', 'ksc.restUtils', 'ksc.utils',
+  ($http, List, errors, restUtils, utils) ->
 
     REST_PENDING = 'restPending'
 
+    define_value = utils.defineValue
 
     ###
     REST methods for ksc.List
@@ -78,9 +79,9 @@ app.factory 'ksc.RestList', [
           if parts.length
             url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
 
-        list[REST_PENDING] += 1
+        define_value list, REST_PENDING, list[REST_PENDING] + 1, false, true
         restUtils.wrapPromise $http.get(url), (err, result) ->
-          list[REST_PENDING] -= 1
+          define_value list, REST_PENDING, list[REST_PENDING] - 1, false, true
           callback err, result
 
       ###

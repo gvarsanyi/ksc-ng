@@ -46,12 +46,6 @@ describe 'app.factory', ->
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
 
-    it 'option.class is ksc.RestList and inherited from ksc.List', ->
-      list = new RestList
-
-      expect(list.options.class instanceof List).toBe true
-      expect(list.options.class).toBe RestList.prototype
-
     it 'Method .restGetRaw() with query params', ->
       list = new RestList list_cfg
 

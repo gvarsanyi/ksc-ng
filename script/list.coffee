@@ -1,9 +1,9 @@
 
 app.factory 'ksc.List', [
-  'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.Record', 'ksc.errors',
-  'ksc.utils',
-  (EditableRecord, EventEmitter, Record, errors,
-   utils) ->
+  'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListSorter', 'ksc.Record',
+  'ksc.errors', 'ksc.utils',
+  (EditableRecord, EventEmitter, ListSorter, Record,
+   errors, utils) ->
 
     define_value = utils.defineValue
     is_object    = utils.isObject
@@ -53,6 +53,9 @@ app.factory 'ksc.List', [
       # @property [object] list-related options
       options: null
 
+      # @property [ListSorter] list auto-sort logic (optional)
+      sorter: null
+
 
       ###
       Creates a vanilla Array instance (e.g. []), adds methods and overrides
@@ -66,19 +69,22 @@ app.factory 'ksc.List', [
       constructor: (options={}) ->
         list = []
 
+        for key, value of @constructor.prototype
+          if key.indexOf('constructor') is -1 and key.substr(0, 2) isnt '__'
+            define_value list, key, value, false, true
+
         options = angular.copy options
+        define_value list, 'options', options
 
-        for k, v of options.class = @constructor.prototype
-          if k.indexOf('constructor') is -1 and k.substr(0, 2) isnt '__'
-            list[k] = v
+        define_value list, 'events', new EventEmitter, false, true
 
-        list.map    = {}
-        list.pseudo = {}
-        list._pseudoCount = 0
+        define_value list, 'map', {}, false, true
 
-        list.options = options
+        define_value list, 'pseudo', {}, false, true
+        define_value list, '_pseudoCount', 0
 
-        list.events = new EventEmitter
+        ListSorter.register list, options.sorter
+        delete options.sorter # list.sorter is created and hold sorter info
 
         return list
 
@@ -194,9 +200,12 @@ app.factory 'ksc.List', [
       Records with an ID that exists in the list already will update the
       existing one instead of being added.
 
+      If list is auto-sorted, new elements will be added to their appropriate
+      sorted position (i.e. not necessarily to the last position), see:
+      {ListSorter} and {ListSorter#position}
+
       Options used:
       - .options.record.idProperty (property/properties that define record ID)
-      - .options.sortBy (see: {List#__sortFunction})
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -243,9 +252,12 @@ app.factory 'ksc.List', [
       Records with an ID that exists in the list already will update the
       existing one instead of being added.
 
+      If list is auto-sorted, new elements will be added to their appropriate
+      sorted position (i.e. not necessarily to the first position), see:
+      {ListSorter} and {ListSorter#position}
+
       Options used:
       - .options.record.idProperty (property/properties that define record ID)
-      - .options.sortBy (see: {List#__sortFunction})
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -290,7 +302,7 @@ app.factory 'ksc.List', [
       @option info [Array] keys (optional) changed key(s) (for 'delete')
       @param [string|number] old_id (optional) indicates _id change if provided
 
-      @return [bool] true if list event is emitted
+      @return [boolean] true if list event is emitted
       ###
       _recordChange: (record, info, old_id) ->
         unless record instanceof Record
@@ -351,7 +363,10 @@ app.factory 'ksc.List', [
 
       Options used:
       - .options.record.idProperty (property/properties that define record ID)
-      - .options.sortBy (see: {List#__sortFunction})
+
+      If list is auto-sorted, new elements will be added to their appropriate
+      sorted position (i.e. not necessarily to the first/last position), see:
+      {ListSorter} and {ListSorter#position}
 
       Expects scope to be a {List} type Array
 
@@ -411,9 +426,9 @@ app.factory 'ksc.List', [
             (changes.insert ?= []).push item
 
         if tmp.length
-          if list.options.sortBy # sorted (insert to position)
+          if list.sorter # sorted (insert to position)
             for item in tmp
-              pos = List::__sortedPos.call list, item
+              pos = list.sorter.position item
               list.splice pos, 0, item
           else # not sorted (actual push/unshift)
             Array.prototype[orig_fn].apply list, tmp
@@ -452,208 +467,4 @@ app.factory 'ksc.List', [
             delete list.pseudo[record._pseudo]
           list.events.emit 'update', {node: list, cut: [record]}
         record
-
-      ###
-      Helper method to get sorter/comparison function
-
-      The function can be just the function attached to .options.sortBy or
-      a function forumated by a sort logic description at the same variable.
-
-      @example
-          # must return a numeric value, preferrably -1, 0 or 1
-          my_sorter_fn = (a, b) -> # sort by id
-            if a._id >= b._id then 1 else -1
-
-          list = new list
-            sortBy: my_sorter_fn
-
-      @example
-          # strings or arrays will be turned into sortBy description objects
-          list = new list
-            sortBy: 'name'
-            # will be turned into:
-            #   sortBy:
-            #     key:  'name'
-            #     desc: false # A -> Z
-            #     type: 'natural'
-
-      @example
-          list = new list
-            sortBy:
-              key:  ['lastName', 'firstName']
-              desc: true # Z -> A
-              type: 'natural' # other possible values: 'number', 'byte'
-
-      Type 'number' sorts fall back to natural sort on anything that is either
-      - (not typeof 'number' or 'string') or
-      - typeof 'string' but is empty or Number(anything) returns NaN
-
-      Natural sort will produce the same result on numbers as 'number' sort, but
-      'number' on numbers is faster.
-
-      Option used:
-      - .options.sortBy
-
-      Expects scope to be a {List} type Array
-
-      @throw [ValueError] If .options.sortBy is bugous
-
-      @return [function] sorter/comparison function with signiture `(a, b) ->`
-      ###
-      __sortFunction: ->
-        list    = @
-        options = list.options
-
-        # it's a function already Jim!
-        if typeof (sort_by = options.sortBy) is 'function'
-          return sort_by
-
-        # normalize options.sortBy
-        if typeof sort_by is 'string' or sort_by instanceof Array
-          sort_by = options.sortBy = key: sort_by
-
-        unless is_object(sort_by) and
-        (typeof (key = sort_by.key) is 'string' or key instanceof Array)
-          throw new errors.Value
-            'options.sortBy': sort_by
-            description: 'should be <function|string|array> or ' +
-                         '{key: <string|array>, desc: <bool>, type: ' +
-                         '\'natural|number|byte\'}'
-
-        if (type = sort_by.type)?
-          unless type in ['byte', 'natural', 'number']
-            throw new errors.Value
-              type:       type
-              acceptable: ['byte', 'natural', 'number']
-              default:    'natural'
-        else
-          type = sort_by.type = 'natural'
-
-        desc = 1
-        if sort_by.desc = !!sort_by.desc
-          desc = -1
-
-        joint = (obj, parts) ->
-          (obj[part] for part in parts when obj[part]?).join ' '
-
-        numerify = (n) ->
-          unless typeof n is 'number'
-            if typeof n is 'string' and n isnt ''
-              return Number n
-            else
-              return NaN
-          n
-
-        natural_cmp = (as, bs) ->
-          as = String(as).toLowerCase()
-          bs = String(bs).toLowerCase()
-
-          i  = 0
-          rx = /(\.\d+)|(\d+(\.\d+)?)|([^\d.]+)|(\.\D+)|(\.$)/g
-
-          if as is bs
-            return 0
-
-          a = as.toLowerCase().match rx
-          b = bs.toLowerCase().match rx
-          L = if a? then a.length else 0
-          while (i < L)
-            if (not b?) or b[i] is undefined
-              return 1
-
-            a1 = a[i]
-            b1 = b[i]
-            i += 1
-
-            n = a1 - b1
-            unless isNaN n
-              return n
-
-            return if a1 >= b1 then 1 else -1
-          -1
-
-        # sort function
-        (a, b) ->
-          if typeof key is 'string'
-            a = a[key]
-            b = b[key]
-          else # Array
-            a = joint a, key
-            b = joint b, key
-
-          if type is 'number'
-            _a = a
-            _b = b
-            a = numerify a
-            b = numerify b
-            if isNaN a
-              if isNaN b
-                return natural_cmp(_a, _b) * desc
-              return -1 * desc
-            if isNaN b
-              return 1 * desc
-          else
-            a ?= ''
-            b ?= ''
-
-          if type is 'natural'
-            return natural_cmp(a, b) * desc
-          else if type is 'byte'
-            a = String a
-            b = String b
-
-          if a is b
-            return 0
-
-          (if a > b then 1 else -1) * desc
-
-      ###
-      Helper method to find a new Record's position in a sorted list.
-
-      Option used:
-      - .options.sortBy
-
-      Expects scope to be a {List} type Array
-
-      @param [Record] record Instance of record that needs a position
-
-      @throw [TypeError] If the sorter function returns a non-numeric value
-
-      @return [number] position
-      ###
-      __sortedPos: (record) ->
-        list = @
-
-        unless len = list.length
-          return 0
-
-        compare = List::__sortFunction.call list
-
-        min = 0
-        max = len - 1
-
-        cmp_check = (value) ->
-          unless typeof value is 'number'
-            throw new errors.Type {sort_fn_output: value, acceptable: 'number'}
-          value
-
-        if cmp_check(compare record, list[min]) < 0
-          return min
-        if len is 1
-          return 1
-
-        if cmp_check(compare record, list[max]) >= 0
-          return max + 1
-
-        find_in = (min, max) ->
-          if min < max - 1 # has item(s) in between
-            mid = Math.floor (max - min) / 2 + min
-
-            if cmp_check(compare record, list[mid]) < 0
-              return find_in min, mid
-            return find_in mid, max
-
-          max # pushes the bigger one to right
-
-        find_in min, max
 ]

@@ -6,6 +6,7 @@ priority to-do
 
 to-do
 ----------------------------
+- list: override/manage methods: reverse(), sort(), splice()
 - list: write-protect list and list.map elements
 - generic list cache logic
 - record: handle multiple list-parents
