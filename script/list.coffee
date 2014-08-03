@@ -69,9 +69,7 @@ app.factory 'ksc.List', [
       constructor: (options={}) ->
         list = []
 
-        for key, value of @constructor.prototype
-          if key.indexOf('constructor') is -1 and key.substr(0, 2) isnt '__'
-            define_value list, key, value, false, true
+        List.addProperties list, @constructor
 
         options = angular.copy options
         define_value list, 'options', options
@@ -204,7 +202,7 @@ app.factory 'ksc.List', [
       @return [Record] The removed element
       ###
       pop: ->
-        List::__remove.call @, 'pop'
+        List.remove.call @, 'pop'
 
 
       ###
@@ -242,7 +240,7 @@ app.factory 'ksc.List', [
         @return [Object] Affected records
       ###
       push: (items..., return_action) ->
-        List::__add.call @, 'push', items, return_action
+        List.add.call @, 'push', items, return_action
 
 
       ###
@@ -256,7 +254,7 @@ app.factory 'ksc.List', [
       @return [Record] The removed element
       ###
       shift: ->
-        List::__remove.call @, 'shift'
+        List.remove.call @, 'shift'
 
 
       ###
@@ -294,7 +292,7 @@ app.factory 'ksc.List', [
         @return [Object] Affected records
       ###
       unshift: (items..., return_action) ->
-        List::__add.call @, 'unshift', items, return_action
+        List.add.call @, 'unshift', items, return_action
 
 
       ###
@@ -417,7 +415,7 @@ app.factory 'ksc.List', [
 
       @return [number|Object] list.length or {insert: [...], update: [...]}
       ###
-      __add: (orig_fn, items, return_action) ->
+      @add: (orig_fn, items, return_action) ->
         unless typeof return_action is 'boolean'
           items.push return_action
           return_action = null
@@ -489,7 +487,7 @@ app.factory 'ksc.List', [
 
       @return [Record] Removed record
       ###
-      __remove: (orig_fn) ->
+      @remove: (orig_fn) ->
         list    = @
         if record = Array.prototype[orig_fn].call list
           action = {cut: [record]}
@@ -501,4 +499,19 @@ app.factory 'ksc.List', [
             action.cutPseudo = [record._pseudo]
           list.events.emit 'update', {node: list, action}
         record
+
+      ###
+      Helper method that adds properties to a vanilla Array from a List
+      constructor.
+
+      @param [Array] instance Array instance to be extended
+      @param [object] prototype_container @constructor of creator class
+
+      @return [undefined]
+      ###
+      @addProperties: (instance, prototype_container) ->
+        for key, value of prototype_container.prototype
+          if key.indexOf('constructor') is -1 and key.substr(0, 2) isnt '__'
+            define_value instance, key, value, false, true
+        return
 ]
