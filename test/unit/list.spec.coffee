@@ -86,7 +86,7 @@ describe 'app.factory', ->
                            {id: 2, x: 'y'}, true
 
       expect(affected.add.length).toBe 1
-      expect(affected.merge.length).toBe 2
+      expect(affected.upsert.length).toBe 2
       expect(list.map[1].x).toBe 'y'
       expect(list.map[2].x).toBe 'y'
 
