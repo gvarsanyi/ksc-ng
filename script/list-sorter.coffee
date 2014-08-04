@@ -3,7 +3,8 @@ app.factory 'ksc.ListSorter', [
   'ksc.errors', 'ksc.utils',
   (errors, utils) ->
 
-    define_value = utils.defineValue
+    define_value   = utils.defineValue
+    is_key_conform = utils.isKeyConform
 
     ###
     Class definition for auto-sort definition at {List#sorter}
@@ -89,11 +90,11 @@ app.factory 'ksc.ListSorter', [
         if typeof description is 'function'
           sorter.fn = description
         else # description
-          if typeof description is 'string' or description instanceof Array
+          if is_key_conform(description) or description instanceof Array
             description = key: description
 
           unless utils.isObject(description) and
-          (typeof (key = description.key) is 'string' or key instanceof Array)
+          (is_key_conform(key = description.key) or key instanceof Array)
             throw new errors.Value
               sorter:      description
               requirement: 'function or string or array or object: ' +
@@ -224,7 +225,7 @@ app.factory 'ksc.ListSorter', [
 
         # sort function
         (a, b) ->
-          if typeof key is 'string'
+          if is_key_conform key
             a = a[key]
             b = b[key]
           else # Array

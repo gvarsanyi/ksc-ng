@@ -100,11 +100,11 @@ app.factory 'ksc.Record', [
           define_value record, PARENT, parent
 
           if parent_key?
-            unless typeof parent_key in ['number', 'string']
+            unless utils.isKeyConform parent_key
               throw new errors.Type
                 parent_key: parent_key
                 argument:   4
-                acceptable: ['number', 'string']
+                required:   'key conform value'
             define_value record, PARENT_KEY, parent_key
             delete record[ID]
             delete record[PSEUDO]

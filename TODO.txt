@@ -2,12 +2,11 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- list-filter
 
 to-do
 ----------------------------
-- list: override/manage methods: reverse(), sort(), splice()
-- list: write-protect list and list.map elements
+- list/list-filter: override/manage methods: reverse(), sort(), splice()
+- list/list-filter: write-protect list and list.map elements
 - generic list cache logic
 - record: handle multiple list-parents
 - record: predefine idProperty even if it is not in the original data set and there is no contract
@@ -16,6 +15,7 @@ to-do
 
 unit tests missing / partial
 ----------------------------
+- list-filter
 - record-contract
 
 coffeedoc missing / partial

@@ -53,7 +53,7 @@ app.factory 'ksc.List', [
       # @property [object] list-related options
       options: null
 
-      # @property [ListSorter] list auto-sort logic (optional)
+      # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
       sorter: null
 
 
@@ -79,10 +79,9 @@ app.factory 'ksc.List', [
         define_value list, 'map', {}, false, true
 
         define_value list, 'pseudo', {}, false, true
-        define_value list, '_pseudoCount', 0
 
         ListSorter.register list, options.sorter
-        delete options.sorter # list.sorter is created and hold sorter info
+        delete options.sorter # list.sorter is created and holds sorter info
 
         return list
 
@@ -353,8 +352,7 @@ app.factory 'ksc.List', [
           map[record._id] = record
 
         add_to_pseudo = ->
-          define_value list, '_pseudoCount', list._pseudoCount + 1
-          define_value record, '_pseudo', list._pseudoCount
+          define_value record, '_pseudo', utils.uid 'record.pseudo'
           list.pseudo[record._pseudo] = record
 
         action = {update: [info]}
@@ -472,8 +470,7 @@ app.factory 'ksc.List', [
             if item._pseudo
               define_value item, '_pseudo', null
           else
-            define_value list, '_pseudoCount', list._pseudoCount + 1
-            define_value item, '_pseudo', list._pseudoCount
+            define_value item, '_pseudo', utils.uid 'record.pseudo'
 
             list.pseudo[item._pseudo] = item
             tmp.push item

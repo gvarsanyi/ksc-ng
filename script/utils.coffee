@@ -11,6 +11,7 @@ app.service 'ksc.utils', [
       unless args.length
         throw new errors.MissingArgument {name: 'reference', argument: 1}
 
+    uid_store = named: {}
 
     utils =
       defineGetSet: (obj, key, getter, setter, visible) ->
@@ -76,6 +77,10 @@ app.service 'ksc.utils', [
           return !!(get_own_property_descriptor obj, key).enumerable
         false
 
+      isKeyConform: (key) ->
+        (typeof key is 'string' and key) or
+        (typeof key is 'number' and not isNaN key)
+
       isFunction: (refs...) ->
         arg_check refs
         for ref in refs
@@ -87,4 +92,12 @@ app.service 'ksc.utils', [
         for ref in refs
           return false unless ref and typeof ref is 'object'
         true
+
+      uid: (name) ->
+        if name?
+          target = uid_store.named
+        else
+          name = 'unnamed'
+
+        target[name] = (target[name] or 0) + 1
 ]

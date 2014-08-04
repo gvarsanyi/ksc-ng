@@ -1,11 +1,9 @@
 
 app.factory 'ksc.ListFilter', [
-  'ksc.EventEmitter', 'ksc.errors', 'ksc.utils',
-  (EventEmitter, errors, utils) ->
+  'ksc.EventEmitter', 'ksc.List', 'ksc.ListSorter', 'ksc.errors', 'ksc.utils',
+  (EventEmitter, List, ListSorter, errors, utils) ->
 
-    define_get_set = utils.defineGetSet
-    define_value   = utils.defineValue
-    is_object      = utils.isObject
+    define_value = utils.defineValue
 
     ###
     TODO: class desc
@@ -26,8 +24,14 @@ app.factory 'ksc.ListFilter', [
       # @property [object] hash map of records (keys being record ._id values)
       map: null
 
+      # @property [object] filtered list related options
+      options: null
+
       # @property [object] hash map of records without ._id keys
       pseudo: null
+
+      # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
+      sorter: null
 
       # @property [object] reference to parent list
       source: null
@@ -44,7 +48,7 @@ app.factory 'ksc.ListFilter', [
 
       @return [Array] returns plain [] with filtered contents
       ###
-      constructor: (source, filter) ->
+      constructor: (source, filter, options={}) ->
         list = []
 
         List.addProperties list, @constructor
@@ -56,10 +60,26 @@ app.factory 'ksc.ListFilter', [
 
         define_value list, 'filter', filter, false, true
 
+        define_value list, 'map', {}, false, true
+
+        define_value list, 'options', options
+
+        define_value list, 'pseudo', {}, false, true
+
         define_value list, 'source', source, false, true
 
-        define_value list, 'unsubscriber', list.if 'update', (args...) ->
-          ListFilter.eventUpdate.call list, args
+        define_value list, 'unsubscriber', source.events.on 'update', (info) ->
+          ListFilter.eventUpdate.call list, info
+
+        for record in source when filter record
+          if record._id?
+            list.map[record._id] = record
+          else
+            list.pseudo[record._pseudo] = record
+          Array::push.call list, record
+
+        ListSorter.register list, options.sorter
+        delete options.sorter # list.sorter is created and holds sorter info
 
         return list
 
@@ -67,15 +87,17 @@ app.factory 'ksc.ListFilter', [
         @unsubscriber()
 
       @eventUpdate: (info) ->
-        action   = {}
-        cut      = []
-        incoming = info.action
-        list     = @
+        list      = @
+
+        action    = null
+        cut       = []
+        filter_fn = list.filter
+        incoming  = info.action
 
         {map, pseudo, source} = list
 
         add_action = (name, info) ->
-          (action[name] ?= []).push info
+          ((action ?= {})[name] ?= []).push info
 
         adder = (record) ->
           Array::push.call list, record
@@ -115,19 +137,19 @@ app.factory 'ksc.ListFilter', [
 
         if incoming.cut
           for record in incoming.cut
-            if is_object record
+            if utils.isObject record
               cutter record._id, record._pseudo, record
             else if map[record]
               cutter record, null, map[record]
 
         if incoming.add
-          for record in incoming.add when list.filter record
+          for record in incoming.add when filter_fn record
             find_and_add record._id, record._pseudo, record
             adder record
 
         if incoming.upsert
           for record in incoming.upsert
-            if list.filter record
+            if filter_fn record
               add_action 'upsert', record
             else
               cutter record._id, record._pseudo, record
@@ -136,7 +158,7 @@ app.factory 'ksc.ListFilter', [
           for info in incoming.move
             source_found_on_filter = false
             {from, to, record} = info
-            if list.filter record # eligible
+            if filter_fn record # eligible
               source_found_on_filter = delete_if_on from.map, from.pseudo
               find_and_add to.map, to.pseudo, record
               if source_found_on_filter
@@ -151,7 +173,7 @@ app.factory 'ksc.ListFilter', [
             {from, to, record, source} = info
             source_found_on_filter = false
             target_found_on_filter = false
-            if list.filter record # eligible
+            if filter_fn record # eligible
               source_found_on_filter = delete_if_on from.map, from.pseudo
               target_found_on_filter = find_and_add to.map, to.pseudo, record
               if source_found_on_filter and target_found_on_filter
@@ -169,9 +191,9 @@ app.factory 'ksc.ListFilter', [
 
         if incoming.update
           for info in incoming.update
-            record = info.record
+            record = info.node
             target_found_on_filter = false
-            if list.filter record # eligible
+            if filter_fn record # eligible
               if find_and_add record._id, record._pseudo, record
                 add_action 'update', info
               else
@@ -188,7 +210,8 @@ app.factory 'ksc.ListFilter', [
             tmp_container.reverse()
             Array::push.apply list, tmp_container
 
-        list.events.emit 'update', {node: list, action}
+        if action
+          list.events.emit 'update', {node: list, action}
 
         return
 ]

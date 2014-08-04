@@ -9,9 +9,8 @@ app.factory 'ksc.Mixin', [
           properties.unshift explicit
           explicit = true
 
-      for property in properties
-        unless typeof property in ['string', 'number']
-          throw new errors.Type {property, acceptable: ['string', 'number']}
+      for property in properties when not utils.isKeyConform property
+        throw new errors.Key {property, required: 'key conform value'}
 
       next explicit, properties
 

@@ -170,17 +170,13 @@ describe 'app.factory', ->
         list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
-        expect(list._pseudoCount).toBe 0
-
         list.push {x: 'c'}
 
-        expect(list._pseudoCount).toBe 1
         expect(list.pseudo[1].x).toBe 'c'
         expect(list.pseudo[1]).toBe list[2]
 
         list.push {id: null, x: 'd'}
 
-        expect(list._pseudoCount).toBe 2
         expect(list.pseudo[1].x).toBe 'c'
         expect(list.pseudo[2].x).toBe 'd'
         expect(list.pseudo[2]).toBe list[3]
@@ -216,4 +212,3 @@ describe 'app.factory', ->
         list.shift()
         expect(list.length).toBe 1
         expect(list.pseudo[1]).toBeUndefined()
-        expect(list._pseudoCount).toBe 1

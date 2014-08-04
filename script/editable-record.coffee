@@ -135,11 +135,11 @@ app.factory 'ksc.EditableRecord', [
         changed = []
 
         for key, i in keys
-          unless typeof key in ['number', 'string']
-            throw new errors.ArgumentType
-              key:        key
-              argument:   i + 1
-              acceptable: ['number', 'string']
+          unless utils.isKeyConform name
+            throw new errors.Key
+              key:      key
+              argument: i
+              required: 'key conform value'
 
           if not i and contract = record._options.contract
             throw new errors.ContractBreak {key, value, contract: contract[key]}
