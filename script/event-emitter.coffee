@@ -384,7 +384,7 @@ app.factory 'ksc.EventEmitter', [
             del = ->
               delete attached[increment]
 
-            unknown = (value) ->
+            unknown = ->
               throw new errors.ArgumentType
                 unsubscriber: unsubscriber
                 argument:     1
@@ -396,9 +396,9 @@ app.factory 'ksc.EventEmitter', [
               else if unsubscriber.$$intervalId? and unsubscriber.finally?
                 unsubscriber.finally del
               else
-                unknown unsubscriber
+                unknown()
             else unless is_function(unsubscriber) and unsubscriber[UNSUBSCRIBER]
-              unknown unsubscriber
+              unknown()
 
             attached[increment] = unsubscriber
 
