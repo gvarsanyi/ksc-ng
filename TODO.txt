@@ -21,4 +21,3 @@ coffeedoc missing / partial
 ----------------------------
 - record-contract
 - rest-utils
-- utils
