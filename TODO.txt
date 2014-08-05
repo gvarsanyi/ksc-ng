@@ -2,8 +2,6 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- list: re-sort on record update
-- list-filter: sorter bindings
 
 to-do
 ----------------------------

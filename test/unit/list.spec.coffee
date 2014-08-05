@@ -72,6 +72,13 @@ describe 'app.factory', ->
       expect(list[5].id).toBe 6
       expect(list[6].id).toBe 8
 
+    it 'Record updates effect sort order in sorted lists', ->
+      list = new List sorter: 'a'
+      list.push {id: 1, a: 'a'}, {id: 2, a: 'f'}, {id: 3, a: 'z'}
+      expect(list.map[3]).toBe list[2]
+      list.map[3].a = 'b'
+      expect(list.map[3]).toBe list[1]
+
     it 'Upsert', ->
       list = new List
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
@@ -212,3 +219,13 @@ describe 'app.factory', ->
         list.shift()
         expect(list.length).toBe 1
         expect(list.pseudo[1]).toBeUndefined()
+
+      it 'List.addProperties()', ->
+        class X
+          a: ->
+          __b: ->
+        x = new X
+        y = {}
+        List.addProperties y, x.constructor
+        expect(typeof y.a).toBe 'function'
+        expect(y.__b).toBeUndefined()

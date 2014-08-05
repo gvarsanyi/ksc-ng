@@ -398,6 +398,14 @@ app.factory 'ksc.List', [
           finally
             list.events.unhalt()
 
+        if list.sorter # find the proper place for the updated record
+          record = info.record
+          for item, pos in list when item is record
+            Array::splice.call list, pos, 1
+            new_pos = list.sorter.position record
+            Array::splice.call list, new_pos, 0, record
+            break
+
         list.events.emit 'update', {node: list, action: {update: [info]}}
 
 
@@ -475,7 +483,7 @@ app.factory 'ksc.List', [
             if list.sorter # sorted (insert to position)
               for item in tmp
                 pos = list.sorter.position item
-                list.splice pos, 0, item
+                Array::splice.call list, pos, 0, item
             else # not sorted (actual push/unshift)
               Array.prototype[orig_fn].apply list, tmp
         finally

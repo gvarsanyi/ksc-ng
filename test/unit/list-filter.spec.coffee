@@ -28,21 +28,69 @@ describe 'app.factory', ->
 
 
     it 'Filters immediately when created', ->
-      list = new List
-      list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
+      list = new List sorter: 'b'
+      list.push {id: 1, a: 'xyz', b: 'a'}, {id: 2, a: 'abc', b: 'b'},
+                {id: null, a: 'aaa', b: 'c'}
 
-      sublist = new ListFilter list, filter_fn, sorter: null
+      sublist = new ListFilter list, filter_fn
 
       expect(sublist.length).toBe 2
       expect(sublist[0].id).toBe 2
       expect(sublist[1].id).toBe null
 
+    it 'Uses its own sorter for initial load', ->
+      list = new List
+      list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
+
+      sublist = new ListFilter list, filter_fn, sorter: 'a'
+
+      expect(sublist.length).toBe 2
+      expect(sublist[0].a).toBe 'aaa'
+      expect(sublist[1].a).toBe 'abc'
+
+    it 'Keeps parent list sort', ->
+      list = new List sorter: 'a'
+      sublist = new ListFilter list, filter_fn
+
+      list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
+
+      expect(sublist.length).toBe 2
+      expect(sublist[0].a).toBe 'aaa'
+      expect(sublist[1].a).toBe 'abc'
+
+      list[1].a = 'aax'
+
+      expect(sublist.length).toBe 2
+      expect(sublist[0].a).toBe 'aaa'
+      expect(sublist[1].a).toBe 'aax'
+
+    it 'Sorted sublist updates', ->
+      list = new List
+      sublist = new ListFilter list, filter_fn, sorter: 'a'
+
+      list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
+
+      expect(sublist.length).toBe 2
+      expect(sublist[0].a).toBe 'aaa'
+      expect(sublist[1].a).toBe 'abc'
+
+      list[1].a = 'aax'
+
+      expect(sublist.length).toBe 2
+      expect(sublist[0].a).toBe 'aaa'
+      expect(sublist[1].a).toBe 'aax'
+
+      list[1].a = 'xxx'
+      list[2].a = 'xxx'
+      expect(sublist.length).toBe 0
+
     it 'Method .destroy() unsubscribes from list', ->
-      sublist.destroy()
+      expect(sublist.destroy()).toBe true
       list[1].id = 3
 
       expect(action).toBe null
-      expect(sublist.map[2]._id).toBe 3
+
+      expect(-> sublist.destroy()).toThrow()
 
     describe 'Following events', ->
 
@@ -111,7 +159,8 @@ describe 'app.factory', ->
               list.map[2].id = 9
 
               expect(action.update.length).toBe 1
-              expect(action.update[0].move).toEqual {from: {map: 2}, to: {map: 9}}
+              move_info = {from: {map: 2}, to: {map: 9}}
+              expect(action.update[0].move).toEqual move_info
               expect(action.update[0].record).toBe sublist[0]
               expect(sublist.map[2]).toBeUndefined()
               expect(sublist.map[9]).toBe list[1]
