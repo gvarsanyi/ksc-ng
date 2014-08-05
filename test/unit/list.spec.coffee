@@ -63,7 +63,8 @@ describe 'app.factory', ->
       expect(list[2].id).toBe 3
       expect(list[3].id).toBe 5
       expect(list[4].id).toBe 8
-      list.unshift {id: 6}, {id: 0}
+      res = list.unshift {id: 6}, {id: 0}, true
+      expect(res.add.length).toBe 2
       expect(list[0].id).toBe 0
       expect(list[1].id).toBe 1
       expect(list[2].id).toBe 2
@@ -108,6 +109,94 @@ describe 'app.factory', ->
       expect(list.map[2].x).toBe 'x'
       expect(list.map[4].x).toBe 'y'
       expect(list.map[4] instanceof EditableRecord).toBe true
+
+    it 'Method .splice()', ->
+      list = new List
+      list.push {id: 0}, {id: 10}, {id: 20}
+      action = null
+      list.events.on 'update', (info) ->
+        action = info.action
+
+      to_be_cut = list[1]
+
+      list.splice 1, 1, {id: 5}, {id: 6}
+
+      expect(list.length).toBe 4
+      expect(list[0].id).toBe 0
+      expect(list[1].id).toBe 5
+      expect(list[2].id).toBe 6
+      expect(list[3].id).toBe 20
+      expect(action.cut.length).toBe 1
+      expect(action.cut[0]).toBe to_be_cut
+      expect(action.add.length).toBe 2
+      expect(action.add[0]).toBe list[1]
+      expect(action.add[1]).toBe list[2]
+
+    describe 'Method .splice() edge cases', ->
+
+      it 'on sorted list', ->
+        list = new List sorter: 'id'
+        list.push {id: 10}, {id: 0}, {id: 20}
+        list.splice 1, 1, {id: -2}, {id: 6}
+        expect(list[0]._id).toBe -2
+        expect(list[1]._id).toBe 0
+        expect(list[2]._id).toBe 6
+        expect(list[3]._id).toBe 20
+        expect(list.length).toBe 4
+
+      it 'upsert', ->
+        list = new List
+        list.push {id: 0, a: 'a'}, {id: 10, a: 'b'}, {id: 20, a: 'c'}
+        res = list.splice 2, 0, {id: 0, a: 'z'}, true
+        expect(res.add).toBeUndefined()
+        expect(res.cut).toBeUndefined()
+        expect(res.update.length).toBe 1
+        expect(list.length).toBe 3
+        expect(list[0].a).toBe 'z'
+
+      it 'nothing to do', ->
+        list = new List
+        list.push {id: 0, a: 'a'}, {id: 10, a: 'b'}, {id: 20, a: 'c'}
+        res = list.splice 4, true
+        expect(res.add).toBeUndefined()
+        expect(res.cut).toBeUndefined()
+        expect(res.update).toBeUndefined()
+        expect(list.length).toBe 3
+
+      it 'negative pos on empty list', ->
+        list = new List
+        action = null
+        list.events.on 'update', (info) ->
+          action = info.action
+        list.splice -1, 1, {id: 10}
+        expect(action.add.length).toBe 1
+        expect(action.add[0]).toBe list[0]
+
+      it 'missing count', ->
+        list = new List
+        list.push {id: 0}, {id: 10}, {id: 20}
+        to_be_cut = list[2]
+        action = null
+        list.events.on 'update', (info) ->
+          action = info.action
+        list.splice -1
+        expect(list.length).toBe 2
+        expect(action.cut.length).toBe 1
+        expect(action.cut[0]).toBe to_be_cut
+
+      it 'error handling', ->
+        list = new List
+        expect(-> list.splice NaN).toThrow()
+        expect(-> list.splice {}).toThrow()
+        expect(-> list.splice true).toThrow()
+        expect(-> list.splice 'a').toThrow()
+        expect(-> list.splice '').toThrow()
+        expect(-> list.splice false).toThrow()
+        expect(-> list.splice null).toThrow()
+        expect(-> list.splice .4).toThrow()
+        expect(-> list.splice 0, -1).toThrow()
+        expect(-> list.splice 0, {}).toThrow()
+        expect(-> list.splice 0, true).not.toThrow()
 
     it 'Method .cut(records...)', ->
       list = new List

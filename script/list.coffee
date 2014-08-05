@@ -8,6 +8,15 @@ app.factory 'ksc.List', [
     define_value = utils.defineValue
     is_object    = utils.isObject
 
+    normalize_return_action = (items, return_action) ->
+      unless typeof return_action is 'boolean'
+        items.push return_action
+        return_action = false
+      return_action
+
+    emit_action = (list, action) ->
+      list.events.emit 'update', {node: list, action}
+
     ###
     Constructor for an Array instance and methods to be added to that instance
 
@@ -151,7 +160,7 @@ app.factory 'ksc.List', [
           Array::push.apply list, tmp_container
 
         action = {cut}
-        list.events.emit 'update', {node: list, action}
+        emit_action list, action
 
         action
 
@@ -179,7 +188,7 @@ app.factory 'ksc.List', [
           list.events.unhalt()
 
         if action.cut.length
-          list.events.emit 'update', {node: list, action}
+          emit_action list, action
 
         if return_action
           return action
@@ -201,9 +210,10 @@ app.factory 'ksc.List', [
 
 
       ###
-      Upsert 1 or more records - adds to the end of the list.
-      Records with an ID that exists in the list already will update the
-      existing one instead of being added.
+      Upsert 1 or more records - adds to the end of the list if unsorted.
+
+      Upsert means update or insert. Updates if a record is found in the list
+      with identical ._id property. Inserts otherwise.
 
       If list is auto-sorted, new elements will be added to their appropriate
       sorted position (i.e. not necessarily to the last position), see:
@@ -230,12 +240,20 @@ app.factory 'ksc.List', [
         into a Record (based on .options.record.class)
         @param [boolean] return_action Request to return an object with
         references to the affected records:
-        {insert: [records...], update: [records...]}
+        {add: [records...], update: [records...]}
 
         @return [Object] Affected records
       ###
       push: (items..., return_action) ->
-        List.add.call @, 'push', items, return_action
+        return_action = normalize_return_action items, return_action
+
+        list = @
+
+        action = List.add.call list, items, list.length
+
+        if return_action
+          return action
+        list.length
 
 
       ###
@@ -253,9 +271,10 @@ app.factory 'ksc.List', [
 
 
       ###
-      Upsert 1 or more records - adds to the beginning of the list.
-      Records with an ID that exists in the list already will update the
-      existing one instead of being added.
+      Upsert 1 or more records - adds to the beginning of the list if unsorted.
+
+      Upsert means update or insert. Updates if a record is found in the list
+      with identical ._id property. Inserts otherwise.
 
       If list is auto-sorted, new elements will be added to their appropriate
       sorted position (i.e. not necessarily to the first position), see:
@@ -282,12 +301,107 @@ app.factory 'ksc.List', [
         into a Record (based on .options.record.class)
         @param [boolean] return_action Request to return an object with
         references to the affected records:
-        {insert: [records...], update: [records...]}
+        {add: [records...], update: [records...]}
 
         @return [Object] Affected records
       ###
       unshift: (items..., return_action) ->
-        List.add.call @, 'unshift', items, return_action
+        return_action = normalize_return_action items, return_action
+
+        list = @
+
+        action = List.add.call list, items, 0
+
+        if return_action
+          return action
+        list.length
+
+      ###
+      Cut and/or upsert 1 or more records. Inserts to position if unsorted.
+
+      Upsert means update or insert. Updates if a record is found in the list
+      with identical ._id property. Inserts otherwise.
+
+      If list is auto-sorted, new elements will be added to their appropriate
+      sorted position (i.e. not necessarily to the first position), see:
+      {ListSorter} and {ListSorter#position}
+
+      Options used:
+      - .options.record.idProperty (property/properties that define record ID)
+
+      @throw [ArgumentTypeError] pos or count does not meet requirements
+      @throw [TypeError] non-object element pushed
+
+      @event 'update' sends out message if list changes:
+              events.emit 'update', {node: list, action: {cut: [records...],
+              add: [records...], update: [{record: record}, ...]}}
+
+      @overload unshift(items...)
+        @param [number] pos Index of cut/insert start
+        @param [number] count Number of elements to cut
+        @param [Object] items... Record or vanilla object that will be turned
+          into a Record (based on .options.record.class)
+
+        @return [Array] removed elements
+
+      @overload unshift(items..., return_action)
+        @param [Object] items... Record or vanilla object that will be turned
+          into a Record (based on .options.record.class)
+        @param [boolean] return_action Request to return an object with
+          references to the affected records: {cut: [records..],
+          add: [records...], update: [records...]}
+
+        @return [Object] Actions taken (see event description: action)
+      ###
+      splice: (pos, count, items..., return_action) ->
+        return_action = normalize_return_action items, return_action
+
+        if typeof items[0] is 'undefined' and items.length is 1
+          items.pop()
+
+        if typeof count is 'boolean' and not items.length
+          return_action = count
+          count = null
+
+        positive_int_or_zero = (value, i) ->
+          unless typeof value is 'number' and (value > 0 or value is 0) and
+          value is Math.floor value
+            throw new errors.ArgumentType
+              value:    value
+              argument: i
+              required: 'Positive number or 0'
+
+        action = {}
+        list   = @
+        len    = list.length
+
+        if pos < 0
+          pos = Math.max len + pos, 0
+        positive_int_or_zero pos
+        pos = Math.min len, pos
+
+        if count?
+          positive_int_or_zero count
+          count = Math.min len - pos, count
+        else
+          count = len - pos
+
+        list.events.halt()
+        try
+          if count > 0
+            action = list.cut (list.slice pos, pos + count)...
+          if items.length
+            utils.mergeIn action, List.add.call list, items, pos
+        finally
+          list.events.unhalt()
+
+        if action.cut or action.add or action.update
+          emit_action list, action
+
+        if return_action
+          return action
+
+        action.cut or [] # default splice behavior: return removed elements
 
 
       ###
@@ -406,7 +520,7 @@ app.factory 'ksc.List', [
             Array::splice.call list, new_pos, 0, record
             break
 
-        list.events.emit 'update', {node: list, action: {update: [info]}}
+        emit_action list, {update: [info]}
 
 
       ###
@@ -421,9 +535,8 @@ app.factory 'ksc.List', [
 
       Expects scope to be a {List} type Array
 
-      @param [string] orig_fn 'push' or 'unshift'
       @param [Array] items Record or vanilla objects to be added
-      @param [string] return_action Triggers stat object response (not .length)
+      @param [number] pos position to inject new element to
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -432,13 +545,9 @@ app.factory 'ksc.List', [
               events.emit 'update', {node: list, action: {add: [records...],
               update: [{record: record}, ...]}}
 
-      @return [number|Object] list.length or {insert: [...], update: [...]}
+      @return [Object] action description: {add: [...], update: [...]}
       ###
-      @add: (orig_fn, items, return_action) ->
-        unless typeof return_action is 'boolean'
-          items.push return_action
-          return_action = null
-
+      @add: (items, pos) ->
         unless items.length
           throw new errors.MissingArgument {name: 'item', argument: 1}
 
@@ -485,16 +594,13 @@ app.factory 'ksc.List', [
                 pos = list.sorter.position item
                 Array::splice.call list, pos, 0, item
             else # not sorted (actual push/unshift)
-              Array.prototype[orig_fn].apply list, tmp
+              Array::splice.call list, pos, 0, tmp...
         finally
           list.events.unhalt()
 
-        list.events.emit 'update', {node: list, action}
+        emit_action list, action
 
-        if return_action
-          return action
-
-        list.length # default push/unshift return behavior
+        action
 
       ###
       Aggregate method for pop/shift
@@ -517,7 +623,7 @@ app.factory 'ksc.List', [
             delete list.map[record._id]
           else
             delete list.pseudo[record._pseudo]
-          list.events.emit 'update', {node: list, action: {cut: [record]}}
+          emit_action list, {cut: [record]}
         record
 
       ###

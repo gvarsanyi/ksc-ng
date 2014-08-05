@@ -93,6 +93,17 @@ app.service 'ksc.utils', [
           return false unless ref and typeof ref is 'object'
         true
 
+      mergeIn: (objs...) ->
+        if objs.length < 2
+          throw new errors.MissingArgument required: 'Merged and mergee objects'
+        for obj, i in objs
+          unless utils.isObject obj
+            throw new errors.Type {obj, argument: i, required: 'object'}
+          if i
+            for key, value of obj
+              objs[0][key] = value
+        objs[0]
+
       uid: (name) ->
         if name?
           target = uid_store.named
