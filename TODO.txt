@@ -10,7 +10,7 @@ to-do
 - generic list cache logic
 - record: handle multiple list-parents
 - record: predefine idProperty even if it is not in the original data set and there is no contract
-- record: support for array property type (+ record-contract, editable-record)
+- record/record-contract: support for array property type (+ record-contract, editable-record)
 - rest-list: support composite ID with _primaryId and related crud operations
 
 unit tests missing / partial
@@ -22,7 +22,3 @@ coffeedoc missing / partial
 - record-contract
 - rest-utils
 - utils
-
-research
-----------------------------
-- better name for List (XArray? HashArray? Set?)
