@@ -20,4 +20,4 @@ unit tests missing / partial
 coffeedoc missing / partial
 ----------------------------
 - record-contract
-- rest-utils
+

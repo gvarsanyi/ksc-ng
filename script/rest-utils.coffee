@@ -3,11 +3,30 @@ app.service 'ksc.restUtils', [
   '$q', 'ksc.errors',
   ($q, errors) ->
 
-    restUtils =
-      asyncSquash: (records, done_callback, iteration_fn) ->
+    ###
+    Rest/XHR call related utilities
+
+    @author Greg Varsanyi
+    ###
+    class RestUtils
+
+      ###
+      Squash multiple requests into a single one
+
+      @param [Array] list of values that will be used as argument #1 and passed
+        to iteration_fn in each iteration. Number of items defines number of
+        iterations.
+      @param [function] iteration_fn function to be called for each iteration.
+        Signiture is: `(iteration_data_set) ->` and should return a Promise
+      @param [function] done_callback function to be called when chained promise
+        gets resolved
+
+      @return [Promise] chained promises of all requests
+      ###
+      asyncSquash: (iteration_data_sets, iteration_fn, done_callback) ->
         count      = 0
         error_list = []
-        len        = records.length
+        len        = iteration_data_sets.length
         results    = []
 
         iteration_callback = (err, result) ->
@@ -25,14 +44,29 @@ app.service 'ksc.restUtils', [
 
             done_callback error, results...
 
-        promises = for record in records
-          restUtils.wrapPromise iteration_fn(record), iteration_callback
+        promises = for iteration_data_set in iteration_data_sets
+          RestUtils::wrapPromise iteration_fn(iteration_data_set),
+                                 iteration_callback
 
         if promises.length < 2
           return promises[0]
         $q.all promises # chained promises
 
+      ###
+      Add listeners to promise so that standard callback functions with
+      signiture `(err, results...) ->` can be called when the
+      promise gets resolved.
 
+      On callback function, argument `err` is null on no errors or an instance
+      of Error if there was an error.
+      `result` is the raw result of the request, similar to what $http methods
+      return: {data, status, headers, config}
+
+      @param [Promise] promise $q promise to be wrapped
+      @param [function] callback response function
+
+      @return [Promise] the provided promise object reference
+      ###
       wrapPromise: (promise, callback) ->
         success_fn = (result) ->
           wrap = ({data, status, headers, config} = result)
@@ -47,4 +81,6 @@ app.service 'ksc.restUtils', [
         promise.then success_fn, error_fn
 
         promise
+
+    restUtils = new RestUtils
 ]

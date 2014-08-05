@@ -314,7 +314,7 @@ app.factory 'ksc.RestList', [
           raw_responses = Array::slice.call arguments, 1
           callback? err, results, raw_responses...
 
-        restUtils.asyncSquash records, finished, (record) ->
+        iteration = (record) ->
           id     = record._id
           method = 'delete'
           url    = list.options.record?.endpoint?.url
@@ -350,4 +350,6 @@ app.factory 'ksc.RestList', [
               else
                 results.cut = (results.cut or 0) + list.cut(record).cut.length
             return
+
+        restUtils.asyncSquash records, iteration, finished
 ]

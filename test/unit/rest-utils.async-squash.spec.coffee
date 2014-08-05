@@ -29,9 +29,11 @@ describe 'app.service', ->
 
         $httpBackend.expectGET('/').respond {asdf: 1}
 
-        promise = restUtils.asyncSquash records, done_cb, (record) ->
+        iteration = (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
+
+        promise = restUtils.asyncSquash records, iteration, done_cb
 
         expect(promise.success).not.toBeUndefined()
         expect(item_iterated.length).toBe 1
@@ -58,9 +60,11 @@ describe 'app.service', ->
         for item in records
           $httpBackend.expectGET('/').respond {asdf: item.x}
 
-        promise = restUtils.asyncSquash records, done_cb, (record) ->
+        iteration = (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
+
+        promise = restUtils.asyncSquash records, iteration, done_cb
 
         # chained promise is not an HTTP promise
         expect(promise.success).toBeUndefined()
@@ -92,9 +96,11 @@ describe 'app.service', ->
         $httpBackend.expectGET('/').respond 500, {fail: true}
         $httpBackend.expectGET('/').respond {asdf: 3}
 
-        promise = restUtils.asyncSquash records, done_cb, (record) ->
+        iteration = (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
+
+        promise = restUtils.asyncSquash records, iteration, done_cb
 
         # chained promise is not an HTTP promise
         expect(promise.success).toBeUndefined()
@@ -128,9 +134,11 @@ describe 'app.service', ->
         $httpBackend.expectGET('/').respond 500, {fail: true}
         $httpBackend.expectGET('/').respond 403, {asdf: 3}
 
-        promise = restUtils.asyncSquash records, done_cb, (record) ->
+        iteration = (record) ->
           item_iterated.push record
           $http.get '/' # returns promise
+
+        promise = restUtils.asyncSquash records, iteration, done_cb
 
         # chained promise is not an HTTP promise
         expect(promise.success).toBeUndefined()
