@@ -22,4 +22,5 @@ describe 'app.service', ->
 
       expect(-> utils.mergeIn()).toThrow()
       expect(-> utils.mergeIn {}).toThrow()
+      expect(-> utils.mergeIn false, {}).toThrow()
       expect(-> utils.mergeIn {}, true).toThrow()

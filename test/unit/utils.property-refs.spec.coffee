@@ -11,7 +11,7 @@ describe 'app.service', ->
         utils = $injector.get 'ksc.utils'
 
 
-    describe 'Method .getProperties()', ->
+    describe 'Method .propertyRefs()', ->
 
       it 'Inherited object', ->
         a = {a: 1, b: 1}
@@ -20,7 +20,7 @@ describe 'app.service', ->
         c = Object.create b
         c.c = 3
 
-        res = utils.getProperties c
+        res = utils.propertyRefs c
 
         expect(Array.isArray res.a).toBe true
         expect(res.a.length).toBe 1
@@ -32,4 +32,4 @@ describe 'app.service', ->
         expect(res.c[0]).toBe c
 
       it 'Error case for non-object provided', ->
-        expect(-> utils.getProperties false).toThrow()
+        expect(-> utils.propertyRefs false).toThrow()

@@ -110,7 +110,7 @@ app.factory 'ksc.Record', [
             delete record[PSEUDO]
 
         # hide (set to non-enumerable) non-data properties/methods
-        for key, refs of utils.getProperties Object.getPrototypeOf record
+        for key, refs of utils.propertyRefs Object.getPrototypeOf record
           for ref in refs
             Object.defineProperty ref, key, enumerable: false
 

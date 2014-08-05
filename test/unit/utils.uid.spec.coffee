@@ -32,3 +32,5 @@ describe 'app.service', ->
       expect(!!uid2).toBe true
       expect(typeof uid2).toBe 'number'
       expect(uid2).not.toBe uid
+
+      expect(-> utils.uid true).toThrow()

@@ -11,105 +11,235 @@ app.service 'ksc.utils', [
       unless args.length
         throw new errors.MissingArgument {name: 'reference', argument: 1}
 
-    uid_store = named: {}
+    ###
+    Miscellaneous utilities that do not belong to other named utility groups
+    (like restUtils)
 
-    utils =
-      defineGetSet: (obj, key, getter, setter, visible) ->
+    @author Greg Varsanyi
+    ###
+    class Utils
+
+      ###
+      Add/update an object property with a getter and an (optional) setter
+
+      @param [Object] object target object reference
+      @param [string|number] key property name on object
+      @param [function] getter function that returns value
+      @param [function] setter (optional) function that consumes set value
+      @param [boolean] enumerable (optional, default: false) if the property
+        should be enumerable in a `for key of object` loop
+
+      @return [object] reference to object
+      ###
+      defineGetSet: (object, key, getter, setter, enumerable) ->
         if typeof setter isnt 'function'
-          visible = setter
-          setter  = ->
+          enumerable = setter
+          setter     = ->
 
-        define_property obj, key,
+        define_property object, key,
           configurable: true
-          enumerable:   !!visible
+          enumerable:   !!enumerable
           get:          getter
           set:          setter
 
-      defineValue: (obj, key, value, writable=false, visible=false) ->
-        if get_own_property_descriptor(obj, key)?.writable is false
-          define_property obj, key, writable: true
+      ###
+      Add/update an object property with provided value
 
-        define_property obj, key,
+      @param [Object] object target object reference
+      @param [string|number] key property name on object
+      @param [any type] value
+      @param [boolean] writable (optional, default: false) read-only if false
+      @param [boolean] enumerable (optional, default: false) if the property
+        should be enumerable in a `for key of object` loop
+
+      @return [object] reference to object
+      ###
+      defineValue: (object, key, value, writable, enumerable) ->
+        if get_own_property_descriptor(object, key)?.writable is false
+          define_property object, key, writable: true
+
+        define_property object, key,
           configurable: true
-          enumerable:   !!visible
+          enumerable:   !!enumerable
           value:        value
           writable:     !!writable
 
-      getProperties: (obj) ->
-        properties = {}
+      ###
+      Check if object has own property with provided name and (optionally) if
+      it matches enumerability requirement
 
-        while utils.isObject obj
-          checked = true
-          for own key of obj
-            unless Array.isArray properties[key]
-              properties[key] = []
-            properties[key].push obj
-          obj = get_prototype_of obj
+      @param [Object] object target object reference
+      @param [string|number] key property name on object
+      @param [boolean] is_enumerable (optional) false: should not be enumerable,
+        true: must be enumerable
 
-        unless checked
-          throw new errors.ArgumentType {obj, argument: 1, acceptable: 'object'}
-        properties
+      @return [boolean] matched
+      ###
+      hasOwn: (object, key, is_enumerable) ->
+        object and object.hasOwnProperty(key) and
+        (not is_enumerable? or is_enumerable is object.propertyIsEnumerable key)
 
-      hasOwn: (obj, key, is_enumerable) ->
-        obj and obj.hasOwnProperty(key) and
-        (not is_enumerable? or is_enumerable is obj.propertyIsEnumerable key)
+      ###
+      Has own property or property on any if its ancestors.
 
-      hasProperty: (obj, key) ->
-        while obj
-          if obj.hasOwnProperty key
+      @param [Object] object target object reference
+      @param [string|number] key property name on object
+
+      @return [boolean] matched
+      ###
+      hasProperty: (object, key) ->
+        while object
+          if object.hasOwnProperty key
             return true
-          obj = get_prototype_of obj
+          object = get_prototype_of object
         false
 
-      identical: (obj1, obj2) ->
-        unless utils.isObject obj1, obj2
-          return obj1 is obj2
+      ###
+      Check if compared values are identical or if provided objects have equal
+      properties and values.
 
-        for k, v1 of obj1
-          unless utils.identical(v1, obj2[k]) and utils.hasOwn obj2, k
+      @param [any type] comparable1
+      @param [any type] comparable2
+
+      @return [boolean] identical
+      ###
+      identical: (comparable1, comparable2) ->
+        unless Utils::isObject comparable1, comparable2
+          return comparable1 is comparable2
+
+        for key, v1 of comparable1
+          unless Utils::identical(v1, comparable2[key]) and
+          Utils::hasOwn comparable2, key
             return false
-        for k of obj2 when not utils.hasOwn obj1, k
+        for key of comparable2 when not Utils::hasOwn comparable1, key
           return false
         true
 
-      isEnumerable: (obj, key) ->
+      ###
+      Checks if object property is enumerable
+
+      @param [Object] object target object reference
+      @param [string|number] key property name on object
+
+      @return [boolean] property is enumerable
+      ###
+      isEnumerable: (object, key) ->
         try
-          return !!(get_own_property_descriptor obj, key).enumerable
+          return !!(get_own_property_descriptor object, key).enumerable
         false
 
+      ###
+      Checks if provided key conforms standards and best practices:
+      either a non-empty string or a number (not NaN)
+
+      @param [any type] key name/id
+
+      @return [boolean] matches key requirements
+      ###
       isKeyConform: (key) ->
         !!(typeof key is 'string' and key) or
         (typeof key is 'number' and not isNaN key)
 
+      ###
+      Checks if refence is or references are all of function type
+
+      @param [any type] refs... values to match
+
+      @return [boolean] all function
+      ###
       isFunction: (refs...) ->
         arg_check refs
-        for ref in refs
-          return false unless ref and typeof ref is 'function'
+        for ref in refs when typeof ref isnt 'function'
+          return false
         true
 
+      ###
+      Checks if refence is or references are all of object type
+
+      @param [any type] refs... values to match
+
+      @return [boolean] all object
+      ###
       isObject: (refs...) ->
         arg_check refs
-        for ref in refs
-          return false unless ref and typeof ref is 'object'
+        for ref in refs when not ref or typeof ref isnt 'object'
+          return false
         true
 
-      mergeIn: (objs...) ->
-        if objs.length < 2
-          throw new errors.MissingArgument required: 'Merged and mergee objects'
-        for obj, i in objs
-          unless utils.isObject obj
-            throw new errors.Type {obj, argument: i, required: 'object'}
-          if i
-            for key, value of obj
-              objs[0][key] = value
-        objs[0]
+      ###
+      Merge properties from source object(s) to target object
 
+      @param [object] target_object object to be updated
+      @param [object] source_objects... Source for new properties/overrides to
+        be copied onto target_object
+
+      @return [object] target_object
+      ###
+      mergeIn: (target_object, source_objects...) ->
+        if source_objects.length < 1
+          throw new errors.MissingArgument required: 'Merged and mergee objects'
+        unless Utils::isObject target_object
+          throw new errors.Type {target_object, argument: 1, required: 'object'}
+
+        for object, i in source_objects
+          unless Utils::isObject object
+            throw new errors.Type {object, argument: i + 2, required: 'object'}
+
+          for key, value of object
+            target_object[key] = value
+
+        target_object
+
+      ###
+      Get all enumerable properties readable on provided object and all its
+      ancestors and turn them into key-value maps where values are arrays with
+      object references that own the named property.
+
+      @param [Object] object target object reference
+
+      @return [object] map with all keys, values are arrays with references to
+        property owner objects
+      ###
+      propertyRefs: (object) ->
+        properties = {}
+
+        while Utils::isObject object
+          checked = true
+          for own key of object
+            unless Array.isArray properties[key]
+              properties[key] = []
+            properties[key].push object
+          object = get_prototype_of object
+
+        unless checked
+          throw new errors.ArgumentType {object, argument: 1, accepts: 'object'}
+        properties
+
+      ###
+      Generate simple numeric unique IDs
+
+      For each name (or no name) it starts with 1 and gets incremented by 1 on
+      every read
+
+      @param [string|number] name (optional) uid group name
+
+      @return [number] unique integer ID that is >= 1 and unique within the name
+        group
+      ###
       uid: (name) ->
+        uid_store = (Utils.uidStore ?= {named: {}})
+
         if name?
+          unless Utils::isKeyConform name
+            throw new errors.Key {name, requirement: 'Key type name'}
+
           target = uid_store.named
         else
           target = uid_store
           name = 'unnamed'
 
         target[name] = (target[name] or 0) + 1
+
+    # return utils instance
+    utils = new Utils
 ]
