@@ -168,13 +168,15 @@ app.factory 'ksc.Record', [
       @throw [KeyError] Keys can not start with underscore
 
       @param [object] data Key-value map of data
+      @param [boolean] emit_event if replace should trigger event emission
+        (defaults to true)
 
       @event 'update' sends out message on changes:
         events.emit {node: record, action: 'replace'}
 
       @return [boolean] indicates change in data
       ###
-      _replace: (data, rec_cmp) ->
+      _replace: (data, emit_event=true) ->
         record = @
 
         if record[EVENTS] is null and record[PARENT_KEY]
@@ -229,7 +231,7 @@ app.factory 'ksc.Record', [
             delete record[key]
             changed = true
 
-        if changed and events = record[EVENTS]
+        if changed and record[EVENTS] and emit_event
           Record.emitUpdate record, 'replace'
 
         changed
@@ -261,13 +263,13 @@ app.factory 'ksc.Record', [
         for key, value of extra_info
           info[key] = value
 
-        events.emit 'update', info
-
         old_id = source[ID]
         Record.setId source
 
         unless source[EVENTS]._halt
           source[PARENT]?._recordChange? source, info, old_id
+
+        events.emit 'update', info
 
         return
 

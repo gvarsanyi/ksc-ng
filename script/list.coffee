@@ -217,7 +217,7 @@ app.factory 'ksc.List', [
 
       @event 'update' sends out message if list changes:
               events.emit 'update', {node: list, action: {add: [records...],
-              upsert: [records...]}}
+              update: [{record: record}, ...]}}
 
       @overload push(items...)
         @param [Object] items... Record or vanilla object that will be turned
@@ -269,7 +269,7 @@ app.factory 'ksc.List', [
 
       @event 'update' sends out message if list changes:
               events.emit 'update', {node: list, action: {add: [records...],
-              upsert: [records...]}}
+              update: [{record: record}, ...]}}
 
       @overload unshift(items...)
         @param [Object] items... Record or vanilla object that will be turned
@@ -334,7 +334,7 @@ app.factory 'ksc.List', [
 
       @return [boolean] true if list event is emitted
       ###
-      _recordChange: (record, info, old_id) ->
+      _recordChange: (record, record_info, old_id) ->
         unless record instanceof Record
           throw new errors.Type {record, acceptable: 'Record'}
 
@@ -355,58 +355,50 @@ app.factory 'ksc.List', [
           define_value record, '_pseudo', utils.uid 'record.pseudo'
           list.pseudo[record._pseudo] = record
 
-        action = {update: [info]}
+        info = {record, info: record_info}
         if old_id isnt record._id
           list.events.halt()
           try
             unless record._id? # map -> pseudo
-              action.move = [
-                from:   {map: old_id}
-                to:     {pseudo: record._pseudo}
-                record: record
-              ]
               remove_from_map()
               add_to_pseudo()
+              info.move =
+                from: {map: old_id}
+                to:   {pseudo: record._pseudo}
             else unless old_id? # pseudo -> map
               if map[record._id] # merge
-                action.merge = [
-                  from:   {pseudo: record._pseudo}
-                  to:     {map: record._id}
-                  record: map[record._id]
-                  source: record
-                ]
+                info.merge =
+                  from: {pseudo: record._pseudo}
+                  to:   {map: record._id}
+                info.record = map[record._id]
+                info.source = record
                 list.cut record
                 list.push record
               else # no merge
-                action.move = [
-                  from:   {pseudo: record._pseudo}
-                  to:     {map: record._id}
-                  record: record
-                ]
+                info.move =
+                  from: {pseudo: record._pseudo}
+                  to:   {map: record._id}
                 remove_from_pseudo()
                 add_to_map()
             else # map -> map
               if map[record._id] # with merge
-                action.merge = [
-                  from:   {map: old_id}
-                  to:     {map: record._id}
-                  record: map[record._id]
-                  source: record
-                ]
+                info.merge =
+                  from: {map: old_id}
+                  to:   {map: record._id}
+                info.record = map[record._id]
+                info.source = record
                 list.cut old_id
                 list.push record
-              else # map -> map without merge
-                action.move = [
-                  from:   {map: old_id}
-                  to:     {map: record._id}
-                  record: record
-                ]
+              else # no merge
+                info.move =
+                  from: {map: old_id}
+                  to:   {map: record._id}
                 remove_from_map()
                 add_to_map()
           finally
             list.events.unhalt()
 
-        list.events.emit 'update', {node: list, action}
+        list.events.emit 'update', {node: list, action: {update: [info]}}
 
 
       ###
@@ -430,7 +422,7 @@ app.factory 'ksc.List', [
 
       @event 'update' sends out message if list changes:
               events.emit 'update', {node: list, action: {add: [records...],
-              upsert: [records...]}}
+              update: [{record: record}, ...]}}
 
       @return [number|Object] list.length or {insert: [...], update: [...]}
       ###
@@ -442,47 +434,52 @@ app.factory 'ksc.List', [
         unless items.length
           throw new errors.MissingArgument {name: 'item', argument: 1}
 
-        list = @
-
         action = {}
-        tmp    = []
-        record_opts =  list.options.record
-        record_class = record_opts?.class or EditableRecord
-        for item in items
-          unless is_object item
-            throw new errors.Type {item, acceptable: 'object'}
+        list   = @
 
-          unless item instanceof record_class
-            if item instanceof Record
-              item = new record_class item._clone(true), record_opts, list
-            else
-              item = new record_class item, record_opts, list
+        list.events.halt()
+        try
+          tmp = []
+          record_opts  = list.options.record
+          record_class = record_opts?.class or EditableRecord
+          for item in items
+            original = item
+            unless is_object item
+              throw new errors.Type {item, acceptable: 'object'}
 
-          if item._id?
-            if existing = list.map[item._id]
-              existing._replace item._clone true
-              (action.upsert ?= []).push existing
+            unless item instanceof record_class
+              if item instanceof Record
+                item = new record_class item._clone(true), record_opts, list
+              else
+                item = new record_class item, record_opts, list
+
+            if item._id?
+              if existing = list.map[item._id]
+                existing._replace item._clone true
+                (action.update ?= []).push {record: existing, source: original}
+              else
+                list.map[item._id] = item
+                tmp.push item
+                (action.add ?= []).push item
+
+              if item._pseudo
+                define_value item, '_pseudo', null
             else
-              list.map[item._id] = item
+              define_value item, '_pseudo', utils.uid 'record.pseudo'
+
+              list.pseudo[item._pseudo] = item
               tmp.push item
               (action.add ?= []).push item
 
-            if item._pseudo
-              define_value item, '_pseudo', null
-          else
-            define_value item, '_pseudo', utils.uid 'record.pseudo'
-
-            list.pseudo[item._pseudo] = item
-            tmp.push item
-            (action.add ?= []).push item
-
-        if tmp.length
-          if list.sorter # sorted (insert to position)
-            for item in tmp
-              pos = list.sorter.position item
-              list.splice pos, 0, item
-          else # not sorted (actual push/unshift)
-            Array.prototype[orig_fn].apply list, tmp
+          if tmp.length
+            if list.sorter # sorted (insert to position)
+              for item in tmp
+                pos = list.sorter.position item
+                list.splice pos, 0, item
+            else # not sorted (actual push/unshift)
+              Array.prototype[orig_fn].apply list, tmp
+        finally
+          list.events.unhalt()
 
         list.events.emit 'update', {node: list, action}
 

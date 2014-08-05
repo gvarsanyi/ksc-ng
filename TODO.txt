@@ -2,6 +2,8 @@ priority to-do
 ----------------------------
 - batch-loader
 - bootloader-service
+- list: re-sort on record update
+- list-filter: sorter bindings
 
 to-do
 ----------------------------
@@ -15,7 +17,6 @@ to-do
 
 unit tests missing / partial
 ----------------------------
-- list-filter
 - record-contract
 
 coffeedoc missing / partial

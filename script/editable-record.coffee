@@ -135,7 +135,7 @@ app.factory 'ksc.EditableRecord', [
         changed = []
 
         for key, i in keys
-          unless utils.isKeyConform name
+          unless utils.isKeyConform key
             throw new errors.Key
               key:      key
               argument: i
@@ -190,10 +190,11 @@ app.factory 'ksc.EditableRecord', [
 
         if events = record[EVENTS]
           events.halt()
-        try
-          dropped = record._revert()
 
-          if changed = super
+        try
+          dropped = record._revert false
+
+          if changed = super data, false
             contract = record._options.contract
 
             define_value record, EDITED, {}
@@ -221,12 +222,15 @@ app.factory 'ksc.EditableRecord', [
 
       Drops deletions, edited and added properties (if any)
 
+      @param [boolean] emit_event if replace should trigger event emission
+        (defaults to true)
+
       @event 'update' sends out message on changes:
         events.emit 'update', {node: record, action: 'revert'}
 
       @return [boolean] indicates change in data
       ###
-      _revert: ->
+      _revert: (emit_event=true) ->
         changed = false
 
         record = @
@@ -244,7 +248,7 @@ app.factory 'ksc.EditableRecord', [
           delete record[key]
           changed = true
 
-        if changed
+        if changed and emit_event
           define_value record, CHANGES, 0
           Record.emitUpdate record, 'revert'
 

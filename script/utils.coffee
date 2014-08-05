@@ -78,7 +78,7 @@ app.service 'ksc.utils', [
         false
 
       isKeyConform: (key) ->
-        (typeof key is 'string' and key) or
+        !!(typeof key is 'string' and key) or
         (typeof key is 'number' and not isNaN key)
 
       isFunction: (refs...) ->
@@ -97,6 +97,7 @@ app.service 'ksc.utils', [
         if name?
           target = uid_store.named
         else
+          target = uid_store
           name = 'unnamed'
 
         target[name] = (target[name] or 0) + 1

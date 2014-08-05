@@ -1,7 +1,7 @@
 
 app.factory 'ksc.ListFilter', [
-  'ksc.EventEmitter', 'ksc.List', 'ksc.ListSorter', 'ksc.errors', 'ksc.utils',
-  (EventEmitter, List, ListSorter, errors, utils) ->
+  'ksc.EventEmitter', 'ksc.List', 'ksc.ListSorter', 'ksc.utils',
+  (EventEmitter, List, ListSorter, utils) ->
 
     define_value = utils.defineValue
 
@@ -88,7 +88,6 @@ app.factory 'ksc.ListFilter', [
 
       @eventUpdate: (info) ->
         list      = @
-
         action    = null
         cut       = []
         filter_fn = list.filter
@@ -137,69 +136,45 @@ app.factory 'ksc.ListFilter', [
 
         if incoming.cut
           for record in incoming.cut
-            if utils.isObject record
-              cutter record._id, record._pseudo, record
-            else if map[record]
-              cutter record, null, map[record]
+            cutter record._id, record._pseudo, record
 
         if incoming.add
           for record in incoming.add when filter_fn record
             find_and_add record._id, record._pseudo, record
             adder record
 
-        if incoming.upsert
-          for record in incoming.upsert
-            if filter_fn record
-              add_action 'upsert', record
-            else
-              cutter record._id, record._pseudo, record
-
-        if incoming.move
-          for info in incoming.move
-            source_found_on_filter = false
-            {from, to, record} = info
-            if filter_fn record # eligible
-              source_found_on_filter = delete_if_on from.map, from.pseudo
-              find_and_add to.map, to.pseudo, record
-              if source_found_on_filter
-                add_action 'move', info
-              else
-                adder record
-            else
-              cutter from.map, from.pseudo, record
-
-        if incoming.merge
-          for info in incoming.merge
-            {from, to, record, source} = info
-            source_found_on_filter = false
-            target_found_on_filter = false
-            if filter_fn record # eligible
-              source_found_on_filter = delete_if_on from.map, from.pseudo
-              target_found_on_filter = find_and_add to.map, to.pseudo, record
-              if source_found_on_filter and target_found_on_filter
-                add_action 'merge', info
-                cut.push source
-              else if source_found_on_filter
-                add_action 'move', {from, to, record}
-              else if target_found_on_filter
-                add_action 'update', {node: record, action: 'replace'}
-              else
-                adder record
-            else
-              cutter from.map, from.pseudo, source
-              cutter to.map to.pseudo, record
-
         if incoming.update
           for info in incoming.update
-            record = info.node
-            target_found_on_filter = false
-            if filter_fn record # eligible
-              if find_and_add record._id, record._pseudo, record
-                add_action 'update', info
+            {record, info, merge, move, source} = info
+            from = to = null
+            if remapper = merge or move
+              {from, to} = remapper
+            if filter_fn record # update or add
+              source_found = from and delete_if_on from.map, from.pseudo
+              if to
+                target_found = find_and_add to.map, to.pseudo, record
+              else
+                target_found = find_and_add record._id, record._pseudo, record
+              if source_found and target_found
+                add_action 'update', {record, info, merge: remapper, source}
+                cut.push source
+              else if source_found
+                add_action 'update', {record, info, move: remapper}
+              else if target_found
+                update_info = {record}
+                for key, value of {info, source} when value?
+                  update_info[key] = value
+                add_action 'update', update_info
               else
                 adder record
-            else
-              cutter record._id, record._pseudo, record
+            else # remove if found
+              if merge
+                cutter from.map, from.pseudo, source
+                cutter to.map, to.pseudo, record
+              else if move
+                cutter from.map, from.pseudo, record
+              else
+                cutter record._id, record._pseudo, record
 
         if cut.length
           tmp_container = []

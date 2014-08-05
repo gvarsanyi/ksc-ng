@@ -205,4 +205,3 @@ describe 'app.factory', ->
       expect(-> record._delete true).toThrow()
       expect(-> record._delete false).toThrow()
       expect(-> record._delete()).toThrow()
-

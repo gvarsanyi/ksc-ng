@@ -26,8 +26,9 @@ describe 'app.factory', ->
 
         expect(distributed.action.add.length).toBe 1
         expect(distributed.action.add[0].x).toBe 'd'
-        expect(distributed.action.upsert.length).toBe 1
-        expect(distributed.action.upsert[0].x).toBe 'c'
+        expect(distributed.action.update.length).toBe 1
+        expect(distributed.action.update[0].record.x).toBe 'c'
+        expect(distributed.action.update[0].source).toEqual {id: 2, x: 'c'}
 
       it 'Method .unshift()', ->
         list = new List
@@ -42,8 +43,9 @@ describe 'app.factory', ->
 
         expect(distributed.action.add.length).toBe 1
         expect(distributed.action.add[0].x).toBe 'd'
-        expect(distributed.action.upsert.length).toBe 1
-        expect(distributed.action.upsert[0].x).toBe 'c'
+        expect(distributed.action.update.length).toBe 1
+        expect(distributed.action.update[0].record.x).toBe 'c'
+        expect(distributed.action.update[0].source).toEqual {id: 2, x: 'c'}
 
       it 'Method .pop()', ->
         list = new List
@@ -113,9 +115,9 @@ describe 'app.factory', ->
 
         list.map[2].x = 'c'
 
-        expect(response.action.update[0].node.id).toBe 2
-        expect(response.action.update[0].action).toBe 'set'
-        expect(response.action.update[0].key).toBe 'x'
+        expect(response.action.update[0].record.id).toBe 2
+        expect(response.action.update[0].info.action).toBe 'set'
+        expect(response.action.update[0].info.key).toBe 'x'
 
       it 'On record change (with ._id update)', ->
         list = new List
@@ -130,10 +132,11 @@ describe 'app.factory', ->
 
         action = response.action
 
-        expect(action.move.length).toBe 1
-        expect(action.move[0]).toEqual {from: {map: 2}, to: {map: 3}, record}
-        expect(action.update[0].node._id).toBe 3
-        expect(action.update[0].key).toBe 'id'
+        expect(action.update.length).toBe 1
+        expect(action.update[0].move).toEqual {from: {map: 2}, to: {map: 3}}
+        expect(action.update[0].record).toBe record
+        expect(action.update[0].record._id).toBe 3
+        expect(action.update[0].info.key).toBe 'id'
         expect(list.map[2]).toBeUndefined()
         expect(list.map[3]).toBe list[1]
 
@@ -152,11 +155,12 @@ describe 'app.factory', ->
 
         action = response.action
 
-        expect(action.merge.length).toBe 1
-        merged = action.merge[0]
-        expect(merged).toEqual {from: {map: 2}, to: {map: 1}, record, source}
-        expect(action.update[0].node._id).toBe 1
-        expect(action.update[0].key).toBe 'id'
+        expect(action.update.length).toBe 1
+        expect(action.update[0].merge).toEqual {from: {map: 2}, to: {map: 1}}
+        expect(action.update[0].record).toBe record
+        expect(action.update[0].source).toBe source
+        expect(action.update[0].record._id).toBe 1
+        expect(action.update[0].info.key).toBe 'id'
         expect(list.map[2]).toBeUndefined()
         expect(list.length).toBe 1
         expect(list[0].x).toBe 'b'
