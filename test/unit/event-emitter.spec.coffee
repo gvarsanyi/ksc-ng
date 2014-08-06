@@ -74,6 +74,11 @@ describe 'app.factory', ->
       event = new EventEmitter
       emits = []
 
+      should_be_null = null
+      event.if1 'a', ->
+        should_be_null = false
+      expect(should_be_null).toBe null
+
       event.emit 'a', 'xx'
       event.emit 'a'
       event.emit 'b', 'b'

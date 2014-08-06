@@ -14,21 +14,20 @@ app.factory 'ksc.EventEmitter', [
     @author greg.varsanyi@kareo.com
     ###
     class EventSubscriptions
-      ###
-      @property [object] names storage for subsctiptions per type
-      ###
-      constructor: ->
-        @names = {}
+      # @property [object] names storage for subsctiptions per type
+      names: null
 
       ###
       Emission logic
 
       @param [string] name event identifier
       @param [*] args... optional arguments to be passed to the callback fn
-      @return [bool] indicates if at least one callback fn was called
+
+      @return [boolean] indicates if at least one callback fn was called
       ###
       emit: (name, args...) ->
-        block = (@names[name] ?= {})
+        names = (@names ?= {})
+        block = (names[name] ?= {})
         callback_found = false
         block.fired = (block.fired or 0) + 1
         block.lastArgs = args
@@ -48,11 +47,13 @@ app.factory 'ksc.EventEmitter', [
 
       @param [string] name event identifier
       @param [function] callback
-      @return [bool] indicates if a callback fn was called
+
+      @return [boolean] indicates if a callback fn was called
       ###
       instantCall: (name, callback) ->
-        if @names[name]?.fired
-          callback @names[name].lastArgs...
+        names = (@names ?= {})
+        if names[name]?.fired
+          callback names[name].lastArgs...
           return true
         false
 
@@ -60,17 +61,18 @@ app.factory 'ksc.EventEmitter', [
       Registers one ore more new event subscriptions
 
       @param [string] names... event identifier(s)
-      @param [bool] once indicates one-time subscription (if1 and on1)
+      @param [boolean] once indicates one-time subscription (if1 and on1)
       @param [function] callback
+
       @return [function] unsubscriber
       ###
       push: (names, once, callback) ->
-        subscriptions = @
+        subscription_names = (@names ?= {})
         ids  = []
         once = if once then 1 else 0
         for name in names
-          subscriptions.names[name] ?= {}
-          block = (subscriptions.names[name][once] ?= i: 0)
+          subscription_names[name] ?= {}
+          block = (subscription_names[name][once] ?= i: 0)
           block[block.i] = callback
           ids.push {name, id: block.i}
           block.i += 1
@@ -85,7 +87,7 @@ app.factory 'ksc.EventEmitter', [
           return false if unsubscribed
           unsubscribed = true
           for inf in ids
-            delete subscriptions.names[inf.name][once][inf.id]
+            delete subscription_names[inf.name][once][inf.id]
           true
         pseudo_unsubscriber[UNSUBSCRIBER] = true
 
@@ -182,12 +184,13 @@ app.factory 'ksc.EventEmitter', [
       ###
       Emit event, e.g. call all functions subscribed for the specified event.
 
+      @param [string] name event identifier
+      @param [*] args... optional arguments to be passed to the callback fn
+
       @throw [ArgumentTypeError] name is not a string
       @throw [ValueError] name is empty
 
-      @param [string] name event identifier
-      @param [*] args... optional arguments to be passed to the callback fn
-      @return [bool] indicates if anything was called
+      @return [boolean] indicates if anything was called
       ###
       emit: (name, args...) ->
         if @_halt
@@ -202,11 +205,12 @@ app.factory 'ksc.EventEmitter', [
       If so, it returns an array of the arguments of last emission which is
       the "args..." part of the emit(name, args...) method.
 
+      @param [string] name event identifier
+
       @throw [ArgumentTypeError] name is not a string
       @throw [ValueError] name is empty
 
-      @param [string] name event identifier
-      @return [bool|Array] false or Array of arguments
+      @return [boolean|Array] false or Array of arguments
       ###
       emitted: (name) ->
         name_check name
@@ -254,11 +258,13 @@ app.factory 'ksc.EventEmitter', [
         @param [$timeout|$interval|function] unsubscribe_target attach to
           unsubscriber event
         @param [function] callback function to call on event emission
+
         @return [boolean]
 
       @overload if1(names..., callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
         @param [function] callback function to call on event emission
+
         @return [function] unsubscriber
       ###
       if1: (names..., unsubscribe_target, callback) =>
@@ -283,11 +289,13 @@ app.factory 'ksc.EventEmitter', [
         @param [$timeout|$interval|function] unsubscribe_target attach to
           unsubscriber event
         @param [function] callback function to call on event emission
+
         @return [boolean]
 
       @overload if(names..., callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
         @param [function] callback function to call on event emission
+
         @return [function] unsubscriber
       ###
       if: (names..., unsubscribe_target, callback) =>
@@ -310,11 +318,13 @@ app.factory 'ksc.EventEmitter', [
         @param [$timeout|$interval|function] unsubscribe_target attach to
           unsubscriber event
         @param [function] callback function to call on event emission
+
         @return [boolean]
 
       @overload on1(names..., callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
         @param [function] callback function to call on event emission
+
         @return [function] unsubscriber
       ###
       on1: (names..., unsubscribe_target, callback) =>
@@ -334,11 +344,13 @@ app.factory 'ksc.EventEmitter', [
         @param [$timeout|$interval|function] unsubscribe_target attach to
           unsubscriber event
         @param [function] callback function to call on event emission
+
         @return [boolean]
 
       @overload on(names..., callback)
         @param [string] names... name(s) that identify event(s) to subscribe to
         @param [function] callback function to call on event emission
+
         @return [function] unsubscriber
       ###
       on: (names..., unsubscribe_target, callback) =>
@@ -347,6 +359,7 @@ app.factory 'ksc.EventEmitter', [
 
       ###
       Get an empty unsubscriber function you can add unsubscribers to
+
       @example
         unsub = MyEventEmitterObject.unsubscriber()
 
@@ -363,7 +376,8 @@ app.factory 'ksc.EventEmitter', [
 
         ###
         Calls all added functions and cancels $interval/$timeout promises
-        @return: [null/bool] null = no added fn, true = all returned truthy
+
+        @return [null/bool] null = no added fn, true = all returned truthy
         ###
         fn = ->
           status = null

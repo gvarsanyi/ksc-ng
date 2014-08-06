@@ -32,6 +32,10 @@ app.factory 'ksc.RestRecord', [
       # be used a load indicator
       _restPending: 0
 
+      ###
+      Constructs RestRecord instance, sets ._restPending property and calls
+      super ({Record#constructor})
+      ###
       constructor: ->
         define_value @, REST_PENDING, 0
         super
