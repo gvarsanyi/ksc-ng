@@ -1,7 +1,7 @@
 
 describe 'app.factory', ->
 
-  describe 'EditableRecord', ->
+  describe 'RecordContract', ->
 
     Record = RecordContract = null
 
