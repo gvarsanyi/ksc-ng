@@ -274,6 +274,9 @@ app.factory 'ksc.ListSorter', [
         if description
           sorter = new ListSorter list, description
 
+        getter = ->
+          sorter
+
         setter = (description) ->
           if description
             sorter = new ListSorter list, description
@@ -281,7 +284,8 @@ app.factory 'ksc.ListSorter', [
           else
             sorter = null
 
-        utils.defineGetSet list, 'sorter', (-> sorter), setter, true
+        for target in [list, list.options]
+          utils.defineGetSet target, 'sorter', getter, setter, true
 
         return
 ]

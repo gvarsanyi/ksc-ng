@@ -3,10 +3,10 @@ describe 'app.factory', ->
 
   describe 'ListFilter', ->
 
-    List = ListFilter = action = list = sublist = unsubscribe = null
+    List = ListFilter = action = filter_c = list = sublist = unsubscribe = null
 
     filter_fn = (record) -> # has letter 'A' or 'a' in stringified record.a
-      String(record.a).toLowerCase().indexOf('a') > -1
+      String(record.a).toLowerCase().indexOf(filter_c) > -1
 
     beforeEach ->
       module 'app'
@@ -16,6 +16,8 @@ describe 'app.factory', ->
 
         list = new List
         list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}
+
+        filter_c = 'a'
 
         sublist = new ListFilter list, filter_fn
 
@@ -91,6 +93,50 @@ describe 'app.factory', ->
       expect(action).toBe null
 
       expect(-> sublist.destroy()).toThrow()
+
+    it 'Method .update()', ->
+      list.push {id: 3, a: 'bbb'}, {id: 4, a: 'aaa'}, {id: null, a: 'boo'}
+      expect(sublist.length).toBe 2
+      expect(sublist[1].id).toBe 4
+      filter_c = 'b'
+      expect(sublist.length).toBe 2
+      expect(sublist[1].id).toBe 4
+      sublist.update()
+      expect(sublist.length).toBe 3
+      expect(sublist[1].id).toBe 3
+      expect(sublist[2].a).toBe 'boo'
+
+      filter_c = 'x'
+      sublist.update()
+      expect(sublist.length).toBe 1
+      expect(sublist[0].id).toBe 1
+
+      filter_c = '0'
+      sublist.update()
+      expect(sublist.length).toBe 0
+
+      filter_c = '1'
+      sublist.update()
+      expect(sublist.length).toBe 0
+
+      filter_c = 'x'
+      sublist.update()
+      expect(sublist.length).toBe 1
+      expect(sublist[0].id).toBe 1
+
+    it 'Method .update() called on .filter = fn', ->
+      list.push {id: 3, a: 'bbb'}, {id: 4, a: 'aaa'}, {id: null, a: 'boo'}
+      sublist.filter = (record) ->
+        record.id is null
+      expect(sublist.length).toBe 1
+      expect(sublist[0].a).toBe 'boo'
+
+      # should only accept functions
+      expect(-> sublist.filter = true).toThrow()
+
+    it 'Constructor argument type checks', ->
+      expect(-> new ListFilter [], (->)).toThrow()
+      expect(-> new ListFilter list).toThrow()
 
     describe 'Following events', ->
 

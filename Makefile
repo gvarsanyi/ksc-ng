@@ -28,6 +28,7 @@ jsmin: js
 doc:
 	@rm -rf doc/
 	@codo --undocumented script/
+	@codo script/
 
 lint:
 	@coffeelint script/ test/unit/

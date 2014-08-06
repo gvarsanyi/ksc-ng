@@ -5,6 +5,7 @@ priority to-do
 
 to-do
 ----------------------------
+- list.destroy() and $scope-unsubscription logic for both list and list-filter
 - list/list-filter: override/manage methods: reverse(), sort()
 - list/list-filter: write-protect list and list.map elements
 - generic list cache logic
@@ -15,7 +16,7 @@ to-do
 
 unit tests missing / partial
 ----------------------------
-- record-contract
+n/a
 
 coffeedoc missing / partial
 ----------------------------

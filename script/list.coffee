@@ -78,19 +78,20 @@ app.factory 'ksc.List', [
       constructor: (options={}) ->
         list = []
 
-        List.addProperties list, @constructor
+        for key, value of @constructor.prototype
+          if key.indexOf('constructor') is -1
+            define_value list, key, value, false, true
 
         options = angular.copy options
         define_value list, 'options', options
 
         define_value list, 'events', new EventEmitter, false, true
 
-        define_value list, 'map', {}, false, true
-
+        define_value list, 'map',    {}, false, true
         define_value list, 'pseudo', {}, false, true
 
+        # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
-        delete options.sorter # list.sorter is created and holds sorter info
 
         return list
 
@@ -625,19 +626,4 @@ app.factory 'ksc.List', [
             delete list.pseudo[record._pseudo]
           emit_action list, {cut: [record]}
         record
-
-      ###
-      Helper method that adds properties to a vanilla Array from a List
-      constructor.
-
-      @param [Array] instance Array instance to be extended
-      @param [object] prototype_container @constructor of creator class
-
-      @return [undefined]
-      ###
-      @addProperties: (instance, prototype_container) ->
-        for key, value of prototype_container.prototype
-          if key.indexOf('constructor') is -1 and key.substr(0, 2) isnt '__'
-            define_value instance, key, value, false, true
-        return
 ]

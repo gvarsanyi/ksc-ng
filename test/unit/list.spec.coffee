@@ -308,13 +308,3 @@ describe 'app.factory', ->
         list.shift()
         expect(list.length).toBe 1
         expect(list.pseudo[1]).toBeUndefined()
-
-      it 'List.addProperties()', ->
-        class X
-          a: ->
-          __b: ->
-        x = new X
-        y = {}
-        List.addProperties y, x.constructor
-        expect(typeof y.a).toBe 'function'
-        expect(y.__b).toBeUndefined()
