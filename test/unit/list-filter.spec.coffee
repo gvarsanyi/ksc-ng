@@ -3,7 +3,8 @@ describe 'app.factory', ->
 
   describe 'ListFilter', ->
 
-    List = ListFilter = action = filter_c = list = sublist = unsubscribe = null
+    $rootScope = List = ListFilter = action = filter_c = list = sublist = null
+    unsubscribe = null
 
     filter_fn = (record) -> # has letter 'A' or 'a' in stringified record.a
       String(record.a).toLowerCase().indexOf(filter_c) > -1
@@ -11,6 +12,7 @@ describe 'app.factory', ->
     beforeEach ->
       module 'app'
       inject ($injector) ->
+        $rootScope = $injector.get '$rootScope'
         List       = $injector.get 'ksc.List'
         ListFilter = $injector.get 'ksc.ListFilter'
 
@@ -92,7 +94,7 @@ describe 'app.factory', ->
 
       expect(action).toBe null
 
-      expect(-> sublist.destroy()).toThrow()
+      expect(sublist.destroy()).toBe false
 
     it 'Method .update()', ->
       list.push {id: 3, a: 'bbb'}, {id: 4, a: 'aaa'}, {id: null, a: 'boo'}
@@ -136,7 +138,35 @@ describe 'app.factory', ->
 
     it 'Constructor argument type checks', ->
       expect(-> new ListFilter [], (->)).toThrow()
-      expect(-> new ListFilter list).toThrow()
+      expect(-> new ListFilter list, true).toThrow()
+      expect(-> new ListFilter list, (->), true).toThrow()
+      expect(-> new ListFilter list, (->), {}, {}).toThrow()
+
+    it '$scope unsubscriber, method .destroy()', ->
+      scope = $rootScope.$new()
+
+      sublist = new ListFilter list, (->), scope
+      scope.$emit '$destroy'
+      expect(sublist.destroy()).toBe false # already destroyed
+
+      sublist = new ListFilter list, (->), {}, scope
+      scope.$emit '$destroy'
+      expect(sublist.destroy()).toBe false # already destroyed
+
+      sublist = new ListFilter list, (->), scope
+      called = false
+      old_fn = sublist._scopeUnsubscriber
+      Object.defineProperty sublist, '_scopeUnsubscriber', writable: true
+      Object.defineProperty sublist, '_scopeUnsubscriber',
+        value: ->
+          called = true
+          old_fn()
+      sublist.destroy()
+      expect(called).toBe true
+
+      sublist = new ListFilter list, (->)
+      list.destroy()
+      expect(sublist.destroy()).toBe false
 
     describe 'Following events', ->
 

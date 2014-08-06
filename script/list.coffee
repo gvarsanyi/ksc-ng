@@ -1,9 +1,11 @@
 
 app.factory 'ksc.List', [
-  'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListSorter', 'ksc.Record',
-  'ksc.errors', 'ksc.utils',
-  (EditableRecord, EventEmitter, ListSorter, Record,
-   errors, utils) ->
+  '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListFilter',
+  'ksc.ListSorter', 'ksc.Record', 'ksc.errors', 'ksc.utils',
+  ($rootScope, EditableRecord, EventEmitter, ListFilter,
+   ListSorter, Record, errors, utils) ->
+
+    SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
     define_value = utils.defineValue
     is_object    = utils.isObject
@@ -42,6 +44,15 @@ app.factory 'ksc.List', [
       console.log list # [{id: 1, x: 2}, {id: 2, x: 4}]
       console.log list.map[2] # {id: 2, x: 4}
 
+    @note Do not forget to manage the lifecycle of lists to prevent memory leaks
+    @example
+            # You may tie the lifecycle easily to a controller $scope by
+            # just passing it to the constructor as last argument (arg #1 or #2)
+            list = new List {someOption: 1}, $scope
+
+            # you can destroy it at any time though:
+            list.destroy()
+
     Options that may be used:
     - .options.record.class (class reference for record objects)
     - .options.record.idProperty (property/properties that define record ID)
@@ -72,11 +83,30 @@ app.factory 'ksc.List', [
       standard Array behavior for .length and others.
 
       @param [Object] options (optional) configuration data for this list
+      @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
+        '$destroy' event
 
       @return [Array] returns plain [] with extra methods and some overrides
       ###
-      constructor: (options={}) ->
+      constructor: (options={}, scope) ->
         list = []
+
+        unless utils.isObject options
+          throw new errors.ArgumentType
+            options:  options
+            argument: 3
+            required: 'object'
+
+        if $rootScope.isPrototypeOf options
+          scope = options
+          options = {}
+
+        if scope?
+          unless $rootScope.isPrototypeOf scope
+            throw new errors.ArgumentType
+              scope:    scope
+              argument: 2
+              required: 'descendant of $rootScope'
 
         for key, value of @constructor.prototype
           if key.indexOf('constructor') is -1
@@ -90,10 +120,25 @@ app.factory 'ksc.List', [
         define_value list, 'map',    {}, false, true
         define_value list, 'pseudo', {}, false, true
 
+        if scope
+          define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
+            delete list[SCOPE_UNSUBSCRIBER]
+            list.destroy()
+
         # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
 
         return list
+
+      ###
+      Unsubscribes from list, destroy all properties and freeze
+      See: {ListFilter#destroy}
+
+      @event 'destroy' sends out message pre-destruction
+
+      @return [boolean] false if the object was already destroyed
+      ###
+      destroy: ListFilter::destroy
 
 
       ###

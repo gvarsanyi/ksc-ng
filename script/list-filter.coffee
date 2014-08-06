@@ -1,7 +1,10 @@
 
 app.factory 'ksc.ListFilter', [
-  'ksc.EventEmitter', 'ksc.ListSorter', 'ksc.utils',
-  (EventEmitter, ListSorter, utils) ->
+  '$rootScope', 'ksc.EventEmitter', 'ksc.ListSorter', 'ksc.errors', 'ksc.utils',
+  ($rootScope, EventEmitter, ListSorter, errors, utils) ->
+
+    SCOPE_UNSUBSCRIBER  = '_scopeUnsubscriber'
+    SOURCE_UNSUBSCRIBER = '_sourceUnsubscriber'
 
     define_value = utils.defineValue
 
@@ -99,8 +102,7 @@ app.factory 'ksc.ListFilter', [
 
     @return [undefined]
     ###
-    event_update = (info) ->
-      list      = @
+    event_update = (list, info) ->
       action    = null
       cut       = []
       filter_fn = list.filter
@@ -213,6 +215,15 @@ app.factory 'ksc.ListFilter', [
 
             console.log sublist # {id: 2, x: 'baa'}
 
+    @note Do not forget to manage the lifecycle of lists to prevent memory leaks
+    @example
+            # You may tie the lifecycle easily to a controller $scope by
+            # just passing it to the constructor as last argument (arg #3 or #4)
+            sublist = new ListFilter list, filter_fn, $scope
+
+            # you can destroy it at any time though:
+            sublist.destroy()
+
     @author Greg Varsanyi
     ###
     class ListFilter
@@ -250,10 +261,13 @@ app.factory 'ksc.ListFilter', [
       @param [Object] source reference to parent list
       @param [function] filter function with signiture `(record) ->` and boolean
         return value indicating if record should be in the filtered list
+      @param [Object] options (optional) options for the filtered list
+      @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
+        '$destroy' event
 
       @return [Array] returns plain [] with filtered contents
       ###
-      constructor: (source, filter, options={}) ->
+      constructor: (source, filter, options, scope) ->
         unless source instanceof Array and source.options and
         source.events instanceof EventEmitter
           throw new errors.ArgumentType
@@ -266,6 +280,25 @@ app.factory 'ksc.ListFilter', [
             filter:      filter
             argument:    2
             requirement: 'function'
+
+        unless options?
+          options = {}
+        unless utils.isObject options
+          throw new errors.ArgumentType
+            options:  options
+            argument: 3
+            required: 'object'
+
+        if $rootScope.isPrototypeOf options
+          scope = options
+          options = {}
+
+        if scope?
+          unless $rootScope.isPrototypeOf scope
+            throw new errors.ArgumentType
+              scope:    scope
+              argument: 4
+              required: 'descendant of $rootScope'
 
         list = []
 
@@ -297,8 +330,18 @@ app.factory 'ksc.ListFilter', [
 
         define_value list, 'source', source, false, true
 
-        define_value list, 'unsubscriber', source.events.on 'update', (info) ->
-          event_update.call list, info
+        if scope
+          define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
+            delete list[SCOPE_UNSUBSCRIBER]
+            list.destroy()
+
+        unsubscriber = source.events.on 'update', (info) ->
+          event_update list, info
+        define_value list, SOURCE_UNSUBSCRIBER, unsubscriber
+
+        unsubscriber.add source.events.on 'destroy', ->
+          list.destroy()
+
 
         # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
@@ -316,20 +359,29 @@ app.factory 'ksc.ListFilter', [
       ###
       Unsubscribes from list, destroy all properties and freeze
 
-      @return [undefined]
+      @event 'destroy' sends out message pre-destruction
+
+      @return [boolean] false if the object was already destroyed
       ###
       destroy: ->
         list = @
 
-        list.unsubscriber()
+        if Object.isFrozen list
+          return false
+
+        list.events.emit 'destroy'
+
+        list[SCOPE_UNSUBSCRIBER]?()
+
+        list[SOURCE_UNSUBSCRIBER]?()
 
         empty_list list
 
-        for key of list
+        for key of list when key isnt 'destroy'
           delete list[key]
 
         delete list.options
-        delete list.unsubscriber
+        delete list[SOURCE_UNSUBSCRIBER]
 
         Object.freeze list
         true

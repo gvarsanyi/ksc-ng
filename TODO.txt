@@ -1,14 +1,8 @@
-priority to-do
+to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-
-to-do
-----------------------------
-- list.destroy() and $scope-unsubscription logic for both list and list-filter
 - list/list-filter: override/manage methods: reverse(), sort()
-- list/list-filter: write-protect list and list.map elements
-- generic list cache logic
 - record: handle multiple list-parents
 - record: predefine idProperty even if it is not in the original data set and there is no contract
 - record/record-contract: support for array property type (+ record-contract, editable-record)
@@ -22,3 +16,8 @@ coffeedoc missing / partial
 ----------------------------
 n/a
 
+research
+----------------------------
+- list/list-filter: write-protect list and list.map elements (perfofmance penalty and Array compatibility issues for using getters/setters)
+- generic list cache logic
+- poller/push event receiver/refresher service, API

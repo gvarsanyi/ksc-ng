@@ -3,11 +3,12 @@ describe 'app.factory', ->
 
   describe 'List', ->
 
-    EditableRecord = List = Record = utils = null
+    $rootScope = EditableRecord = List = Record = utils = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
+        $rootScope     = $injector.get '$rootScope'
         EditableRecord = $injector.get 'ksc.EditableRecord'
         List           = $injector.get 'ksc.List'
         Record         = $injector.get 'ksc.Record'
@@ -109,6 +110,32 @@ describe 'app.factory', ->
       expect(list.map[2].x).toBe 'x'
       expect(list.map[4].x).toBe 'y'
       expect(list.map[4] instanceof EditableRecord).toBe true
+
+    it 'Constructor argument type checks', ->
+      expect(-> new List true).toThrow()
+      expect(-> new List {}, {}).toThrow()
+
+    it '$scope unsubscriber, method .destroy()', ->
+      scope = $rootScope.$new()
+
+      sublist = new List scope
+      scope.$emit '$destroy'
+      expect(sublist.destroy()).toBe false # already destroyed
+
+      sublist = new List {}, scope
+      scope.$emit '$destroy'
+      expect(sublist.destroy()).toBe false # already destroyed
+
+      sublist = new List {}, scope
+      called = false
+      old_fn = sublist._scopeUnsubscriber
+      Object.defineProperty sublist, '_scopeUnsubscriber', writable: true
+      Object.defineProperty sublist, '_scopeUnsubscriber',
+        value: ->
+          called = true
+          old_fn()
+      sublist.destroy()
+      expect(called).toBe true
 
     it 'Method .splice()', ->
       list = new List
