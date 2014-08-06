@@ -280,7 +280,8 @@ app.factory 'ksc.ListSorter', [
         setter = (description) ->
           if description
             sorter = new ListSorter list, description
-            list.sort sorter.fn # re-sort
+            Array::sort.call list, sorter.fn # re-sort
+            list.events.emit 'update', {node: list, action: {sort: true}}
           else
             sorter = null
 

@@ -20,14 +20,24 @@ describe 'app.factory', ->
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
 
-    it 'Overrides pop, push, shift & unshift methods, keeps default sort', ->
+    it 'Extendible as class', ->
+      class X extends List
+        a: 'a'
+
+      list = new X
+      expect(Array.isArray list).toBe true
+      expect(list.a).toBe 'a'
+
+    it 'Overrides pop, push, shift, unshift, splice, reverse & sort methods', ->
       list = new List
 
       expect(list.pop).not.toBe Array::pop
       expect(list.push).not.toBe Array::push
       expect(list.shift).not.toBe Array::shift
       expect(list.unshift).not.toBe Array::unshift
-      expect(list.sort).toBe Array::sort
+      expect(list.splice).not.toBe Array::splice
+      expect(list.sort).not.toBe Array::sort
+      expect(list.reverse).not.toBe Array::reverse
 
     it 'Should not take non-object elements', ->
       list = new List
@@ -80,6 +90,89 @@ describe 'app.factory', ->
       expect(list.map[3]).toBe list[2]
       list.map[3].a = 'b'
       expect(list.map[3]).toBe list[1]
+
+    it 'Method .reverse()', ->
+      list = new List
+      list.push {id: 1}
+
+      called = null
+      list.events.on 'update', (info) ->
+        called = info.action
+
+      list.reverse()
+      expect(called).toBe null
+
+      list.push {id: 2}
+      called = null
+
+      list.reverse()
+      expect(list[0].id).toBe 2
+      expect(list.length).toBe 2
+      expect(called.reverse).toBe true
+
+      list.sorter = 'id'
+      expect(-> list.reverse()).toThrow() # can't sort auto-sorted list
+
+    describe 'Method .sort()', ->
+
+      it 'default sort', ->
+        list = new List
+        list.push {id: 2, x: 'c'}, {id: 1, x: 'b'}, {id: null, x: 'a'},
+                  {id: null, x: 'd'}
+        list.sort()
+        expect(list[0].x).toBe 'a'
+        expect(list[1].x).toBe 'd'
+        expect(list[2].x).toBe 'b'
+        expect(list[3].x).toBe 'c'
+
+        list = new List
+        list.push {id: null, x: 'c'}, {id: 1, x: 'b'}, {id: null, x: 'a'},
+                  {id: null, x: 'd'}, {id: 2, x: 'b'}, {id: null, x: 'c'}
+        list.sort()
+        expect(list[0].id).toBe null
+        expect(list[3].id).toBe null
+        expect(list[4].id).toBe 1
+
+      it 'sort by a function', ->
+        list = new List
+        list.push {id: 2, x: 'c'}, {id: 1, x: 'b'}, {id: null, x: 'a'},
+                  {id: null, x: 'd'}
+        list.sort (a, b) ->
+          if a.x > b.x
+            return 1
+          -1
+        expect(list[0].x).toBe 'a'
+        expect(list[1].x).toBe 'b'
+        expect(list[2].x).toBe 'c'
+        expect(list[3].x).toBe 'd'
+
+      it 'Can not resort auto-sorted list', ->
+        list = new List sorter: 'id'
+        list.push {id: 2, x: 'c'}, {id: 1, x: 'b'}
+        expect(-> list.sort()).toThrow()
+
+      it 'Does not emit event if nothing changed', ->
+        list = new List
+        called = null
+        list.events.on 'update', (info) ->
+          called = info.action
+
+        list.sort()
+        expect(called).toBe null
+
+        list.push {id: 1, x: 'c'}
+        called = null
+        list.sort()
+        expect(called).toBe null
+
+        list.push {id: 3, x: 'a'}
+        called = null
+        list.sort()
+        expect(called).toBe null
+
+        list.push {id: 2, x: 'a'}
+        list.sort()
+        expect(called.sort).toBe true
 
     it 'Upsert', ->
       list = new List

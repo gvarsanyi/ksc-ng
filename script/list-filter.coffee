@@ -180,6 +180,8 @@ app.factory 'ksc.ListFilter', [
               cutter record._id, record._pseudo, record
 
       unless list.sorter
+        # NOTE: reversing and re-sorting is done here for received 'reverse'
+        # and 'sort' action
         empty_list list
         for record in list.source when map[record._id] or pseudo[record._pseudo]
           Array::push.call list, record
@@ -307,7 +309,8 @@ app.factory 'ksc.ListFilter', [
           define_value list, key, value, false, true
 
         # disable methods that change contents
-        for key in ['push', 'unshift', 'pop', 'shift', 'splice']
+        for key in ['push', 'unshift', 'pop', 'shift', 'splice', 'reverse',
+                    'sort']
           define_value list, key, undefined
 
         define_value list, 'events', new EventEmitter, false, true

@@ -2,7 +2,6 @@ to-do
 ----------------------------
 - batch-loader
 - bootloader-service
-- list/list-filter: override/manage methods: reverse(), sort()
 - record: handle multiple list-parents
 - record: predefine idProperty even if it is not in the original data set and there is no contract
 - record/record-contract: support for array property type (+ record-contract, editable-record)
