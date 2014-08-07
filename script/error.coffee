@@ -32,6 +32,71 @@ app.service 'ksc.error', ->
 
 
   ###
+  Error for argument type mismatch
+  @example
+      unless typeof param is 'string'
+        error.ArgumentType {param, argument: 1, acceptable: 'string'}
+  ###
+  class ArgumentTypeError extends CustomError
+
+  ###
+  Error in attempt to change contracted data set
+  @example
+      unless rules.match key, value
+        error.ContractBreak {key, value, contract: rules[key]}
+  ###
+  class ContractBreakError extends CustomError
+
+  ###
+  HTTP request/response error
+  @example
+      promise.catch (response) ->
+        error.Http response
+  ###
+  class HttpError extends CustomError
+
+  ###
+  Key related errors (like syntax requirement fails etc)
+  @example
+      if key.substr(0, 1) is '_'
+        error.Key {key, description: 'keys can not start with "_"'}
+  ###
+  class KeyError extends CustomError
+
+  ###
+  Required argument is missing
+  @example
+      unless param?
+        error.MissingArgument {name: 'param', argument: 1}
+  ###
+  class MissingArgumentError extends CustomError
+
+  ###
+  Perimission related errors
+  @example
+      if key.substr(0, 1) is '_'
+        error.Perimission {key, description: 'property is off-limit'}
+  ###
+  class PermissionError extends CustomError
+
+  ###
+  Type mismatch
+  @example
+      if typeof param is 'function'
+        error.Type {param, notAcceptable: 'function'}
+  ###
+  class TypeError extends CustomError
+
+  ###
+  Value does not meet requirements
+  @example
+      unless param and typeof param is 'string'
+        error.Value {param, description: 'must be non-empty string'}
+  ###
+  class ValueError extends CustomError
+
+
+  ###
   Common named error types
 
   All-static class: error type classes are attached to ErrorTypes class instance
@@ -45,70 +110,14 @@ app.service 'ksc.error', ->
         error.MissingArgument {name: 'result', argument: 1}
   ###
   class ErrorTypes
-
-    ###
-    Error for argument type mismatch
-    @example
-        unless typeof param is 'string'
-          error.ArgumentType {param, argument: 1, acceptable: 'string'}
-    ###
-    @ArgumentType: class ArgumentTypeError extends CustomError
-
-    ###
-    Error in attempt to change contracted data set
-    @example
-        unless rules.match key, value
-          error.ContractBreak {key, value, contract: rules[key]}
-    ###
-    @ContractBreak: class ContractBreakError extends CustomError
-
-    ###
-    HTTP request/response error
-    @example
-        promise.catch (response) ->
-          error.Http response
-    ###
-    @Http: class HttpError extends CustomError
-
-    ###
-    Key related errors (like syntax requirement fails etc)
-    @example
-        if key.substr(0, 1) is '_'
-          error.Key {key, description: 'keys can not start with "_"'}
-    ###
-    @Key: class KeyError extends CustomError
-
-    ###
-    Required argument is missing
-    @example
-        unless param?
-          error.MissingArgument {name: 'param', argument: 1}
-    ###
-    @MissingArgument: class MissingArgumentError extends CustomError
-
-    ###
-    Perimission related errors
-    @example
-        if key.substr(0, 1) is '_'
-          error.Perimission {key, description: 'property is off-limit'}
-    ###
-    @Permission: class PermissionError extends CustomError
-
-    ###
-    Type mismatch
-    @example
-        if typeof param is 'function'
-          error.Type {param, notAcceptable: 'function'}
-    ###
-    @Type: class TypeError extends CustomError
-
-    ###
-    Value does not meet requirements
-    @example
-        unless param and typeof param is 'string'
-          error.Value {param, description: 'must be non-empty string'}
-    ###
-    @Value: class ValueError extends CustomError
+    @ArgumentType: ArgumentTypeError
+    @ContractBreak: ContractBreakError
+    @Http: HttpError
+    @Key: KeyError
+    @MissingArgument: MissingArgumentError
+    @Permission: PermissionError
+    @Type: TypeError
+    @Value: ValueError
 
 
   error =
