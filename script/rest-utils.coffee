@@ -1,7 +1,7 @@
 
 app.service 'ksc.restUtils', [
-  '$q', 'ksc.errors',
-  ($q, errors) ->
+  '$q', 'ksc.error',
+  ($q, error) ->
 
     ###
     Rest/XHR call related utilities
@@ -74,7 +74,7 @@ app.service 'ksc.restUtils', [
 
         error_fn = (result) ->
           wrap = ({data, status, headers, config} = result)
-          err = new errors.Http result
+          err = new error.type.Http result
           wrap.error = err
           callback err, wrap
 

@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Mixin', [
-  'ksc.errors', 'ksc.utils',
-  (errors, utils) ->
+  'ksc.error', 'ksc.utils',
+  (error, utils) ->
 
     normalize = (explicit, properties, next) ->
       if explicit?
@@ -10,7 +10,7 @@ app.factory 'ksc.Mixin', [
           explicit = true
 
       for property in properties when not utils.isKeyConform property
-        throw new errors.Key {property, required: 'key conform value'}
+        error.Key {property, required: 'key conform value'}
 
       next explicit, properties
 

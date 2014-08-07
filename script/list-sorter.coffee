@@ -1,7 +1,7 @@
 
 app.factory 'ksc.ListSorter', [
-  'ksc.errors', 'ksc.utils',
-  (errors, utils) ->
+  'ksc.error', 'ksc.utils',
+  (error, utils) ->
 
     define_value   = utils.defineValue
     is_key_conform = utils.isKeyConform
@@ -95,7 +95,7 @@ app.factory 'ksc.ListSorter', [
 
           unless utils.isObject(description) and
           (is_key_conform(key = description.key) or key instanceof Array)
-            throw new errors.Value
+            error.Value
               sorter:      description
               requirement: 'function or string or array or object: ' +
                            '{key: <string|array>, reverse: <bool>, type: ' +
@@ -103,7 +103,7 @@ app.factory 'ksc.ListSorter', [
 
           if type = description.type
             unless type in ['byte', 'natural', 'number']
-              throw new errors.Value
+              error.Value
                 type:       type
                 acceptable: ['byte', 'natural', 'number']
                 default:    'natural'
@@ -141,7 +141,7 @@ app.factory 'ksc.ListSorter', [
 
         cmp_check = (value) ->
           if typeof value isnt 'number' or isNaN value
-            throw new errors.Type {sort_fn_output: value, acceptable: 'number'}
+            error.Type {sort_fn_output: value, acceptable: 'number'}
           value
 
         if cmp_check(compare record, list[min]) < 0

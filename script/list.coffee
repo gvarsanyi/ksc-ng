@@ -1,9 +1,9 @@
 
 app.factory 'ksc.List', [
   '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListFilter',
-  'ksc.ListSorter', 'ksc.Record', 'ksc.errors', 'ksc.utils',
+  'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.utils',
   ($rootScope, EditableRecord, EventEmitter, ListFilter,
-   ListSorter, Record, errors, utils) ->
+   ListSorter, Record, error, utils) ->
 
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
@@ -92,10 +92,7 @@ app.factory 'ksc.List', [
         list = []
 
         unless utils.isObject options
-          throw new errors.ArgumentType
-            options:  options
-            argument: 3
-            required: 'object'
+          error.ArgumentType {options, argument: 3, required: 'object'}
 
         if $rootScope.isPrototypeOf options
           scope = options
@@ -103,10 +100,7 @@ app.factory 'ksc.List', [
 
         if scope?
           unless $rootScope.isPrototypeOf scope
-            throw new errors.ArgumentType
-              scope:    scope
-              argument: 2
-              required: 'descendant of $rootScope'
+            error.ArgumentType {scope, required: '$rootScope descendant'}
 
         for key, value of @constructor.prototype
           if key.indexOf('constructor') is -1
@@ -158,7 +152,7 @@ app.factory 'ksc.List', [
       ###
       cut: (records...) ->
         unless records.length
-          throw new errors.MissingArgument {name: 'record', argument: 1}
+          error.MissingArgument {name: 'record', argument: 1}
 
         cut       = []
         list      = @
@@ -169,23 +163,23 @@ app.factory 'ksc.List', [
         for record in records
           if is_object record
             unless record in list
-              throw new errors.Value {record, description: 'not found in list'}
+              error.Value {record, description: 'not found in list'}
 
             if record._pseudo?
               unless pseudo[record._pseudo]
-                throw new errors.Key {record, description: 'pseudo id error'}
+                error.Key {record, description: 'pseudo id error'}
               delete pseudo[record._pseudo]
               cut.push record
             else
               unless map[record._id]
-                throw new errors.Key {record, description: 'map id error'}
+                error.Key {record, description: 'map id error'}
               delete map[record._id]
               cut.push record
           else # id (maybe old_id) passed
             id = record
             record = map[id]
             unless map[id]
-              throw new errors.Key {id, description: 'map id error'}
+              error.Key {id, description: 'map id error'}
             delete map[id]
             if record._id isnt id
               cut.push id
@@ -407,10 +401,7 @@ app.factory 'ksc.List', [
         positive_int_or_zero = (value, i) ->
           unless typeof value is 'number' and (value > 0 or value is 0) and
           value is Math.floor value
-            throw new errors.ArgumentType
-              value:    value
-              argument: i
-              required: 'Positive number or 0'
+            error.ArgumentType {value, argument: i, required: 'int >= 0'}
 
         action = {}
         list   = @
@@ -461,7 +452,7 @@ app.factory 'ksc.List', [
         list = @
 
         if list.sorter
-          throw new errors.Permission 'can not reverse an auto-sorted list'
+          error.Permission 'can not reverse an auto-sorted list'
 
         if list.length > 1
           Array::reverse.call list
@@ -489,7 +480,7 @@ app.factory 'ksc.List', [
         list = @
 
         if list.sorter
-          throw new errors.Permission 'can not reverse an auto-sorted list'
+          error.Permission 'can not reverse an auto-sorted list'
 
         if list.length > 1
           cmp = (record for record in list)
@@ -563,7 +554,7 @@ app.factory 'ksc.List', [
       ###
       _recordChange: (record, record_info, old_id) ->
         unless record instanceof Record
-          throw new errors.Type {record, acceptable: 'Record'}
+          error.Type {record, acceptable: 'Record'}
 
         list = @
         map  = list.map
@@ -662,7 +653,7 @@ app.factory 'ksc.List', [
       ###
       @add: (items, pos) ->
         unless items.length
-          throw new errors.MissingArgument {name: 'item', argument: 1}
+          error.MissingArgument {name: 'item', argument: 1}
 
         action = {}
         list   = @
@@ -675,7 +666,7 @@ app.factory 'ksc.List', [
           for item in items
             original = item
             unless is_object item
-              throw new errors.Type {item, acceptable: 'object'}
+              error.Type {item, acceptable: 'object'}
 
             unless item instanceof record_class
               if item instanceof Record

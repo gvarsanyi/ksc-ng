@@ -1,7 +1,7 @@
 
 app.service 'ksc.utils', [
-  'ksc.errors',
-  (errors) ->
+  'ksc.error',
+  (error) ->
 
     define_property             = Object.defineProperty
     get_own_property_descriptor = Object.getOwnPropertyDescriptor
@@ -9,7 +9,7 @@ app.service 'ksc.utils', [
 
     arg_check = (args) ->
       unless args.length
-        throw new errors.MissingArgument {name: 'reference', argument: 1}
+        error.MissingArgument {name: 'reference', argument: 1}
 
     ###
     Miscellaneous utilities that do not belong to other named utility groups
@@ -177,13 +177,13 @@ app.service 'ksc.utils', [
       ###
       mergeIn: (target_object, source_objects...) ->
         if source_objects.length < 1
-          throw new errors.MissingArgument required: 'Merged and mergee objects'
+          error.MissingArgument required: 'Merged and mergee objects'
         unless Utils::isObject target_object
-          throw new errors.Type {target_object, argument: 1, required: 'object'}
+          error.Type {target_object, argument: 1, required: 'object'}
 
         for object, i in source_objects
           unless Utils::isObject object
-            throw new errors.Type {object, argument: i + 2, required: 'object'}
+            error.Type {object, argument: i + 2, required: 'object'}
 
           for key, value of object
             target_object[key] = value
@@ -212,7 +212,7 @@ app.service 'ksc.utils', [
           object = get_prototype_of object
 
         unless checked
-          throw new errors.ArgumentType {object, argument: 1, accepts: 'object'}
+          error.ArgumentType {object, argument: 1, accepts: 'object'}
         properties
 
       ###
@@ -231,7 +231,7 @@ app.service 'ksc.utils', [
 
         if name?
           unless Utils::isKeyConform name
-            throw new errors.Key {name, requirement: 'Key type name'}
+            error.Key {name, requirement: 'Key type name'}
 
           target = uid_store.named
         else

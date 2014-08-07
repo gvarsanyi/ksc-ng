@@ -1,7 +1,7 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.List', 'ksc.errors', 'ksc.restUtils', 'ksc.utils',
-  ($http, List, errors, restUtils, utils) ->
+  '$http', 'ksc.List', 'ksc.error', 'ksc.restUtils', 'ksc.utils',
+  ($http, List, error, restUtils, utils) ->
 
     REST_PENDING = 'restPending'
 
@@ -69,9 +69,7 @@ app.factory 'ksc.RestList', [
 
         unless (endpoint = list.options.endpoint) and (url = endpoint.url) and
         typeof url is 'string'
-          throw new errors.Type
-            'options.endpoint.url': url
-            acceptable:             'string'
+          error.Type {'options.endpoint.url': url, acceptable: 'string'}
 
         if query_parameters
           parts = for k, v of query_parameters
@@ -220,10 +218,10 @@ app.factory 'ksc.RestList', [
           data = data[endpoint_options[key]]
 
         unless data instanceof Array
-          throw new errors.Value 'options.endpoint.responseProperty': undefined,
-                                 description: 'array type property in ' +
-                                              'response is not found or ' +
-                                              'unspecified'
+          error.Value
+            'options.endpoint.responseProperty': undefined,
+            description: 'array type property in response is not found or ' +
+                         'unspecified'
 
         data
 
@@ -262,15 +260,15 @@ app.factory 'ksc.RestList', [
 
           orig_rec = record
           unless (record = list.map[id = record?._id])
-            throw new errors.Key {key: orig_rec, description: 'no such element'}
+            error.Key {key: orig_rec, description: 'no such element'}
 
           if unique_record_map[id]
-            throw new errors.Value {id, description: 'not unique'}
+            error.Value {id, description: 'not unique'}
 
           unique_record_map[id] = record
 
         unless records.length
-          throw new errors.MissingArgument {name: 'record', argument: 1}
+          error.MissingArgument {name: 'record', argument: 1}
 
         endpoint_options = list.options.endpoint or {}
 
@@ -282,9 +280,9 @@ app.factory 'ksc.RestList', [
           bulk_method = 'delete'
         if bulk_method
           unless endpoint_options.url
-            throw new errors.Value {'options.endpoint.url': undefined}
+            error.Value {'options.endpoint.url': undefined}
           unless typeof endpoint_options.url is 'string'
-            throw new errors.Type
+            error.Type
               'options.endpoint.url': endpoint_options.url
               acceptable:             'string'
 
@@ -327,12 +325,10 @@ app.factory 'ksc.RestList', [
             #               url = list.options?.endpoint?.url
 
           unless url
-            throw new errors.Value {'options.endpoint.url': undefined}
+            error.Value {'options.endpoint.url': undefined}
 
           unless typeof url is 'string'
-            throw new errors.Type
-              'options.record.endpoint.url': url
-              acceptable:                    'string'
+            error.Type {'options.record.endpoint.url': url, required: 'string'}
 
           # if id?
           url = url.replace '<id>', id

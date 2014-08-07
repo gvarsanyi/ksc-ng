@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Record', [
-  'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.errors', 'ksc.utils',
-  (EventEmitter, RecordContract, errors, utils) ->
+  'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.utils',
+  (EventEmitter, RecordContract, error, utils) ->
 
     EVENTS      = '_events'
     ID          = '_id'
@@ -21,7 +21,7 @@ app.factory 'ksc.Record', [
         inf[name] = value
         inf.argument = arg
         inf.acceptable = 'object'
-        throw new errors.ArgumentType inf
+        error.ArgumentType inf
 
     ###
     Read-only key-value style record with supporting methods and optional
@@ -101,7 +101,7 @@ app.factory 'ksc.Record', [
 
           if parent_key?
             unless utils.isKeyConform parent_key
-              throw new errors.Type
+              error.Type
                 parent_key: parent_key
                 argument:   4
                 required:   'key conform value'
@@ -180,7 +180,7 @@ app.factory 'ksc.Record', [
         record = @
 
         if record[EVENTS] is null and record[PARENT_KEY]
-          throw new errors.Permission
+          error.Permission
             key:         record[PARENT_KEY]
             description: 'can not replace subobject'
 
@@ -221,9 +221,9 @@ app.factory 'ksc.Record', [
         else
           for key, value of data
             if key.substr(0, 1) is '_'
-              throw new errors.Key {key, description: 'can not start with "_"'}
+              error.Key {key, description: 'can not start with "_"'}
             if typeof value is 'function'
-              throw new errors.Type {value, notAcceptable: 'function'}
+              error.Type {value, notAcceptable: 'function'}
             unless utils.identical value, record[key]
               set_property key, value
 

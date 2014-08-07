@@ -1,7 +1,7 @@
 
 app.factory 'ksc.EditableRecord', [
-  'ksc.Record', 'ksc.errors', 'ksc.utils',
-  (Record, errors, utils) ->
+  'ksc.Record', 'ksc.error', 'ksc.utils',
+  (Record, error, utils) ->
 
     CHANGES      = '_changes'
     CHANGED_KEYS = '_changedKeys'
@@ -71,10 +71,7 @@ app.factory 'ksc.EditableRecord', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          throw new errors.ArgumentType
-            options:    options
-            argument:   2
-            acceptable: 'object'
+          error.ArgumentType {options, argument: 2, acceptable: 'object'}
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
@@ -128,7 +125,7 @@ app.factory 'ksc.EditableRecord', [
       ###
       _delete: (keys...) ->
         unless keys.length
-          throw new errors.MissingArgument {name: 'key', argument: 1}
+          error.MissingArgument {name: 'key', argument: 1}
 
         record = @
 
@@ -136,13 +133,10 @@ app.factory 'ksc.EditableRecord', [
 
         for key, i in keys
           unless utils.isKeyConform key
-            throw new errors.Key
-              key:      key
-              argument: i
-              required: 'key conform value'
+            error.Key {key, argument: i, required: 'key conform value'}
 
           if not i and contract = record._options.contract
-            throw new errors.ContractBreak {key, value, contract: contract[key]}
+            error.ContractBreak {key, value, contract: contract[key]}
 
           if has_own record[SAVED], key
             if record[DELETED_KEYS][key]
@@ -161,7 +155,7 @@ app.factory 'ksc.EditableRecord', [
 
           else if has_own record, key
             unless is_enumerable record, key
-              throw new errors.Key {key, description: 'can not be changed'}
+              error.Key {key, description: 'can not be changed'}
 
             delete record[key]
             changed.push key
@@ -278,7 +272,7 @@ app.factory 'ksc.EditableRecord', [
 
         setter = (update) ->
           if typeof update is 'function'
-            throw new errors.Type {update, notAcceptable: 'function'}
+            error.Type {update, notAcceptable: 'function'}
 
           if utils.identical saved[key], update
             delete edited[key]

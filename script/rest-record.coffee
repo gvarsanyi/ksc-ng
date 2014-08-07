@@ -1,7 +1,7 @@
 
 app.factory 'ksc.RestRecord', [
-  '$http', 'ksc.Record', 'ksc.errors', 'ksc.restUtils', 'ksc.utils',
-  ($http, Record, errors, restUtils, utils) ->
+  '$http', 'ksc.Record', 'ksc.error', 'ksc.restUtils', 'ksc.utils',
+  ($http, Record, error, restUtils, utils) ->
 
     OPTIONS      = '_options'
     REST_CACHE   = '_restCache'
@@ -115,12 +115,10 @@ app.factory 'ksc.RestRecord', [
       ###
       @getUrl: (record) ->
         unless (endpoint = record[OPTIONS].endpoint) and (url = endpoint.url)?
-          throw new errors.Value {'_options.endpoint.url': undefined}
+          error.Value {'_options.endpoint.url': undefined}
 
         unless typeof url is 'string'
-          throw new errors.Type
-            '_options.endpoint.url': url
-            acceptable:              'string'
+          error.Type {'_options.endpoint.url': url, required: 'string'}
 
         url
 ]
