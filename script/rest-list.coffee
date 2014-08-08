@@ -315,7 +315,7 @@ app.factory 'ksc.RestList', [
         iteration = (record) ->
           id     = record._id
           method = 'delete'
-          url    = list.options.record?.endpoint?.url
+          url    = list.options.record.endpoint?.url
           if save_type
             method = 'put'
             # TODO: cover new records saving

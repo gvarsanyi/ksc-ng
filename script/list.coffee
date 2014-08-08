@@ -108,6 +108,7 @@ app.factory 'ksc.List', [
 
         options = angular.copy options
         define_value list, 'options', options
+        list.options.record ?= {}
 
         define_value list, 'events', new EventEmitter, false, true
 
@@ -662,7 +663,7 @@ app.factory 'ksc.List', [
         try
           tmp = []
           record_opts  = list.options.record
-          record_class = record_opts?.class or EditableRecord
+          record_class = record_opts.class or EditableRecord
           for item in items
             original = item
             unless is_object item
