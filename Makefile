@@ -24,6 +24,8 @@ js:
 jsmin: js
 	@uglifyjs libs.js -c -m -o libs.min.js
 	@ls -la libs.min.js
+	@gzip < libs.min.js > libs.min.js.gz
+	@ls -la libs.min.js.gz
 
 doc:
 	@rm -rf doc/

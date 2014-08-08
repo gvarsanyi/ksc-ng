@@ -5,4 +5,4 @@ node_modules
 /.project
 doc/*
 test/coverage/*
-libs*.js
+libs*.js*
