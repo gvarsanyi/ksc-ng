@@ -69,7 +69,7 @@ app.factory 'ksc.RestList', [
 
         unless (endpoint = list.options.endpoint) and (url = endpoint.url) and
         typeof url is 'string'
-          error.Type {'options.endpoint.url': url, acceptable: 'string'}
+          error.Type {'options.endpoint.url': url, required: 'string'}
 
         if query_parameters
           parts = for k, v of query_parameters
@@ -284,7 +284,7 @@ app.factory 'ksc.RestList', [
           unless typeof endpoint_options.url is 'string'
             error.Type
               'options.endpoint.url': endpoint_options.url
-              acceptable:             'string'
+              required:               'string'
 
           data = for record in records
             if save_type

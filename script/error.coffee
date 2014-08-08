@@ -35,7 +35,7 @@ app.service 'ksc.error', ->
   Error for argument type mismatch
   @example
       unless typeof param is 'string'
-        error.ArgumentType {param, argument: 1, acceptable: 'string'}
+        error.ArgumentType {param, argument: 1, required: 'string'}
   ###
   class ArgumentTypeError extends CustomError
 
@@ -83,7 +83,7 @@ app.service 'ksc.error', ->
   Type mismatch
   @example
       if typeof param is 'function'
-        error.Type {param, notAcceptable: 'function'}
+        error.Type {param, description: 'must not be function'}
   ###
   class TypeError extends CustomError
 

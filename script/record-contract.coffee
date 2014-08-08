@@ -50,7 +50,7 @@ app.factory 'ksc.RecordContract', [
         if contract is null or contract instanceof RecordContract
           return contract
         unless is_object contract
-          error.Type {contract, acceptable: 'object'}
+          error.Type {contract, required: 'object'}
 
         # integrity check
         for key, desc of contract
@@ -67,12 +67,11 @@ app.factory 'ksc.RecordContract', [
           if desc.type is 'object' and not is_object desc.contract
             error.Type
               contract:    desc.contract
-              acceptable:  'object'
-              description: 'object type requires contract'
+              description: 'contract description object is required'
 
           if desc.contract
             if has_own(desc, 'type') and desc.type isnt 'object'
-              error.Type {contract: desc.contract, acceptable: 'object'}
+              error.Type {contract: desc.contract, required: 'object'}
 
             if has_own desc, 'default'
               error.Value
@@ -88,8 +87,8 @@ app.factory 'ksc.RecordContract', [
               desc.type = typeof desc.default
             unless RecordContract.typeDefaults[desc.type]?
               error.Type
-                type:       desc.type
-                acceptable: ['boolean', 'number', 'object', 'string']
+                type:     desc.type
+                required: 'boolean, number, object, string'
 
           @_match key, @_default key # checks default value
 

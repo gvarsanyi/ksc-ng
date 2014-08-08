@@ -103,10 +103,7 @@ app.factory 'ksc.ListSorter', [
 
           if type = description.type
             unless type in ['byte', 'natural', 'number']
-              error.Value
-                type:       type
-                acceptable: ['byte', 'natural', 'number']
-                default:    'natural'
+              error.Value {type, required: 'byte, natural or number'}
           else
             type = 'natural'
 
@@ -141,7 +138,7 @@ app.factory 'ksc.ListSorter', [
 
         cmp_check = (value) ->
           if typeof value isnt 'number' or isNaN value
-            error.Type {sort_fn_output: value, acceptable: 'number'}
+            error.Type {sort_fn_output: value, required: 'number'}
           value
 
         if cmp_check(compare record, list[min]) < 0

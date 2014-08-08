@@ -20,7 +20,7 @@ app.factory 'ksc.Record', [
         inf = {}
         inf[name] = value
         inf.argument = arg
-        inf.acceptable = 'object'
+        inf.required = 'object'
         error.ArgumentType inf
 
     ###
@@ -223,7 +223,7 @@ app.factory 'ksc.Record', [
             if key.substr(0, 1) is '_'
               error.Key {key, description: 'can not start with "_"'}
             if typeof value is 'function'
-              error.Type {value, notAcceptable: 'function'}
+              error.Type {value, description: 'can not be function'}
             unless utils.identical value, record[key]
               set_property key, value
 

@@ -554,7 +554,7 @@ app.factory 'ksc.List', [
       ###
       _recordChange: (record, record_info, old_id) ->
         unless record instanceof Record
-          error.Type {record, acceptable: 'Record'}
+          error.Type {record, required: 'Record'}
 
         list = @
         map  = list.map
@@ -666,7 +666,7 @@ app.factory 'ksc.List', [
           for item in items
             original = item
             unless is_object item
-              error.Type {item, acceptable: 'object'}
+              error.Type {item, required: 'object'}
 
             unless item instanceof record_class
               if item instanceof Record

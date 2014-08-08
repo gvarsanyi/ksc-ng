@@ -71,7 +71,7 @@ app.factory 'ksc.EditableRecord', [
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
         unless is_object options
-          error.ArgumentType {options, argument: 2, acceptable: 'object'}
+          error.ArgumentType {options, argument: 2, required: 'object'}
         options.subtreeClass = EditableRecord
         super data, options, parent, parent_key
 
@@ -272,7 +272,7 @@ app.factory 'ksc.EditableRecord', [
 
         setter = (update) ->
           if typeof update is 'function'
-            error.Type {update, notAcceptable: 'function'}
+            error.Type {update, description: 'must not be function'}
 
           if utils.identical saved[key], update
             delete edited[key]
