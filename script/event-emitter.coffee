@@ -360,14 +360,37 @@ app.factory 'ksc.EventEmitter', [
       @example
         unsub = MyEventEmitterObject.unsubscriber()
 
-        unsub.add $timeout(timed_fn, 100)
+        unsub.add $interval(timed_fn, 100)
+
+        # similar syntax with EventEmitter object
         unsub.add MyOtherEventEmitterObject.if('roar', lion_coming_fn)
 
-        $scope.$on '$destroy', unsub
+        # this also works for EventEmitter objects
+        MyOtherEventEmitterObject.if('meow', unsub, cat_coming_fn)
+
+        # i want these events to stop firing in a minute
+        $timeout unsub, 60000
+
+      @example
+        # link unsubscription to $scope lifecycle
+        unsub = MyEventEmitterObject.unsubscriber $scope
+
+        unsub.add $interval(timed_fn, 100)
+
+        # similar syntax with EventEmitter object
+        unsub.add MyOtherEventEmitterObject.if('roar', lion_coming_fn)
+
+        # this also works for EventEmitter objects
+        MyOtherEventEmitterObject.if('meow', unsub, cat_coming_fn)
+
+
+      @param [Object] scope (optional) tie the lifecycle of unsubscriptions to
+        controller lifecycle, i.e. will trigger unsubscribscription when
+        controller receives the '$destroy' event.
 
       @return [function] unsubscriber
       ###
-      unsubscriber: ->
+      unsubscriber: (scope) ->
         attached  = {}
         increment = 0
 
@@ -387,6 +410,11 @@ app.factory 'ksc.EventEmitter', [
               else # if node.$$timeoutId?
                 $timeout.cancel node
           status
+
+        if scope?
+          unless $rootScope.isPrototypeOf scope
+            error.ArgumentType {scope, required: '$rootScope descendant'}
+          scope.$on '$destroy', fn
 
         fn[UNSUBSCRIBER] = true
 

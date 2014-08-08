@@ -272,3 +272,20 @@ describe 'app.factory', ->
       expect(-> unsubscriber.add 1).toThrow()
       expect(-> unsubscriber.add ->).toThrow()
       expect(-> unsubscriber.add {}).toThrow()
+
+    it 'Unsubscriber for scope', ->
+      expect(-> EventEmitter::unsubscriber {}).toThrow() # not scope type
+
+      unsubscriber = EventEmitter::unsubscriber $scope
+
+      count = 0
+
+      unsubscriber.add $interval (-> count += 1), 100
+
+      $interval.flush 101
+      expect(count).toBe 1
+
+      $scope.$emit '$destroy'
+
+      $interval.flush 101
+      expect(count).toBe 1
