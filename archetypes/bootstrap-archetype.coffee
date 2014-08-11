@@ -3,7 +3,7 @@ app.service 'ksc.bootstrapArchetype', [
   'ksc.BatchLoader',
   (BatchLoader) ->
 
-    bootstrap = new BatchLoader '/api/bootstrap',
+    bootstrap = new BatchLoader '/api/Bootstrap',
       Test:  '/api/Test'
       Other: '/api/Other'
 

@@ -6,7 +6,7 @@ to-do
 
 unit tests missing / partial
 ----------------------------
-- batch-loader, batch-loader-registry
+n/a
 
 coffeedoc missing / partial
 ----------------------------

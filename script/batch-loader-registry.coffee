@@ -43,7 +43,8 @@ app.service 'ksc.batchLoaderRegistry', [
       @return [BatchLoader] registered {BatchLoader} instance
       ###
       register: (loader) ->
-        if utils.isKeyConform endpoint = loader?.endpoint
+        unless typeof (endpoint = loader?.endpoint) is 'string' and
+        utils.isKeyConform endpoint
           error.Key {endpoint: endpoint, required: 'url'}
 
         if @map[endpoint]
@@ -60,6 +61,8 @@ app.service 'ksc.batchLoaderRegistry', [
       @return [boolean] indicates if removal has happened
       ###
       unregister: (loader) ->
+        unless @map[loader.endpoint]
+          return false
         delete @map[loader.endpoint]
 
 

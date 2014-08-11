@@ -3,13 +3,14 @@ describe 'app.factory', ->
 
   describe 'RestRecord', ->
 
-    $httpBackend = $rootScope = RestRecord = Record = url = null
+    $httpBackend = $rootScope = BatchLoader = RestRecord = Record = url = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         $httpBackend = $injector.get '$httpBackend'
         $rootScope   = $injector.get '$rootScope'
+        BatchLoader  = $injector.get 'ksc.BatchLoader'
         RestRecord   = $injector.get 'ksc.RestRecord'
         Record       = $injector.get 'ksc.Record'
 
@@ -61,6 +62,26 @@ describe 'app.factory', ->
 
       expect(record.x).toBe 1
       expect(record.y).toBe 2
+
+    it 'With batch loader', ->
+      bootstrap = new BatchLoader '/api/Bootstrap', {Test: '/api/Test'}
+
+      record = new RestRecord null, endpoint: url: '/api/Test'
+
+      record._restLoad()
+
+      expect(record._restPending).toBe 1
+
+      response = [{status: 200, body: {hello: 1}}]
+
+      $httpBackend.expectPUT('/api/Bootstrap').respond response
+
+      bootstrap.open = false # this also triggers bootstrap.flush()
+
+      $httpBackend.flush()
+
+      expect(record._restPending).toBe 0
+      expect(record.hello).toBe 1
 
     it 'Error handling for _option.endpoint.url', ->
       record = new RestRecord null

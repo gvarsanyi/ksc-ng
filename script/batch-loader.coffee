@@ -45,20 +45,20 @@ app.factory 'ksc.BatchLoader', [
       constructor: (@endpoint, @map) ->
         loader = @
 
-        unless typeof endpoint is 'string'
+        unless endpoint and typeof endpoint is 'string'
           argument_type_error {endpoint, required: 'string'}
 
         unless is_object map
           argument_type_error {map, required: 'object'}
-        for key, url in map when typeof url isnt 'string' or not key
+        for key, url of map when typeof url isnt 'string' or not key
           error.Type {key, url, required: 'url string'}
 
         open = true
         setter = (value) ->
           if open and not value
             loader.flush()
-          loader.open = open = !!value
-        utils.defineGetSet loader, 'open', (-> loader.open), setter, true
+          open = !!value
+        utils.defineGetSet loader, 'open', (-> open), setter, true
 
         utils.defineValue loader, 'requests', [], false, true
 
@@ -78,10 +78,10 @@ app.factory 'ksc.BatchLoader', [
         loader   = @
         requests = loader.requests
 
-        unless typeof url is 'string'
+        unless url and typeof url is 'string'
           argument_type_error {url, required: 'string'}
 
-        if query_parameters and not is_object query_parameters
+        if query_parameters? and not is_object query_parameters
           argument_type_error {query_parameters, required: 'object'}
 
         unless loader.open
@@ -94,14 +94,14 @@ app.factory 'ksc.BatchLoader', [
         unless matched_key
           return false
 
-        promise = $q.defer()
+        deferred = $q.defer()
 
-        requests.push {resource: matched_key, promise}
+        requests.push {resource: matched_key, deferred}
 
         if query_parameters
           requests[requests.length - 1].query = query_parameters
 
-        promise
+        deferred.promise
 
       ###
       Flush requests (if any)
@@ -115,23 +115,28 @@ app.factory 'ksc.BatchLoader', [
         unless requests.length
           return false
 
-        promises = []
+        defers = []
         for request in requests
-          promises.push request.promise
-          delete request.promise
+          defers.push request.deferred
+          delete request.deferred
 
         batch_promise = $http.put loader.endpoint, requests
 
         batch_promise.success (data, status, headers, config) ->
-          for promise, i in promises
-            unless (response = data[i])?
-              promise.reject data, status, headers, config
-            else if 200 <= response.status < 400
-              promise.resolve response.data, response.status, headers, config
+          for deferred, i in defers
+            unless (res = data[i])?
+              deferred.reject {data, status, headers, config}
+              continue
+
+            raw = {data: res.body, status: res.status, headers, config}
+            if 200 <= res.status < 400
+              deferred.resolve raw
             else
-              promise.reject response.data, response.status, headers, config
+              deferred.reject raw
+          return
 
         batch_promise.error (data, status, headers, config) ->
-          for promise in promises
-            promise.reject data, status, headers, config
+          for deferred in defers
+            deferred.reject {data, status, headers, config}
+          return
 ]

@@ -80,7 +80,8 @@ app.factory 'ksc.RestList', [
             parts = for k, v of query_parameters
               encodeURIComponent(k) + '=' + encodeURIComponent v
             if parts.length
-              url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
+              url += (if url.indexOf('?') > -1 then '&' else '?') +
+                     parts.join '&'
 
           promise = $http.get url
 

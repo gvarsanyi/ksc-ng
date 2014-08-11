@@ -3,7 +3,7 @@ describe 'app.factory', ->
 
   describe 'RestList', ->
 
-    $httpBackend = EditableRecord = List = RestList = null
+    $httpBackend = BatchLoader = EditableRecord = List = RestList = null
     expected_raw_response = list_cfg = list_response = null
 
     id_url = '/api/Test/<id>'
@@ -13,6 +13,7 @@ describe 'app.factory', ->
       module 'app'
       inject ($injector) ->
         $httpBackend   = $injector.get '$httpBackend'
+        BatchLoader    = $injector.get 'ksc.BatchLoader'
         EditableRecord = $injector.get 'ksc.EditableRecord'
         List           = $injector.get 'ksc.List'
         RestList       = $injector.get 'ksc.RestList'
@@ -136,6 +137,27 @@ describe 'app.factory', ->
       expect(response.success).toBe true
       expect(response.elements.length).toBe 2
       expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
+
+    it 'Method .restGetRaw() with batch loader', ->
+      bootstrap = new BatchLoader '/api/Bootstrap', {Test: '/api/Test/'}
+
+      list = new RestList list_cfg
+
+      list.restLoad()
+
+      expect(list.restPending).toBe 1
+
+      response = [{status: 200, body: list_response}]
+
+      $httpBackend.expectPUT('/api/Bootstrap').respond response
+
+      bootstrap.open = false # this also triggers bootstrap.flush()
+
+      $httpBackend.flush()
+
+      expect(list.restPending).toBe 0
+      expect(list.length).toBe 2
+      expect(list[0].x).toBe 'a'
 
     it 'Method .restLoad()', ->
       list = new RestList list_cfg
