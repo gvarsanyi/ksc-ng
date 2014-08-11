@@ -63,17 +63,20 @@ describe 'app.factory', ->
 
 
       # with contract
-      record = new Record null, {contract: {a: default: 1}}
+      record = new Record {id: 1},
+        contract:
+          id: {type: 'number'}
+          a:  {default: 1}
 
       saved = record._entity()
 
-      record._replace {}
+      record._replace {id: 1}
       expect(record._entity()).toEqual saved
 
-      record._replace {a: 2}
+      record._replace {id: 1, a: 2}
       expect(record._entity()).not.toEqual saved
 
-      record._replace {}
+      record._replace {id: 1}
       expect(record._entity()).toEqual saved
 
     it 'No _id case', ->

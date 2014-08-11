@@ -188,6 +188,13 @@ app.factory 'ksc.Record', [
 
         contract = options.contract
 
+        unless options[ID_PROPERTY] # assign first as ID
+          for key of data
+            options[ID_PROPERTY] = key
+            break
+        if options[ID_PROPERTY]
+          data[options[ID_PROPERTY]] ?= null
+
         changed = false
 
         set_property = (key, value) ->
@@ -282,14 +289,7 @@ app.factory 'ksc.Record', [
       @return [undefined]
       ###
       @setId: (record) ->
-        options = record[OPTIONS]
-
-        unless options[ID_PROPERTY] # assign first as ID
-          for k of record
-            options[ID_PROPERTY] = k
-            break
-
-        define_value record, ID, record[options[ID_PROPERTY]]
+        define_value record, ID, record[record[OPTIONS][ID_PROPERTY]]
 
         return
 ]
