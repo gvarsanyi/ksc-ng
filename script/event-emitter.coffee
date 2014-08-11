@@ -5,6 +5,8 @@ app.factory 'ksc.EventEmitter', [
 
     UNSUBSCRIBER = '__unsubscriber__'
 
+    argument_type_error = error.ArgumentType
+
     is_function = utils.isFunction
     is_object   = utils.isObject
 
@@ -97,7 +99,7 @@ app.factory 'ksc.EventEmitter', [
 
     name_check = (name) ->
       unless typeof name is 'string'
-        error.ArgumentType {name, argument: 1, required: 'string'}
+        argument_type_error {name, argument: 1, required: 'string'}
 
       unless name
         error.Value {name, description: 'must be a non-empty string'}
@@ -107,7 +109,7 @@ app.factory 'ksc.EventEmitter', [
       @subscriptions ?= new EventSubscriptions
 
       unless is_function callback
-        error.ArgumentType {callback, argument: 'last', required: 'function'}
+        argument_type_error {callback, argument: 'last', required: 'function'}
 
       unless unsubscribe_target?[UNSUBSCRIBER] or
       (is_object(unsubscribe_target) and
@@ -413,7 +415,7 @@ app.factory 'ksc.EventEmitter', [
 
         if scope?
           unless $rootScope.isPrototypeOf scope
-            error.ArgumentType {scope, required: '$rootScope descendant'}
+            argument_type_error {scope, required: '$rootScope descendant'}
           scope.$on '$destroy', fn
 
         fn[UNSUBSCRIBER] = true
@@ -424,7 +426,7 @@ app.factory 'ksc.EventEmitter', [
               delete attached[increment]
 
             unknown = ->
-              error.ArgumentType
+              argument_type_error
                 unsubscriber: unsubscriber
                 argument:     1
                 required:     ['function', 'Promise']

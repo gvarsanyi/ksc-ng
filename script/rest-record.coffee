@@ -1,7 +1,9 @@
 
 app.factory 'ksc.RestRecord', [
-  '$http', 'ksc.Record', 'ksc.error', 'ksc.restUtils', 'ksc.utils',
-  ($http, Record, error, restUtils, utils) ->
+  '$http', 'ksc.Record', 'ksc.batchLoaderRegistry', 'ksc.error',
+  'ksc.restUtils', 'ksc.utils',
+  ($http, Record, batchLoaderRegistry, error,
+   restUtils, utils) ->
 
     OPTIONS      = '_options'
     REST_CACHE   = '_restCache'
@@ -67,7 +69,9 @@ app.factory 'ksc.RestRecord', [
 
         get = ->
           url = RestRecord.getUrl record
-          RestRecord.async record, $http.get(url), callback
+          unless promise = batchLoaderRegistry.get url
+            promise = $http.get url
+          RestRecord.async record, promise, callback
 
         unless typeof force_load is 'boolean'
           callback = force_load

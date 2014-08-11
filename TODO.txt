@@ -1,14 +1,12 @@
 to-do
 ----------------------------
-- batch-loader
-- bootloader-service
 - record: handle multiple list-parents
 - record/record-contract: support for array property type (+ record-contract, editable-record)
 - rest-list: support composite ID with _primaryId and related crud operations
 
 unit tests missing / partial
 ----------------------------
-n/a
+- batch-loader, batch-loader-registry
 
 coffeedoc missing / partial
 ----------------------------

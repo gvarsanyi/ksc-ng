@@ -7,6 +7,8 @@ app.factory 'ksc.List', [
 
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
+    argument_type_error = error.ArgumentType
+
     define_value = utils.defineValue
     is_object    = utils.isObject
 
@@ -92,7 +94,7 @@ app.factory 'ksc.List', [
         list = []
 
         unless utils.isObject options
-          error.ArgumentType {options, argument: 3, required: 'object'}
+          argument_type_error {options, argument: 3, required: 'object'}
 
         if $rootScope.isPrototypeOf options
           scope = options
@@ -100,7 +102,7 @@ app.factory 'ksc.List', [
 
         if scope?
           unless $rootScope.isPrototypeOf scope
-            error.ArgumentType {scope, required: '$rootScope descendant'}
+            argument_type_error {scope, required: '$rootScope descendant'}
 
         for key, value of @constructor.prototype
           if key.indexOf('constructor') is -1
@@ -402,7 +404,7 @@ app.factory 'ksc.List', [
         positive_int_or_zero = (value, i) ->
           unless typeof value is 'number' and (value > 0 or value is 0) and
           value is Math.floor value
-            error.ArgumentType {value, argument: i, required: 'int >= 0'}
+            argument_type_error {value, argument: i, required: 'int >= 0'}
 
         action = {}
         list   = @

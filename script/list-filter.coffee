@@ -6,6 +6,8 @@ app.factory 'ksc.ListFilter', [
     SCOPE_UNSUBSCRIBER  = '_scopeUnsubscriber'
     SOURCE_UNSUBSCRIBER = '_sourceUnsubscriber'
 
+    argument_type_error = error.ArgumentType
+
     define_value = utils.defineValue
 
     ###
@@ -272,15 +274,15 @@ app.factory 'ksc.ListFilter', [
       constructor: (source, filter, options, scope) ->
         unless source instanceof Array and source.options and
         source.events instanceof EventEmitter
-          error.ArgumentType {source, argument: 2, required: 'List array'}
+          argument_type_error {source, argument: 2, required: 'List array'}
 
         unless typeof filter is 'function'
-          error.ArgumentType {filter, argument: 2, required: 'function'}
+          argument_type_error {filter, argument: 2, required: 'function'}
 
         unless options?
           options = {}
         unless utils.isObject options
-          error.ArgumentType {options, argument: 3, required: 'object'}
+          argument_type_error {options, argument: 3, required: 'object'}
 
         if $rootScope.isPrototypeOf options
           scope = options
@@ -288,7 +290,7 @@ app.factory 'ksc.ListFilter', [
 
         if scope?
           unless $rootScope.isPrototypeOf scope
-            error.ArgumentType {scope, required: '$rootScope descendant'}
+            argument_type_error {scope, required: '$rootScope descendant'}
 
         list = []
 

@@ -1,7 +1,9 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.List', 'ksc.error', 'ksc.restUtils', 'ksc.utils',
-  ($http, List, error, restUtils, utils) ->
+  '$http', 'ksc.List', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.restUtils',
+  'ksc.utils',
+  ($http, List, batchLoaderRegistry, error, restUtils,
+   utils) ->
 
     REST_PENDING = 'restPending'
 
@@ -71,14 +73,18 @@ app.factory 'ksc.RestList', [
         typeof url is 'string'
           error.Type {'options.endpoint.url': url, required: 'string'}
 
-        if query_parameters
-          parts = for k, v of query_parameters
-            encodeURIComponent(k) + '=' + encodeURIComponent v
-          if parts.length
-            url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
-
         define_value list, REST_PENDING, list[REST_PENDING] + 1, false, true
-        restUtils.wrapPromise $http.get(url), (err, result) ->
+
+        unless promise = batchLoaderRegistry.get url, query_parameters
+          if query_parameters
+            parts = for k, v of query_parameters
+              encodeURIComponent(k) + '=' + encodeURIComponent v
+            if parts.length
+              url += (if url.indexOf('?') > -1 then '&' else '?') + parts.join '&'
+
+          promise = $http.get url
+
+        restUtils.wrapPromise promise, (err, result) ->
           define_value list, REST_PENDING, list[REST_PENDING] - 1, false, true
           callback err, result
 
