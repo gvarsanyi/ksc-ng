@@ -164,6 +164,11 @@ app.factory 'ksc.Record', [
       ###
       (Re)define the initial data set
 
+      @note Will try and create an ._options.idProperty if it is missing off of
+        the first key in the dictionary, so that it can be used as ._id
+      @note Will set ._options.idProperty value of the data set to null if it is
+        not defined
+
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
 
@@ -179,7 +184,12 @@ app.factory 'ksc.Record', [
       _replace: (data, emit_event=true) ->
         record = @
 
-        if record[EVENTS] is null and record[PARENT_KEY]
+        # _replace() is not allowed on subnodes, only for the first run
+        # here it checks against record._events, possible values are:
+        #  - object: top-level node
+        #  - undefined: subnode, but this is init time
+        #  - null: subnode, but this is post init time (should throw an error)
+        if record[EVENTS] is null
           error.Permission
             key:         record[PARENT_KEY]
             description: 'can not replace subobject'
@@ -188,16 +198,34 @@ app.factory 'ksc.Record', [
 
         contract = options.contract
 
-        unless options[ID_PROPERTY] # assign first as ID
+        unless options[ID_PROPERTY]? # assign first as ID
           for key of data
             options[ID_PROPERTY] = key
             break
-        if options[ID_PROPERTY]
-          data[options[ID_PROPERTY]] ?= null
+
+        id_property_contract_check = (key) ->
+          if contract
+            unless contract[key]?
+              error.ContractBreak {key, contract, mismatch: 'idProperty'}
+            unless contract[key].type in ['string', 'number']
+              error.ContractBreak {key, contract, required: 'string or number'}
+
+        if record[EVENTS] # a top-level node of record (create _id on top only)
+          if id_property = options[ID_PROPERTY]
+            if id_property instanceof Array
+              for part in id_property
+                id_property_contract_check part
+                data[part] ?= null
+            else
+              id_property_contract_check id_property
+              data[id_property] ?= null
 
         changed = false
 
         set_property = (key, value) ->
+          if utils.identical record[key], value
+            return
+
           if is_object value
             if value instanceof Record
               value = value._clone 1
@@ -223,16 +251,14 @@ app.factory 'ksc.Record', [
               data[key]
             else
               contract._default key
-            unless utils.identical record[key], value
-              set_property key, value
+            set_property key, value
         else
           for key, value of data
             if key.substr(0, 1) is '_'
               error.Key {key, description: 'can not start with "_"'}
             if typeof value is 'function'
               error.Type {value, description: 'can not be function'}
-            unless utils.identical value, record[key]
-              set_property key, value
+            set_property key, value
 
           for key of record when not has_own data, key
             delete record[key]
@@ -280,7 +306,6 @@ app.factory 'ksc.Record', [
 
         return
 
-
       ###
       Define _id for the record
 
@@ -289,7 +314,20 @@ app.factory 'ksc.Record', [
       @return [undefined]
       ###
       @setId: (record) ->
-        define_value record, ID, record[record[OPTIONS][ID_PROPERTY]]
+        if id_property = record[OPTIONS][ID_PROPERTY]
+          if id_property instanceof Array
+            composite = []
+            for part, i in id_property
+              if utils.isKeyConform record[part]
+                composite.push record[part]
+              else unless i # if first part is unset, fall back to null
+                break
+            id = if composite.length then composite.join('-') else null
+            define_value record, ID, id
+            define_value record, '_primaryId', record[id_property[0]]
+          else
+            value = record[id_property]
+            define_value record, ID, if value? then value else null
 
         return
 ]

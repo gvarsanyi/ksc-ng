@@ -77,34 +77,61 @@ describe 'app.factory', ->
       expect(record.a.b._changes).toBe 1
       expect(record.a.b.c._changes).toBe 2
 
-    it 'Method ._delete()', ->
-      example = {id: 1, x: 2, y: {a: 3}, z: null}
-      record = new EditableRecord example
+    describe 'Method ._delete()', ->
 
-      expect(-> record._delete()).toThrow() # no key
+      it 'Basic scenarios', ->
+        example = {id: 1, x: 2, y: {a: 3}, z: null}
+        record = new EditableRecord example
 
-      record.x = 4
-      record._delete 'x'
-      expect(record.x).toBeUndefined()
-      expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
-      expect(record.hasOwnProperty 'x').toBe true
+        expect(-> record._delete()).toThrow() # no key
 
-      record._delete 'x'
-      expect(record.x).toBeUndefined()
-      expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
-      expect(record.hasOwnProperty 'x').toBe true
+        record.x = 4
+        record._delete 'x'
+        expect(record.x).toBeUndefined()
+        expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
+        expect(record.hasOwnProperty 'x').toBe true
 
-      record.xx = 'xx'
-      record._delete 'xx'
-      expect(record.xx).toBeUndefined()
-      expect(record.hasOwnProperty 'xx').toBe false
+        record._delete 'x'
+        expect(record.x).toBeUndefined()
+        expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
+        expect(record.hasOwnProperty 'x').toBe true
 
-      record._delete 'xx'
-      expect(record.xx).toBeUndefined()
-      expect(record.hasOwnProperty 'xx').toBe false
+        record.xx = 'xx'
+        record._delete 'xx'
+        expect(record.xx).toBeUndefined()
+        expect(record.hasOwnProperty 'xx').toBe false
 
-      # special properties can't be deleted
-      expect(-> record._delete '_changes').toThrow()
+        record._delete 'xx'
+        expect(record.xx).toBeUndefined()
+        expect(record.hasOwnProperty 'xx').toBe false
+
+        # special properties can't be deleted
+        expect(-> record._delete '_changes').toThrow()
+
+      it 'Forbidden when contracted', ->
+        record = new EditableRecord {id: 1}, contract: id: type: 'number'
+        record.id = 2
+        expect(-> record._delete 'id').toThrow()
+
+      it 'Throws error if key is invalid', ->
+        record = new EditableRecord {id: 1, a: 1},
+          contract:
+            id: {type: 'number'}
+            a:  {type: 'number'}
+
+        expect(-> record._delete()).toThrow()
+        expect(-> record._delete null).toThrow()
+        expect(-> record._delete {}).toThrow()
+        expect(-> record._delete true).toThrow()
+        expect(-> record._delete false).toThrow()
+        expect(-> record._delete 'a', true).toThrow()
+
+      it 'Can not delete idProperty key', ->
+        record = new EditableRecord {id: 1}, {idProperty: 'id'}
+        expect(-> record._delete 'id').toThrow()
+
+        record = new EditableRecord {id: 1, x: 2}, {idProperty: ['id', 'x']}
+        expect(-> record._delete 'x').toThrow()
 
     it 'Id changes', ->
       example = {id: 1, x: 2}
@@ -134,6 +161,19 @@ describe 'app.factory', ->
       record = new EditableRecord example, null, {}
       expect(-> record.id = 3).not.toThrow()
       expect(record._id).toBe 3
+
+    it 'Composite id changes', ->
+      record = new EditableRecord {id: 1, x: 2}, {idProperty: ['id', 'x']}
+
+      expect(-> record.x = false).toThrow() # string, number or null is required
+
+      record.x = 3
+      expect(record._id).toBe '1-3'
+      expect(record._primaryId).toBe 1
+
+      record.id = null
+      expect(record._id).toBe null
+      expect(record._primaryId).toBe null
 
     it 'Can create empty container', ->
       record = null
@@ -192,16 +232,3 @@ describe 'app.factory', ->
       expect(-> record.d = null).not.toThrow()
       expect(record.d).toBe null
       expect(-> record.e = null).toThrow()
-
-    it 'Method ._delete() forbidden when contracted', ->
-      record = new EditableRecord {id: 1}, contract: id: type: 'number'
-      record.id = 2
-      expect(-> record._delete 'id').toThrow()
-
-    it 'Method ._delete() throws error if key is invalid', ->
-      record = new EditableRecord {id: 1}, contract: id: type: 'number'
-      expect(-> record._delete null).toThrow()
-      expect(-> record._delete {}).toThrow()
-      expect(-> record._delete true).toThrow()
-      expect(-> record._delete false).toThrow()
-      expect(-> record._delete()).toThrow()

@@ -61,7 +61,6 @@ describe 'app.factory', ->
       expect(record._replace {a: {x: 1}}).toBe false
       expect(record.a).toBe ref # did not change references either
 
-
       # with contract
       record = new Record {id: 1},
         contract:
@@ -83,6 +82,37 @@ describe 'app.factory', ->
       record = null
       expect(-> record = new Record {}, {record: idProperty: 'x'}).not.toThrow()
       expect(record._id).toBeUndefined()
+
+    describe 'Composite _id (._options.idProperty is array)', ->
+
+      it 'Basic scenarios', ->
+        record = new Record {id: 1, otherId: 2}, idProperty: ['id', 'otherId']
+        expect(record._id).toBe '1-2'
+        expect(record._primaryId).toBe 1
+
+        record._replace {id: 1}
+        expect(record._id).toBe '1'
+        expect(record._primaryId).toBe 1
+
+        record._replace {otherId: 1}
+        expect(record._id).toBe null
+        expect(record._primaryId).toBe null
+
+      it 'Contract mismatches', ->
+        contract =
+          id: {type: 'number', nullable: true}
+          x:  {type: 'boolean'}
+
+        expect(-> new Record {}, {contract, idProperty: ['id', 'x']}).toThrow()
+
+    it 'Method ._replace(false) - will not emit if emission turned off', ->
+      record = new Record {a: 1}
+      distributed = null
+      record._events.on 'update', (update) ->
+        distributed = update
+      record._replace {b: 2}, false
+
+      expect(distributed).toBe null
 
     it 'Data separation', ->
       example_sub = {a: 3}

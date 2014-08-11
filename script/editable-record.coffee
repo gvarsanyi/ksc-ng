@@ -8,6 +8,7 @@ app.factory 'ksc.EditableRecord', [
     DELETED_KEYS = '_deletedKeys'
     EDITED       = '_edited'
     EVENTS       = '_events'
+    OPTIONS      = '_options'
     PARENT       = '_parent'
     PARENT_KEY   = '_parentKey'
     SAVED        = '_saved'
@@ -135,8 +136,15 @@ app.factory 'ksc.EditableRecord', [
           unless utils.isKeyConform key
             error.Key {key, argument: i, required: 'key conform value'}
 
-          if not i and contract = record._options.contract
+          if not i and contract = record[OPTIONS].contract
             error.ContractBreak {key, value, contract: contract[key]}
+
+          # prevent idProperty key from deleted
+          if (id_property = record[OPTIONS].idProperty) is key or
+          (id_property instanceof Array and key in id_property)
+            error.Permission
+              key:         key
+              description: '._options.idProperty keys can not be deleted'
 
           if has_own record[SAVED], key
             if record[DELETED_KEYS][key]
@@ -189,7 +197,7 @@ app.factory 'ksc.EditableRecord', [
           dropped = record._revert false
 
           if changed = super data, false
-            contract = record._options.contract
+            contract = record[OPTIONS].contract
 
             define_value record, EDITED, {}
             define_value record, CHANGES, 0
@@ -260,7 +268,7 @@ app.factory 'ksc.EditableRecord', [
       @setProperty: (record, key) ->
         saved    = record[SAVED]
         edited   = record[EDITED]
-        options  = record._options
+        options  = record[OPTIONS]
         contract = options.contract
 
         getter = ->
@@ -273,6 +281,12 @@ app.factory 'ksc.EditableRecord', [
         setter = (update) ->
           if typeof update is 'function'
             error.Type {update, description: 'must not be function'}
+
+          # idProperty values must be string, number or null
+          if (id_property = record[OPTIONS].idProperty) is key or
+          (id_property instanceof Array and key in id_property)
+            unless update is null or typeof update in ['string', 'number']
+              error.Value {update, required: 'string or number or null'}
 
           if utils.identical saved[key], update
             delete edited[key]

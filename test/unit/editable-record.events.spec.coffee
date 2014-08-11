@@ -45,19 +45,20 @@ describe 'app.factory', ->
 
       it 'Delete', ->
         record = new EditableRecord example_set
+        record.c = 'x'
 
         distributed = null
         value = null
 
         record._events.on 'update', (update) ->
           distributed = update
-          value = record.a
+          value = record.b
 
-        record._delete 'a', 'b'
+        record._delete 'b', 'c'
 
         expect(distributed.node).toBe record
         expect(distributed.action).toBe 'delete'
-        expect(distributed.keys).toEqual ['a', 'b']
+        expect(distributed.keys).toEqual ['b', 'c']
         expect(value).toBeUndefined()
 
       it 'Set', ->
