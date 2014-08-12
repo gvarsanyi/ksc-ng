@@ -309,6 +309,23 @@ app.factory 'ksc.Record', [
       ###
       Define _id for the record
 
+      Composite IDs will be used and ._primaryId will be created if
+      .options.idProperty is an Array. The composite is c
+      - Parts are stringified and joined by '-'
+      - If a part is empty (e.g. '' or null), the part will be skipped in ._id
+      - If primary part of composite ID is null, the whole ._id is going to
+        be null (becomes a pseudo/new record)
+      @example
+        record = new EditableRecord {id: 1, otherId: 2, name: 'x'},
+                                    {idProperty: ['id', 'otherId', 'name']}
+        console.log record._id, record._primaryId # '1-2-x', 1
+
+        record.otherId = null
+        console.log record._id, record._primaryId # '1-x', 1
+
+        record.id = null
+        console.log record._id, record._primaryId # null, null
+
       @param [Record] record record instance to be updated
 
       @return [undefined]

@@ -472,6 +472,23 @@ describe 'app.factory', ->
         expect(list.map[2]._changes).toBe 0
         expect(list.map[3]._changes).toBe 0
 
+      it 'With .options.reloadOnUpdate', ->
+        list = new RestList
+          reloadOnUpdate: true
+          endpoint: {url, bulkSave: true}
+          record: {endpoint: {url: id_url}}
+
+        list.push {id: 1, x: 'a'}, {id: null, x: 'b'}, {id: 3, x: 'c'}
+
+        $httpBackend.expectPUT(url).respond [{id: 1, x: 'y'}]
+        $httpBackend.expectGET(url + '?id=1').respond [{id: 1, x: 'x'}]
+
+        list.restSave list[0]
+
+        $httpBackend.flush()
+
+        expect(list[0].x).toBe 'x'
+
       it 'Save error', ->
         list = new RestList
           endpoint: {url}
