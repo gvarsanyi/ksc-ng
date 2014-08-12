@@ -1,18 +1,7 @@
-to-do
+research, ideas
 ----------------------------
 - record: handle multiple list-parents
 - record/record-contract: support for array property type (+ record-contract, editable-record)
-
-unit tests missing / partial
-----------------------------
-n/a
-
-doc missing / partial
-----------------------------
-n/a
-
-research
-----------------------------
 - list/list-filter: write-protect list and list.map elements (perfofmance penalty and Array compatibility issues for using getters/setters)
 - generic list cache logic
 - poller/push event receiver/refresher service, API
