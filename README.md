@@ -1,10 +1,14 @@
 rx-list-record
 ==============
 
+A series of angular factories and services revolving around models, async data
+binding, sharing and segmenting.
+
+
 # Requirements
-    git client
-    npm (comes with nodejs)
-    make
+- git client
+- npm (comes with nodejs)
+- make
 
 # Download and check out tools
     git clone https://github.com/gvarsanyi/rx-list-record.git
