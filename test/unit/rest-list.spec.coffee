@@ -287,6 +287,37 @@ describe 'app.factory', ->
         expect(list[1].z).toBe 'z'
         expect(list[1]._id).toBe 2
 
+      it 'With composite id + bulkSave', ->
+        list = new RestList
+          endpoint: {url, bulkSave: true}
+          record:   idProperty: ['id', 'x']
+
+        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
+
+        list.map['1-2'].a = 'c'
+        list.restSave list.map['1-2']
+
+        $httpBackend.expectPUT(url).respond [{id: 1, x: 2, a: 'd'}]
+        $httpBackend.flush()
+
+        expect(list.map['1-2'].a).toBe 'd'
+
+      it 'With composite id + NO bulkSave', ->
+        list = new RestList
+          endpoint: {url}
+          record:   {idProperty: ['id', 'x'], endpoint: url: id_url}
+
+        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
+
+        list.map['1-2'].a = 'c'
+        list.restSave list.map['1-2']
+
+        response = {id: 1, x: 2, a: 'd'}
+        $httpBackend.expectPUT(id_url.replace '<id>', '1').respond response
+        $httpBackend.flush()
+
+        expect(list.map['1-2'].a).toBe 'd'
+
       it 'With bulkSave', ->
         list = new RestList endpoint: {bulkSave: 'POST'}
         list.push {id: 1, x: 'a'}
@@ -450,6 +481,21 @@ describe 'app.factory', ->
         expect(promise.success).toBeUndefined() # chained promises don't have
                                                 # HttpPromise specific stuff
         expect(spyable.callback).toHaveBeenCalled()
+
+      it 'With composite id + bulkDelete', ->
+        list = new RestList
+          endpoint: {url, bulkDelete: true}
+          record:   idProperty: ['id', 'x']
+
+        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
+
+        list.restDelete list.map['1-2']
+
+        $httpBackend.expectDELETE(url).respond {yo: 1}
+        $httpBackend.flush()
+
+        expect(list.map['1-2']).toBeUndefined()
+        expect(list.length).toBe 1
 
       it 'With bulkDelete', ->
         list = new RestList endpoint: {url, bulkDelete: true}

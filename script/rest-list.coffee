@@ -271,6 +271,8 @@ app.factory 'ksc.RestList', [
           unless id = record?._id
             pseudo_id = record?._pseudo
             uid = 'pseudo:' + pseudo_id
+          else if record._primaryId?
+            uid = 'id:' + id
 
           if save_type
             record = (pseudo_id and list.pseudo[pseudo_id]) or list.map[id]
@@ -307,7 +309,9 @@ app.factory 'ksc.RestList', [
             if save_type
               record._entity()
             else
-              record._id
+              unless (id = record._primaryId)?
+                id = record._id
+              id
 
           args = [endpoint_options.url]
           args.push(data) unless bulk_method is 'delete'
@@ -331,7 +335,8 @@ app.factory 'ksc.RestList', [
           callback? err, record_list, raw_responses...
 
         iteration = (record) ->
-          id     = record._id
+          unless (id = record._primaryId)?
+            id = record._id
           method = 'delete'
           url    = list.options.record.endpoint?.url
           if save_type
