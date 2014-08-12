@@ -263,7 +263,14 @@ describe 'app.factory', ->
 
         list[0].x = 'b'
         list[1].x = 'c'
+
         expect(-> list.restSave list[0], list[0]).toThrow() # not unique
+
+        update       = null
+        update_count = 0
+        list.events.on 'update', (_update) ->
+          update_count += 1
+          update = _update
 
         expected_url1 = id_url.replace '<id>', '1'
         expected_url2 = url
@@ -277,6 +284,12 @@ describe 'app.factory', ->
           raw = _raw
 
         $httpBackend.flush()
+
+        expect(update_count).toBe 2
+        expect((upd = update.action.update).length).toBe 1
+        expect(upd[0].record).toBe list[1]
+        expect(upd[0].move).toEqual {from: {pseudo: 2}, to: {map: 2}}
+
         expect(record_list[0]).toBe list[0]
         expect(record_list[1]).toBe list[1]
         expect(raw[0].data.id).toBe 1
@@ -334,6 +347,12 @@ describe 'app.factory', ->
         list[0].x = 'x'
         list[1].x = 'x'
 
+        update       = null
+        update_count = 0
+        list.events.on 'update', (_update) ->
+          update_count += 1
+          update = _update
+
         $httpBackend.expectPOST(url).respond [{id: 1, x: 'x'},
                                               {id: 2, x: 'y', ext: 1}]
 
@@ -344,6 +363,12 @@ describe 'app.factory', ->
           raw = _raw
 
         $httpBackend.flush()
+
+        expect(update_count).toBe 1
+        expect((upd = update.action.update).length).toBe 2
+        expect(upd[0].record).toBe list[0]
+        expect(upd[1].record).toBe list[1]
+        expect(upd[1].move).toEqual {from: {pseudo: 1}, to: {map: 2}}
 
         expect(record_list[0]).toBe list[0]
         expect(record_list[1]).toBe list[1]
@@ -458,6 +483,12 @@ describe 'app.factory', ->
 
         expect(-> list.restDelete()).toThrow() # no record passed in
 
+        update       = null
+        update_count = 0
+        list.events.on 'update', (_update) ->
+          update_count += 1
+          update = _update
+
         $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {a: 1}
         $httpBackend.expectDELETE(id_url.replace '<id>', '2').respond {b: 1}
 
@@ -472,6 +503,9 @@ describe 'app.factory', ->
 
         $httpBackend.flush()
 
+        expect(update_count).toBe 2
+        expect(update.action.cut.length).toBe 1
+        expect(update.action.cut[0] instanceof EditableRecord).toBe true
         expect(list.length).toBe 1
         expect(responses.length).toBe 2
         expect(responses[0].data).toEqual {a: 1}
@@ -503,6 +537,12 @@ describe 'app.factory', ->
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
         list[0].x = 'x'
 
+        update       = null
+        update_count = 0
+        list.events.on 'update', (_update) ->
+          update_count += 1
+          update = _update
+
         $httpBackend.expectDELETE(url).respond {x: 'ee'}
 
         spyable = {callback: ->}
@@ -512,6 +552,9 @@ describe 'app.factory', ->
 
         $httpBackend.flush()
 
+        expect(update_count).toBe 1
+        expect(update.action.cut.length).toBe 2
+        expect(update.action.cut[0] instanceof EditableRecord).toBe true
         expect(list.length).toBe 1
         expect(list.map[2]).toBeUndefined()
         expect(list.map[3]).toBeUndefined()

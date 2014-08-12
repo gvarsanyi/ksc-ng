@@ -5,7 +5,6 @@ to-do
 - rest-list save/delete aftermath:
   - on delete: delete all with identical primaryId
   - on save: update all with identical primaryId
-  - prevent multiple events from firing on lists (merge ._replace and cut events)
 
 unit tests missing / partial
 ----------------------------

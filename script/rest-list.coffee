@@ -321,8 +321,17 @@ app.factory 'ksc.RestList', [
             list[REST_PENDING] -= 1
             unless err
               if save_type
-                for record, i in records
-                  record._replace raw_response.data[i]
+                list.events.halt()
+                changed = []
+                tmp_listener_unsubscribe = list.events.on '1#!update', (info) ->
+                  changed.push info.action.update[0]
+                try
+                  for record, i in records
+                    record._replace raw_response.data[i]
+                finally
+                  tmp_listener_unsubscribe()
+                  list.events.unhalt()
+                list.events.emit 'update', {node: list, action: update: changed}
               else
                 list.cut.apply list, records
             callback? err, records, raw_response

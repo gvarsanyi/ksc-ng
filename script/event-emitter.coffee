@@ -192,10 +192,10 @@ app.factory 'ksc.EventEmitter', [
       @return [boolean] indicates if anything was called
       ###
       emit: (name, args...) ->
-        if @_halt
-          return false
-
         name_check name
+
+        if @_halt
+          name = @_halt + '#!' + name
 
         (@subscriptions ?= new EventSubscriptions).emit name, args...
 
