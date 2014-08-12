@@ -34,3 +34,5 @@ doc:
 
 lint:
 	@coffeelint script/ test/unit/
+
+check: test lint doc jsmin
