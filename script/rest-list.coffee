@@ -1,9 +1,9 @@
 
 app.factory 'ksc.RestList', [
-  '$http', 'ksc.List', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.restUtils',
-  'ksc.utils',
-  ($http, List, batchLoaderRegistry, error, restUtils,
-   utils) ->
+  '$http', '$q', 'ksc.List', 'ksc.batchLoaderRegistry', 'ksc.error',
+  'ksc.restUtils', 'ksc.utils',
+  ($http, $q, List, batchLoaderRegistry, error,
+   restUtils, utils) ->
 
     REST_PENDING = 'restPending'
     PRIMARY_ID   = '_primaryId'
@@ -302,6 +302,38 @@ app.factory 'ksc.RestList', [
             return [record]
           (item for item in list when item[PRIMARY_ID] is id)
 
+        bulk_update = (records, updates, next) ->
+          promises = []
+          replacable = []
+          for record, i in records
+            if id = record[PRIMARY_ID]
+              query_parameters = {}
+              query_parameters[record._options.idProperty[0]] = id
+              promises.push list.restLoad query_parameters
+            else
+              replacable.push [record, updates[i]]
+
+          if replacable.length
+            list.events.halt()
+            changed = []
+            tmp_listener_unsubscribe = list.events.on '1#!update', (info) ->
+              changed.push info.action.update[0]
+            try
+              for replace in replacable
+                [record, data] = replace
+                record._replace data
+            finally
+              tmp_listener_unsubscribe()
+              list.events.unhalt()
+            if changed.length
+              list.events.emit 'update', {node: list, action: update: changed}
+
+          if promises.length
+            promise = $q.all promises
+            promise.then next, next
+          else
+            next()
+
         # ---BULK--- api has collection/bulk support
         if bulk_method
           unless endpoint_options.url
@@ -325,32 +357,29 @@ app.factory 'ksc.RestList', [
           promise = $http[bulk_method] args...
           return restUtils.wrapPromise promise, (err, raw_response) ->
             list[REST_PENDING] -= 1
+            ready = ->
+              callback? err, related, raw_response
+            related = []
+            for record in records
+              related.push related_records(record)...
             unless err
               if save_type
-                list.events.halt()
-                changed = []
-                tmp_listener_unsubscribe = list.events.on '1#!update', (info) ->
-                  changed.push info.action.update[0]
-                try
-                  for record, i in records
-                    record._replace raw_response.data[i]
-                finally
-                  tmp_listener_unsubscribe()
-                  list.events.unhalt()
-                list.events.emit 'update', {node: list, action: update: changed}
+                bulk_update records, raw_response.data, ready
               else
-                cuttable = []
-                for record in records
-                  cuttable.push related_records(record)...
-                list.cut.apply list, cuttable
-            callback? err, records, raw_response
+                list.cut.apply list, related
+                ready()
+            ready()
         # ---EOF BULK---
 
         # api has NO collection/bulk support
         record_list = []
+        delayed_cb_args = pending_refresh = null
         finished = (err) ->
           raw_responses = Array::slice.call arguments, 1
-          callback? err, record_list, raw_responses...
+          delayed_cb_args = [err, record_list, raw_responses...]
+          unless pending_refresh
+            callback? delayed_cb_args...
+            delayed_cb_args = null
 
         iteration = (record) ->
           unless (id = record[PRIMARY_ID])?
@@ -379,12 +408,17 @@ app.factory 'ksc.RestList', [
           promise = $http[method](args...)
           restUtils.wrapPromise promise, (err, raw_response) ->
             list[REST_PENDING] -= 1
+            related = related_records record
             unless err
               if save_type
-                record._replace raw_response.data
+                pending_refresh = (pending_refresh or 0) + 1
+                bulk_update [record], [raw_response.data], ->
+                  pending_refresh -= 1
+                  if delayed_cb_args
+                    callback? delayed_cb_args...
               else
-                list.cut related_records(record)...
-              record_list.push record
+                list.cut related...
+            record_list.push related...
             return
 
         restUtils.asyncSquash records, iteration, finished

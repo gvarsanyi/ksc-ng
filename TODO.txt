@@ -2,15 +2,14 @@ to-do
 ----------------------------
 - record: handle multiple list-parents
 - record/record-contract: support for array property type (+ record-contract, editable-record)
-- rest-list saveaftermath: update all with identical primaryId
 
 unit tests missing / partial
 ----------------------------
 n/a
 
-coffeedoc missing / partial
+doc missing / partial
 ----------------------------
-n/a
+- rest-list composite id behavior
 
 research
 ----------------------------

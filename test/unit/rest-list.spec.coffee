@@ -300,7 +300,46 @@ describe 'app.factory', ->
         expect(list[1].z).toBe 'z'
         expect(list[1]._id).toBe 2
 
-      it 'With composite id + bulkSave', ->
+      it 'Save with no data change (no event triggered)', ->
+        list = new RestList {endpoint: {url}, record: {endpoint: url: id_url}}
+        list.push {id: 1, a: 'a'}, {id: 2, a: 'b'}
+
+        update       = null
+        update_count = 0
+        list.events.on 'update', (_update) ->
+          update_count += 1
+          update = _update
+
+        response = {id: 1, a: 'a'}
+        $httpBackend.expectPUT(id_url.replace '<id>', '1').respond response
+
+        list.restSave list[0]
+
+        $httpBackend.flush()
+
+        expect(update_count).toBe 0
+        expect(update).toBe null
+
+      it 'With composite id + NO bulkSave + NO callback', ->
+        list = new RestList
+          endpoint: {url}
+          record:   {idProperty: ['id', 'x'], endpoint: url: id_url}
+
+        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
+
+        list.map['1-2'].a = 'c'
+
+        list.restSave list.map['1-2']
+
+        $httpBackend.expectPUT(id_url.replace '<id>', '1').respond null
+        response = [{id: 1, x: 2, a: 'd'}, {id: 1, x: 3, a: 'd'}]
+        $httpBackend.expectGET(url + '?id=1').respond response
+        $httpBackend.flush()
+
+        expect(list.map['1-2'].a).toBe 'd'
+        expect(list.map['1-3'].a).toBe 'd'
+
+      it 'With composite id + bulkSave + callback', ->
         list = new RestList
           endpoint: {url, bulkSave: true}
           record:   idProperty: ['id', 'x']
@@ -308,12 +347,26 @@ describe 'app.factory', ->
         list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
 
         list.map['1-2'].a = 'c'
+
+        update       = null
+        update_count = 0
+        list.events.on 'update', (_update) ->
+          update_count += 1
+          update = _update
+
         list.restSave list.map['1-2']
 
-        $httpBackend.expectPUT(url).respond [{id: 1, x: 2, a: 'd'}]
+        $httpBackend.expectPUT(url).respond null
+        response = [{id: 1, x: 2, a: 'd'}, {id: 1, x: 3, a: 'd'}]
+        $httpBackend.expectGET(url + '?id=1').respond response
         $httpBackend.flush()
 
+        expect(update_count).toBe 1
+        expect((upd = update.action.update).length).toBe 2
+        expect(upd[0].record).toBe list[0]
+
         expect(list.map['1-2'].a).toBe 'd'
+        expect(list.map['1-3'].a).toBe 'd'
 
       it 'With composite id + NO bulkSave', ->
         list = new RestList
@@ -323,13 +376,26 @@ describe 'app.factory', ->
         list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
 
         list.map['1-2'].a = 'c'
-        list.restSave list.map['1-2']
 
-        response = {id: 1, x: 2, a: 'd'}
-        $httpBackend.expectPUT(id_url.replace '<id>', '1').respond response
+        err = record_list = raw = null
+        list.restSave list.map['1-2'], (_err, _record_list, _raw...) ->
+          err = _err
+          record_list = _record_list
+          raw = _raw
+
+        $httpBackend.expectPUT(id_url.replace '<id>', '1').respond null
+        response = [{id: 1, x: 2, a: 'd'}, {id: 1, x: 3, a: 'd'}]
+        $httpBackend.expectGET(url + '?id=1').respond response
         $httpBackend.flush()
 
+        expect(record_list[0]).toBe list[0]
+        expect(record_list[1]).toBe list[1]
+        expect(raw.length).toBe 1
+        expect(raw[0].data).toBe null
+        expect(raw[0].config.method).toBe 'PUT'
+
         expect(list.map['1-2'].a).toBe 'd'
+        expect(list.map['1-3'].a).toBe 'd'
 
       it 'With bulkSave', ->
         list = new RestList endpoint: {bulkSave: 'POST'}
