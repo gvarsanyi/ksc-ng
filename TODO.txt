@@ -2,9 +2,7 @@ to-do
 ----------------------------
 - record: handle multiple list-parents
 - record/record-contract: support for array property type (+ record-contract, editable-record)
-- rest-list save/delete aftermath:
-  - on delete: delete all with identical primaryId
-  - on save: update all with identical primaryId
+- rest-list saveaftermath: update all with identical primaryId
 
 unit tests missing / partial
 ----------------------------

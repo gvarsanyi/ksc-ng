@@ -6,6 +6,7 @@ app.factory 'ksc.RestList', [
    utils) ->
 
     REST_PENDING = 'restPending'
+    PRIMARY_ID   = '_primaryId'
 
     define_value = utils.defineValue
 
@@ -268,11 +269,11 @@ app.factory 'ksc.RestList', [
           orig_rec = record
           pseudo_id = null
           uid = 'id:' + (id = record?._id)
-          unless id = record?._id
+          unless (id = record?._id)?
             pseudo_id = record?._pseudo
             uid = 'pseudo:' + pseudo_id
-          else if record._primaryId?
-            uid = 'id:' + id
+          else if record[PRIMARY_ID]?
+            uid = 'id:' + record[PRIMARY_ID]
 
           if save_type
             record = (pseudo_id and list.pseudo[pseudo_id]) or list.map[id]
@@ -296,6 +297,11 @@ app.factory 'ksc.RestList', [
         else if not save_type and endpoint_options.bulkDelete
           bulk_method = 'delete'
 
+        related_records = (record) ->
+          unless id = record[PRIMARY_ID]
+            return [record]
+          (item for item in list when item[PRIMARY_ID] is id)
+
         # ---BULK--- api has collection/bulk support
         if bulk_method
           unless endpoint_options.url
@@ -309,7 +315,7 @@ app.factory 'ksc.RestList', [
             if save_type
               record._entity()
             else
-              unless (id = record._primaryId)?
+              unless (id = record[PRIMARY_ID])?
                 id = record._id
               id
 
@@ -333,7 +339,10 @@ app.factory 'ksc.RestList', [
                   list.events.unhalt()
                 list.events.emit 'update', {node: list, action: update: changed}
               else
-                list.cut.apply list, records
+                cuttable = []
+                for record in records
+                  cuttable.push related_records(record)...
+                list.cut.apply list, cuttable
             callback? err, records, raw_response
         # ---EOF BULK---
 
@@ -344,7 +353,7 @@ app.factory 'ksc.RestList', [
           callback? err, record_list, raw_responses...
 
         iteration = (record) ->
-          unless (id = record._primaryId)?
+          unless (id = record[PRIMARY_ID])?
             id = record._id
           method = 'delete'
           url    = list.options.record.endpoint?.url
@@ -374,7 +383,7 @@ app.factory 'ksc.RestList', [
               if save_type
                 record._replace raw_response.data
               else
-                list.cut record
+                list.cut related_records(record)...
               record_list.push record
             return
 

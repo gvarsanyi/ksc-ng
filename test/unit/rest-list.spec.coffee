@@ -521,7 +521,8 @@ describe 'app.factory', ->
           endpoint: {url, bulkDelete: true}
           record:   idProperty: ['id', 'x']
 
-        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
+        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'},
+                  {id: 2, x: 3, a: 'b'}
 
         list.restDelete list.map['1-2']
 
@@ -529,6 +530,27 @@ describe 'app.factory', ->
         $httpBackend.flush()
 
         expect(list.map['1-2']).toBeUndefined()
+        expect(list.map['1-3']).toBeUndefined()
+        expect(list.length).toBe 1
+
+      it 'With composite id + NO bulkDelete', ->
+        list = new RestList
+          endpoint: {url}
+          record:   {idProperty: ['id', 'x'], endpoint: {url: id_url}}
+
+        list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'},
+                  {id: 2, x: 3, a: 'b'}
+
+        # won't allow identical primaryId's in the request
+        expect(-> list.restDelete list.map['1-2'], '1-3').toThrow()
+
+        list.restDelete list.map['1-2']
+
+        $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {yo: 1}
+        $httpBackend.flush()
+
+        expect(list.map['1-2']).toBeUndefined()
+        expect(list.map['1-3']).toBeUndefined()
         expect(list.length).toBe 1
 
       it 'With bulkDelete', ->
