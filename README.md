@@ -1,23 +1,38 @@
 rx-list-record
 ==============
 
+# Requirements
+    git client
+    npm (comes with nodejs)
+    make
 
-## All npm dependencies
-    npm -g install coffee-script karma-coffee-preprocessor karma-coverage karma-jasmine karma-junit-reporter karma-phantomjs-launcher karma-script-launcher karma-spec-reporter karma-teamcity-reporter uglifyjs coffeelint codo
+# Download and check out tools
+    git clone https://github.com/gvarsanyi/rx-list-record.git
+    cd rx-list-record
 
-### coffee-script
-    npm -g install coffee-script
+# Install dependencies
+    npm update
+## If you have problems with npm, try
+    npm cache clean
+    npm update
 
-### karma and plugins for `make test`
-    npm -g install karma-coffee-preprocessor karma-coverage karma-jasmine karma-junit-reporter karma-phantomjs-launcher karma-script-launcher karma-spec-reporter karma-teamcity-reporter
+# Create JavaScript package
+## Non-minified JavaScript version only (creates: libs.js)
+    make js
+## Non-minified and minified versions (creates: libs.js, lis.min.js, lis.min.js.gz)
+    make jsmin
+Minifier also checks for unused chunks of code
 
-### minifier tool for `make jsmin`
-    npm -g install uglifyjs
+# Create docs off of codo inline documentation
+    make test
+See generated docs at <project_dir>/doc/index.html
 
-### minifier tool for `make lint`
-    npm -g install coffeelint
+# Run tests
+    make test
+See test coverage details at <project_dir>/test/coverage/PhantomJS<version>/index.html
 
-### minifier tool for `make lint`
-    npm -g install codo
+# Lint check
+    make lint
 
-
+# All checks (test, lint, doc, jsmin)
+    make check
