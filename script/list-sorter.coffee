@@ -111,7 +111,7 @@ app.factory 'ksc.ListSorter', [
           define_value sorter, 'reverse', !!description.reverse, false, true
           define_value sorter, 'type',    type, false, true
 
-          define_value sorter, 'fn', ListSorter.getSortFn.call(@), false, true
+          define_value sorter, 'fn', ListSorter.getSortFn(sorter), false, true
 
         Object.preventExtensions sorter
 
@@ -172,12 +172,12 @@ app.factory 'ksc.ListSorter', [
       Natural sort will produce the same result on numbers as 'number' sort, but
       'number' on numbers is faster.
 
-      Expects scope to be a {ListSorter} instance
+      @param [ListSorter] sorter ListSorter instance to get sorter function for
 
       @return [function] sorter/comparison function with signiture `(a, b) ->`
       ###
-      @getSortFn: ->
-        {key, reverse, type} = @
+      @getSortFn: (sorter) ->
+        {key, reverse, type} = sorter
 
         reverse = if reverse then -1 else 1
 
