@@ -4,39 +4,39 @@ rx-list-record
 A series of angular factories and services revolving around models, async data
 binding, sharing and segmenting.
 
-
-# Requirements
+## Quick installation usage manual
+### Requirements
 - git client
 - npm (comes with nodejs)
 - make
 
-# Download and check out tools
+### Download and check out tools
     git clone https://github.com/gvarsanyi/rx-list-record.git
     cd rx-list-record
 
-# Install dependencies
+### One-time install dependencies
     npm update
-## If you have problems with npm, try
+#### If you have problems with npm, try:
     npm cache clean
     npm update
 
-# Create JavaScript package
-## Non-minified JavaScript version only (creates: libs.js)
+### Create JavaScript package
+#### Non-minified JavaScript version only (creates: libs.js)
     make js
-## Non-minified and minified versions (creates: libs.js, lis.min.js, lis.min.js.gz)
+#### Non-minified and minified versions (creates: libs.js, lis.min.js, lis.min.js.gz)
     make jsmin
 Minifier also checks for unused chunks of code
 
-# Create docs off of codo inline documentation
+### Create docs off of codo inline documentation
     make test
 See generated docs at <project_dir>/doc/index.html
 
-# Run tests
+### Run tests
     make test
 See test coverage details at <project_dir>/test/coverage/PhantomJS<version>/index.html
 
-# Lint check
+### Lint check
     make lint
 
-# All checks (test, lint, doc, jsmin)
+### All checks combined: test, lint, doc, jsmin
     make check
