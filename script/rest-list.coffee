@@ -266,25 +266,35 @@ app.factory 'ksc.RestList', [
             records[i] = record = list.map[record]
 
           orig_rec = record
-          unless (record = list.map[id = record?._id])
-            error.Key {key: orig_rec, description: 'no such element'}
+          pseudo_id = null
+          uid = 'id:' + (id = record?._id)
+          unless id = record?._id
+            pseudo_id = record?._pseudo
+            uid = 'pseudo:' + pseudo_id
 
-          if unique_record_map[id]
-            error.Value {id, description: 'not unique'}
+          if save_type
+            record = (pseudo_id and list.pseudo[pseudo_id]) or list.map[id]
+            unless record
+              error.Key {key: orig_rec, description: 'no such record on list'}
+          else unless record = list.map[id]
+            error.Key {key: orig_rec, description: 'no such record on map'}
 
-          unique_record_map[id] = record
+          if unique_record_map[uid]
+            error.Value {uid, description: 'not unique'}
+          unique_record_map[uid] = record
 
         unless records.length
           error.MissingArgument {name: 'record', argument: 1}
 
         endpoint_options = list.options.endpoint or {}
 
-        # api has collection/bulk support
         if save_type and endpoint_options.bulkSave
           bulk_method = String(endpoint_options.bulkSave).toLowerCase()
           bulk_method = 'put' unless bulk_method is 'post'
         else if not save_type and endpoint_options.bulkDelete
           bulk_method = 'delete'
+
+        # ---BULK--- api has collection/bulk support
         if bulk_method
           unless endpoint_options.url
             error.Value {'options.endpoint.url': undefined}
@@ -307,17 +317,18 @@ app.factory 'ksc.RestList', [
             list[REST_PENDING] -= 1
             unless err
               if save_type
-                record_list = list.push raw_response.data..., true
+                for record, i in records
+                  record._replace raw_response.data[i]
               else
-                record_list = list.cut.apply list, records
-            callback? err, record_list, raw_response
+                list.cut.apply list, records
+            callback? err, records, raw_response
+        # ---EOF BULK---
 
-
-        # api has no collection/bulk support
-        results = {}
+        # api has NO collection/bulk support
+        record_list = []
         finished = (err) ->
           raw_responses = Array::slice.call arguments, 1
-          callback? err, results, raw_responses...
+          callback? err, record_list, raw_responses...
 
         iteration = (record) ->
           id     = record._id
@@ -325,11 +336,10 @@ app.factory 'ksc.RestList', [
           url    = list.options.record.endpoint?.url
           if save_type
             method = 'put'
-            # TODO: cover new records saving
-            #             unless (id = record._id) and id isnt 'pseudo'
-            #               method = 'post'
-            #               id = null
-            #               url = list.options?.endpoint?.url
+            if record._pseudo
+              method = 'post'
+              id = null
+              url = list.options.endpoint?.url
 
           unless url
             error.Value {'options.endpoint.url': undefined}
@@ -348,10 +358,10 @@ app.factory 'ksc.RestList', [
             list[REST_PENDING] -= 1
             unless err
               if save_type
-                for k, v of list.push raw_response.data, true
-                  results[k] = (results[k] or 0) + v
+                record._replace raw_response.data
               else
-                results.cut = (results.cut or 0) + list.cut(record).cut.length
+                list.cut record
+              record_list.push record
             return
 
         restUtils.asyncSquash records, iteration, finished

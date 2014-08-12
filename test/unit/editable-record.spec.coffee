@@ -88,12 +88,14 @@ describe 'app.factory', ->
         record.x = 4
         record._delete 'x'
         expect(record.x).toBeUndefined()
-        expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
+        enumerable = Object.getOwnPropertyDescriptor(record, 'x').enumerable
+        expect(enumerable).toBe false
         expect(record.hasOwnProperty 'x').toBe true
 
         record._delete 'x'
         expect(record.x).toBeUndefined()
-        expect(Object.getOwnPropertyDescriptor(record, 'x').enumerable).toBe false
+        enumerable = Object.getOwnPropertyDescriptor(record, 'x').enumerable
+        expect(enumerable).toBe false
         expect(record.hasOwnProperty 'x').toBe true
 
         record.xx = 'xx'

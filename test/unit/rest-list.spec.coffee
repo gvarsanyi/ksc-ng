@@ -236,227 +236,266 @@ describe 'app.factory', ->
       $httpBackend.flush()
       expect(expected_err instanceof Error).toBe true
 
-    it 'Method .restSave()', ->
-      list = new RestList
-      list.push {id: 1, x: 'a'}
-      expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
+    describe 'Method .restSave()', ->
+
+      it 'PUT and POST (update and new)', ->
+        list = new RestList
+        list.push {id: 1, x: 'a'}, {id: null, x: 'a'}
+        expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
+        expect(-> list.restSave list[1]).toThrow() # options.record.endpoint.url
+
+        list = new RestList record: endpoint: url: 1
+        list.push {id: 1, x: 'a'}
+        # options.record.endpoint.url to be string
+        expect(-> list.restSave list[0]).toThrow()
+
+
+        list = new RestList record: {}
+        list.push {id: 1, x: 'a'}
+        expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
+
+        list = new RestList list_cfg
+        list.push {id: 1, x: 'a'}, {id: null, x: 'b'}, {id: 3, x: 'c'}
+
+        expect(-> list.restSave()).toThrow() # no records passed in
+
+        expect(-> list.restSave 43).toThrow() # not on the list
+
+        list[0].x = 'b'
+        list[1].x = 'c'
+        expect(-> list.restSave list[0], list[0]).toThrow() # not unique
+
+        expected_url1 = id_url.replace '<id>', '1'
+        expected_url2 = url
+        $httpBackend.expectPUT(expected_url1).respond {id: 1, x: 'b', y: 'y'}
+        $httpBackend.expectPOST(expected_url2).respond {id: 2, x: 'c', z: 'z'}
+
+        err = record_list = raw = null
+        list.restSave list[0], list[1], (_err, _record_list, _raw...) ->
+          err = _err
+          record_list = _record_list
+          raw = _raw
+
+        $httpBackend.flush()
+        expect(record_list[0]).toBe list[0]
+        expect(record_list[1]).toBe list[1]
+        expect(raw[0].data.id).toBe 1
+        expect(raw[1].data.id).toBe 2
+        expect(raw[0].config.method).toBe 'PUT'
+        expect(raw[1].config.method).toBe 'POST'
+        expect(list[0].y).toBe 'y'
+        expect(list[1].z).toBe 'z'
+        expect(list[1]._id).toBe 2
+
+      it 'With bulkSave', ->
+        list = new RestList endpoint: {bulkSave: 'POST'}
+        list.push {id: 1, x: 'a'}
+        list[0].x = 'b'
+        expect(-> list.restSave list[0]).toThrow() # options.endpoint.url req'd
+
+        list = new RestList endpoint: {url: 1, bulkSave: 'POST'}
+        list.push {id: 1, x: 'a'}
+        # options.endpoint.url to be string
+        expect(-> list.restSave list[0]).toThrow()
+
+        list = new RestList endpoint: {url, bulkSave: 'POST'}
+        list.push {id: 1, x: 'a'}, {id: null, x: 'b'}, {id: 3, x: 'c'}
+        list[0].x = 'x'
+        list[1].x = 'x'
 
-      list = new RestList record: endpoint: url: 1
-      list.push {id: 1, x: 'a'}
-      # options.record.endpoint.url to be string
-      expect(-> list.restSave list[0]).toThrow()
+        $httpBackend.expectPOST(url).respond [{id: 1, x: 'x'},
+                                              {id: 2, x: 'y', ext: 1}]
 
+        err = record_list = raw = null
+        list.restSave list[0], list[1], (_err, _record_list, _raw...) ->
+          err = _err
+          record_list = _record_list
+          raw = _raw
 
-      list = new RestList record: {}
-      list.push {id: 1, x: 'a'}
-      expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
+        $httpBackend.flush()
+
+        expect(record_list[0]).toBe list[0]
+        expect(record_list[1]).toBe list[1]
+        expect(raw.length).toBe 1
+        expect(raw[0].data[0].id).toBe 1
+        expect(raw[0].data[1].id).toBe 2
+        expect(raw[0].config.method).toBe 'POST'
 
-      list = new RestList list_cfg
-      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+        expect(list.length).toBe 3
+        expect(list.map[2].ext).toBe 1
+        expect(list.map[1].x).toBe 'x'
+        expect(list.map[2].x).toBe 'y'
+        expect(list.map[1]._changes).toBe 0
+        expect(list.map[2]._changes).toBe 0
 
-      expect(-> list.restSave()).toThrow() # no records passed in
+        list.options.endpoint.bulkSave = true # should be PUT not POST
+        list[0].x = 'a'
+        list[1].x = 'a'
 
-      expect(-> list.restSave 43).toThrow() # not on the list
+        $httpBackend.expectPUT(url).respond [{id: 2, x: 'a'}, {id: 1, x: 'a'}]
 
-      list[0].x = 'b'
-      list[1].x = 'c'
-      expect(-> list.restSave list[0], list[0]).toThrow() # not unique
+        err = record_list = raw = null
+        list.restSave list[1], list[0], (_err, _record_list, _raw...) ->
+          err = _err
+          record_list = _record_list
+          raw = _raw
 
-      expected_url1 = id_url.replace '<id>', '1'
-      expected_url2 = id_url.replace '<id>', '2'
-      $httpBackend.expectPUT(expected_url1).respond {id: 1, x: 'b', y: 'y'}
-      $httpBackend.expectPUT(expected_url2).respond {id: 2, x: 'c', z: 'z'}
+        $httpBackend.flush()
 
-      list.restSave list[0], list[1]
+        expect(list.length).toBe 3
+        expect(list.map[2].ext).toBeUndefined()
+        expect(list.map[1].x).toBe 'a'
+        expect(list.map[2].x).toBe 'a'
+        expect(list.map[1]._changes).toBe 0
+        expect(list.map[2]._changes).toBe 0
+        expect(list.map[3]._changes).toBe 0
 
-      $httpBackend.flush()
-      expect(list[0].y).toBe 'y'
-      expect(list[1].z).toBe 'z'
+      it 'Save error', ->
+        list = new RestList
+          endpoint: {url}
+          record: endpoint: url: id_url
 
-    it 'Method .restSave() with bulkSave', ->
-      list = new RestList endpoint: {bulkSave: 'POST'}
-      list.push {id: 1, x: 'a'}
-      list[0].x = 'b'
-      expect(-> list.restSave list[0]).toThrow() # options.endpoint.url required
+        list.push new EditableRecord {id: 1, a: 2}
 
-      list = new RestList endpoint: {url: 1, bulkSave: 'POST'}
-      list.push {id: 1, x: 'a'}
-      # options.endpoint.url to be string
-      expect(-> list.restSave list[0]).toThrow()
+        list.map[1].a = 3
+        expect(list.map[1]._changes).toBe 1
 
-      list = new RestList endpoint: {url, bulkSave: 'POST'}
+        response = {error: 1}
 
-      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
-      list[0].x = 'x'
-      list[1].x = 'x'
+        $httpBackend.expectPUT(id_url.replace '<id>', '1').respond 500, response
 
-      $httpBackend.expectPOST(url).respond [{id: 1, x: 'x'},
-                                            {id: 2, x: 'y', ext: 1}]
+        cb_response = promise_response = null
 
-      list.restSave list[1], list[0], ->
+        promise = list.restSave 1, (err, changed_records, raw_response) ->
+          cb_response = [err, raw_response.data]
 
-      $httpBackend.flush()
+        promise.then (->), (response) ->
+          promise_response = ['error', response.data]
 
-      expect(list.length).toBe 3
-      expect(list.map[2].ext).toBe 1
-      expect(list.map[1].x).toBe 'x'
-      expect(list.map[2].x).toBe 'y'
-      expect(list.map[1]._changes).toBe 0
-      expect(list.map[2]._changes).toBe 0
+        $httpBackend.flush()
 
-      list.options.endpoint.bulkSave = true # should be PUT not POST
-      list[0].x = 'a'
-      list[1].x = 'a'
+        expect(list.length).toBe 1
+        expect(list.map[1].a).toBe 3
+        expect(list.map[1]._changes).toBe 1
+        expect(list.map[1]._changedKeys.a).toBe true
+        expect(cb_response[0] instanceof Error).toBe true
+        expect(cb_response[1]).toEqual response
+        expect(promise_response[0]).toBe 'error'
+        expect(promise_response[1]).toEqual response
 
-      $httpBackend.expectPUT(url).respond [{id: 1, x: 'a'}, {id: 2, x: 'a'}]
+      it 'Bulk save error', ->
+        list = new RestList
+          endpoint: {url, bulkSave: true}
 
-      list.restSave list[1], list[0], ->
+        list.push new EditableRecord {id: 1, a: 2}
 
-      $httpBackend.flush()
+        list.map[1].a = 3
+        expect(list.map[1]._changes).toBe 1
 
-      expect(list.length).toBe 3
-      expect(list.map[2].ext).toBeUndefined()
-      expect(list.map[1].x).toBe 'a'
-      expect(list.map[2].x).toBe 'a'
-      expect(list.map[1]._changes).toBe 0
-      expect(list.map[2]._changes).toBe 0
-      expect(list.map[3]._changes).toBe 0
+        response = {error: 1}
 
-    it 'Method .restDelete()', ->
-      list = new RestList
-        endpoint: {url}
-        record: endpoint: url: id_url
+        $httpBackend.expectPUT(url).respond 500, response
 
-      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
-      list[0].x = 'x'
+        cb_response = promise_response = null
 
-      expect(-> list.restDelete()).toThrow() # no record passed in
+        promise = list.restSave 1, (err, changed_records, raw_response) ->
+          cb_response = [err, raw_response.data]
 
-      $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {a: 1}
-      $httpBackend.expectDELETE(id_url.replace '<id>', '2').respond {b: 1}
+        promise.then (->), (response) ->
+          promise_response = ['error', response.data]
 
-      responses = null
+        $httpBackend.flush()
 
-      spyable = {callback: ->}
-      spyOn spyable, 'callback'
+        expect(list.length).toBe 1
+        expect(list.map[1].a).toBe 3
+        expect(list.map[1]._changes).toBe 1
+        expect(list.map[1]._changedKeys.a).toBe true
+        expect(cb_response[0] instanceof Error).toBe true
+        expect(cb_response[1]).toEqual response
+        expect(promise_response[0]).toBe 'error'
+        expect(promise_response[1]).toEqual response
 
-      promise = list.restDelete list.map[1], list.map[2], spyable.callback
-      promise.then (_responses) -> # success path
-        responses = _responses
+    describe 'Method .restDelete()', ->
 
-      $httpBackend.flush()
+      it 'Basic scenarios', ->
+        list = new RestList
+          endpoint: {url}
+          record: endpoint: url: id_url
 
-      expect(list.length).toBe 1
-      expect(responses.length).toBe 2
-      expect(responses[0].data).toEqual {a: 1}
-      expect(responses[0].config.url).toBe id_url.replace '<id>', '1'
-      expect(responses[1].data).toEqual {b: 1}
-      expect(responses[1].config.url).toBe id_url.replace '<id>', '2'
-      expect(promise.success).toBeUndefined() # chained promises don't have
-                                              # HttpPromise specific stuff
-      expect(spyable.callback).toHaveBeenCalled()
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+        list[0].x = 'x'
 
-    it 'Method .restDelete() with bulkDelete', ->
-      list = new RestList endpoint: {url, bulkDelete: true}
+        expect(-> list.restDelete()).toThrow() # no record passed in
 
-      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
-      list[0].x = 'x'
+        $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {a: 1}
+        $httpBackend.expectDELETE(id_url.replace '<id>', '2').respond {b: 1}
 
-      $httpBackend.expectDELETE(url).respond {x: 'ee'}
+        responses = null
 
-      spyable = {callback: ->}
-      spyOn spyable, 'callback'
+        spyable = {callback: ->}
+        spyOn spyable, 'callback'
 
-      list.restDelete list[2], list[1], spyable.callback
+        promise = list.restDelete list.map[1], list.map[2], spyable.callback
+        promise.then (_responses) -> # success path
+          responses = _responses
 
-      $httpBackend.flush()
+        $httpBackend.flush()
 
-      expect(list.length).toBe 1
-      expect(list.map[2]).toBeUndefined()
-      expect(list.map[3]).toBeUndefined()
-      expect(list.map[1].x).toBe 'x'
-      expect(list.map[1]._changes).toBe 1
-      expect(spyable.callback).toHaveBeenCalled()
+        expect(list.length).toBe 1
+        expect(responses.length).toBe 2
+        expect(responses[0].data).toEqual {a: 1}
+        expect(responses[0].config.url).toBe id_url.replace '<id>', '1'
+        expect(responses[1].data).toEqual {b: 1}
+        expect(responses[1].config.url).toBe id_url.replace '<id>', '2'
+        expect(promise.success).toBeUndefined() # chained promises don't have
+                                                # HttpPromise specific stuff
+        expect(spyable.callback).toHaveBeenCalled()
 
-    it 'Method .restDelete() with no callback', ->
-      list = new RestList endpoint: {url, bulkDelete: 1}
+      it 'With bulkDelete', ->
+        list = new RestList endpoint: {url, bulkDelete: true}
 
-      list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
+        list[0].x = 'x'
 
-      expect(list[0]._id).toBe 1
+        $httpBackend.expectDELETE(url).respond {x: 'ee'}
 
-      $httpBackend.expectDELETE(url).respond {yo: 1}
+        spyable = {callback: ->}
+        spyOn spyable, 'callback'
 
-      list.restDelete list[0]
+        list.restDelete list[2], list[1], spyable.callback
 
-      $httpBackend.flush()
+        $httpBackend.flush()
 
-      expect(list.length).toBe 1
+        expect(list.length).toBe 1
+        expect(list.map[2]).toBeUndefined()
+        expect(list.map[3]).toBeUndefined()
+        expect(list.map[1].x).toBe 'x'
+        expect(list.map[1]._changes).toBe 1
+        expect(spyable.callback).toHaveBeenCalled()
 
-    it 'Save error', ->
-      list = new RestList
-        endpoint: {url}
-        record: endpoint: url: id_url
+      it 'With no callback - bulk', ->
+        list = new RestList endpoint: {url, bulkDelete: 1}
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
+        expect(list[0]._id).toBe 1
+        $httpBackend.expectDELETE(url).respond {yo: 1}
+        list.restDelete list[0]
+        $httpBackend.flush()
+        expect(list.length).toBe 1
 
-      list.push new EditableRecord {id: 1, a: 2}
+      it 'With no callback - not bulk', ->
+        list = new RestList {endpoint: {url}, record: endpoint: url: id_url}
+        list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
+        expect(list[0]._id).toBe 1
+        $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {yo: 1}
+        list.restDelete list[0]
+        $httpBackend.flush()
+        expect(list.length).toBe 1
 
-      list.map[1].a = 3
-      expect(list.map[1]._changes).toBe 1
-
-      response = {error: 1}
-
-      $httpBackend.expectPUT(id_url.replace '<id>', '1').respond 500, response
-
-      cb_response = promise_response = null
-
-      promise = list.restSave 1, (err, changed_records, raw_response) ->
-        cb_response = [err, raw_response.data]
-
-      promise.then (->), (response) ->
-        promise_response = ['error', response.data]
-
-      $httpBackend.flush()
-
-      expect(list.length).toBe 1
-      expect(list.map[1].a).toBe 3
-      expect(list.map[1]._changes).toBe 1
-      expect(list.map[1]._changedKeys.a).toBe true
-      expect(cb_response[0] instanceof Error).toBe true
-      expect(cb_response[1]).toEqual response
-      expect(promise_response[0]).toBe 'error'
-      expect(promise_response[1]).toEqual response
-
-    it 'Bulk save error', ->
-      list = new RestList
-        endpoint: {url, bulkSave: true}
-
-      list.push new EditableRecord {id: 1, a: 2}
-
-      list.map[1].a = 3
-      expect(list.map[1]._changes).toBe 1
-
-      response = {error: 1}
-
-      $httpBackend.expectPUT(url).respond 500, response
-
-      cb_response = promise_response = null
-
-      promise = list.restSave 1, (err, changed_records, raw_response) ->
-        cb_response = [err, raw_response.data]
-
-      promise.then (->), (response) ->
-        promise_response = ['error', response.data]
-
-      $httpBackend.flush()
-
-      expect(list.length).toBe 1
-      expect(list.map[1].a).toBe 3
-      expect(list.map[1]._changes).toBe 1
-      expect(list.map[1]._changedKeys.a).toBe true
-      expect(cb_response[0] instanceof Error).toBe true
-      expect(cb_response[1]).toEqual response
-      expect(promise_response[0]).toBe 'error'
-      expect(promise_response[1]).toEqual response
+      it 'Refuses pseudo/new records', ->
+        list = new RestList list_cfg
+        list.push {id: null, a: 1}
+        expect(list.pseudo[list[0]._pseudo]).toBe list[0]
+        expect(-> list.restDelete list[0]).toThrow()
 
     it 'Method .restLoad() error', ->
       list = new RestList list_cfg
