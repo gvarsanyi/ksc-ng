@@ -28,7 +28,7 @@ binding, sharing and segmenting.
 Minifier also checks for unused chunks of code
 
 ### Create docs off of codo inline documentation
-    make test
+    make doc
 See generated docs at <project_dir>/doc/index.html
 
 ### Run tests
