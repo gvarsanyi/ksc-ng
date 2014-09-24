@@ -1,3 +1,7 @@
+unit test
+----------------------------
+- list-mapper: does not have dedicated unit tests yet
+
 research, ideas
 ----------------------------
 - record: handle multiple list-parents
