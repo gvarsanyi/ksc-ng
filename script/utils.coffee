@@ -17,7 +17,7 @@ app.service 'ksc.utils', [
 
     @author Greg Varsanyi
     ###
-    class Utils
+    class utils
 
       ###
       Add/update an object property with a getter and an (optional) setter
@@ -31,7 +31,7 @@ app.service 'ksc.utils', [
 
       @return [object] reference to object
       ###
-      defineGetSet: (object, key, getter, setter, enumerable) ->
+      @defineGetSet: (object, key, getter, setter, enumerable) ->
         if typeof setter isnt 'function'
           enumerable = setter
           setter     = ->
@@ -54,7 +54,7 @@ app.service 'ksc.utils', [
 
       @return [object] reference to object
       ###
-      defineValue: (object, key, value, writable, enumerable) ->
+      @defineValue: (object, key, value, writable, enumerable) ->
         if get_own_property_descriptor(object, key)?.writable is false
           define_property object, key, writable: true
 
@@ -75,7 +75,7 @@ app.service 'ksc.utils', [
 
       @return [boolean] matched
       ###
-      hasOwn: (object, key, is_enumerable) ->
+      @hasOwn: (object, key, is_enumerable) ->
         object and object.hasOwnProperty(key) and
         (not is_enumerable? or is_enumerable is object.propertyIsEnumerable key)
 
@@ -87,7 +87,7 @@ app.service 'ksc.utils', [
 
       @return [boolean] matched
       ###
-      hasProperty: (object, key) ->
+      @hasProperty: (object, key) ->
         while object
           if object.hasOwnProperty key
             return true
@@ -103,15 +103,15 @@ app.service 'ksc.utils', [
 
       @return [boolean] identical
       ###
-      identical: (comparable1, comparable2) ->
-        unless Utils::isObject comparable1, comparable2
+      @identical: (comparable1, comparable2) ->
+        unless is_object comparable1, comparable2
           return comparable1 is comparable2
 
         for key, v1 of comparable1
-          unless Utils::identical(v1, comparable2[key]) and
-          Utils::hasOwn comparable2, key
+          unless utils.identical(v1, comparable2[key]) and
+          has_own comparable2, key
             return false
-        for key of comparable2 when not Utils::hasOwn comparable1, key
+        for key of comparable2 when not has_own comparable1, key
           return false
         true
 
@@ -123,7 +123,7 @@ app.service 'ksc.utils', [
 
       @return [boolean] property is enumerable
       ###
-      isEnumerable: (object, key) ->
+      @isEnumerable: (object, key) ->
         try
           return !!(get_own_property_descriptor object, key).enumerable
         false
@@ -136,7 +136,7 @@ app.service 'ksc.utils', [
 
       @return [boolean] matches key requirements
       ###
-      isKeyConform: (key) ->
+      @isKeyConform: (key) ->
         !!(typeof key is 'string' and key) or
         (typeof key is 'number' and not isNaN key)
 
@@ -147,7 +147,7 @@ app.service 'ksc.utils', [
 
       @return [boolean] all function
       ###
-      isFunction: (refs...) ->
+      @isFunction: (refs...) ->
         arg_check refs
         for ref in refs when typeof ref isnt 'function'
           return false
@@ -160,7 +160,7 @@ app.service 'ksc.utils', [
 
       @return [boolean] all object
       ###
-      isObject: (refs...) ->
+      @isObject: (refs...) ->
         arg_check refs
         for ref in refs when not ref or typeof ref isnt 'object'
           return false
@@ -175,14 +175,14 @@ app.service 'ksc.utils', [
 
       @return [object] target_object
       ###
-      mergeIn: (target_object, source_objects...) ->
+      @mergeIn: (target_object, source_objects...) ->
         if source_objects.length < 1
           error.MissingArgument required: 'Merged and mergee objects'
-        unless Utils::isObject target_object
+        unless is_object target_object
           error.Type {target_object, argument: 1, required: 'object'}
 
         for object, i in source_objects
-          unless Utils::isObject object
+          unless is_object object
             error.Type {object, argument: i + 2, required: 'object'}
 
           for key, value of object
@@ -200,10 +200,10 @@ app.service 'ksc.utils', [
       @return [object] map with all keys, values are arrays with references to
         property owner objects
       ###
-      propertyRefs: (object) ->
+      @propertyRefs: (object) ->
         properties = {}
 
-        while Utils::isObject object
+        while is_object object
           checked = true
           for own key of object
             unless Array.isArray properties[key]
@@ -226,11 +226,11 @@ app.service 'ksc.utils', [
       @return [number] unique integer ID that is >= 1 and unique within the name
         group
       ###
-      uid: (name) ->
-        uid_store = (Utils.uidStore ?= {named: {}})
+      @uid: (name) ->
+        uid_store = (utils._uidStore ?= {named: {}})
 
         if name?
-          unless Utils::isKeyConform name
+          unless utils.isKeyConform name
             error.Key {name, requirement: 'Key type name'}
 
           target = uid_store.named
@@ -240,6 +240,12 @@ app.service 'ksc.utils', [
 
         target[name] = (target[name] or 0) + 1
 
-    # return utils instance
-    utils = new Utils
+
+    # resolved names for minification and name resolution performance
+    has_own   = utils.hasOwn
+    is_object = utils.isObject
+
+
+    # returns utils
+    utils
 ]

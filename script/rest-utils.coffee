@@ -8,7 +8,7 @@ app.service 'ksc.restUtils', [
 
     @author Greg Varsanyi
     ###
-    class RestUtils
+    class restUtils
 
       ###
       Squash multiple requests into a single one
@@ -23,7 +23,7 @@ app.service 'ksc.restUtils', [
 
       @return [Promise] chained promises of all requests
       ###
-      asyncSquash: (iteration_data_sets, iteration_fn, done_callback) ->
+      @asyncSquash: (iteration_data_sets, iteration_fn, done_callback) ->
         count      = 0
         error_list = []
         len        = iteration_data_sets.length
@@ -45,7 +45,7 @@ app.service 'ksc.restUtils', [
             done_callback error, results...
 
         promises = for iteration_data_set in iteration_data_sets
-          RestUtils::wrapPromise iteration_fn(iteration_data_set),
+          restUtils.wrapPromise iteration_fn(iteration_data_set),
                                  iteration_callback
 
         if promises.length < 2
@@ -67,7 +67,7 @@ app.service 'ksc.restUtils', [
 
       @return [Promise] the provided promise object reference
       ###
-      wrapPromise: (promise, callback) ->
+      @wrapPromise: (promise, callback) ->
         success_fn = (result) ->
           wrap = ({data, status, headers, config} = result)
           callback null, wrap
@@ -82,5 +82,5 @@ app.service 'ksc.restUtils', [
 
         promise
 
-    restUtils = new RestUtils
+    # returns restUtils
 ]
