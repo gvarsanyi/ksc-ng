@@ -3,8 +3,8 @@ describe 'app.factory', ->
 
   describe 'ListFilter', ->
 
-    $rootScope = List = ListFilter = action = filter_c = list = sublist = null
-    unsubscribe = null
+    $rootScope = List = ListFilter = action = filter_c = list = list2 = null
+    sublist = unsubscribe = null
 
     filter_fn = (record) -> # has letter 'A' or 'a' in stringified record.a
       String(record.a).toLowerCase().indexOf(filter_c) > -1
@@ -18,6 +18,9 @@ describe 'app.factory', ->
 
         list = new List
         list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}
+
+        list2 = new List
+        list2.push {id2: 1, a: 'xyz2'}, {id2: 22, a: 'abc2'}
 
         filter_c = 'a'
 
@@ -344,3 +347,31 @@ describe 'app.factory', ->
           list[1]._replace {id: 9, a: 'eeee'}
           expect(action.cut.length).toBe 2
           expect(sublist.length).toBe 0
+
+    describe 'Multiple sources', ->
+
+      it 'Error if trying to mix unnamed and named', ->
+        expect(-> new ListFilter {_: list, l2: list2}, filter_fn).toThrow()
+
+      it 'Takes multiple sources, names .map and .pseudo', ->
+        sublist = new ListFilter {l1: list, l2: list2}, filter_fn
+        expect(sublist.length).toBe 2
+        expect(sublist.map.l1[2]).toBe list[1]
+        expect(sublist.map.l2[22]).toBe list2[1]
+        expect(sublist.pseudo.l1).toEqual {}
+        expect(sublist.pseudo.l2).toEqual {}
+
+      it 'Update scenarios: add, remove by rename, move to pseudo', ->
+        sublist = new ListFilter {l1: list, l2: list2}, filter_fn
+        list.push {id: 9, a: 'axa'}
+        expect(sublist.length).toBe 3
+        expect(sublist.map.l1[9]).toBe list[2]
+
+        list[2].a = 'eee'
+        expect(sublist.length).toBe 2
+        expect(sublist.map.l1[9]).toBeUndefined()
+
+        list[1].id = null
+        expect(sublist.length).toBe 2
+        expect(sublist.map.l1[2]).toBeUndefined()
+        expect(sublist.pseudo.l1[1]).toBe list[1]

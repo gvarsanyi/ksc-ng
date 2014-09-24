@@ -363,7 +363,7 @@ app.factory 'ksc.RestList', [
 
         unique_record_map = {}
         for record, i in records
-          unless typeof record is 'object'
+          unless utils.isObject record
             records[i] = record = list.map[record]
 
           orig_rec = record
