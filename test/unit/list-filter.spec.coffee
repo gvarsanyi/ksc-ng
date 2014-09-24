@@ -375,3 +375,30 @@ describe 'app.factory', ->
         expect(sublist.length).toBe 2
         expect(sublist.map.l1[2]).toBeUndefined()
         expect(sublist.pseudo.l1[1]).toBe list[1]
+
+      it 'Chained ListFilters with multiple sources', ->
+        list3 = new List
+        list3.push {id3: 1, a: 'xyz'}, {id3: 2, a: 'abc'}
+
+        sublist1 = new ListFilter {l1: list, l2: list2}, filter_fn
+
+        sublist2 = new ListFilter {sub: sublist1, ls: list3}, filter_fn
+        expect(sublist2.length).toBe 3
+
+        list.push {id: 9, a: 'axa'}, {id: 10, a: 'fsdf'}
+
+        list3.push {id3: 11, a: 'aya'}
+        expect(sublist2.map.ls[2]).toBe list3[1]
+        expect(sublist2.map.ls[11]).toBe list3[2]
+        expect(sublist2.length).toBe 5
+
+        list3[2].a = 'eee'
+        expect(sublist2.map.ls[11]).toBeUndefined()
+
+        expect(sublist2.map.sub.l2[22]).toBe list2[1]
+        list2.map[22].a = 'eee'
+        expect(sublist2.map.sub.l2[22]).toBeUndefined()
+
+      it 'Should not allow double-referencing list sources', ->
+        refs = {l0: list, l1: list2, l2: list2}
+        expect(-> new ListFilter refs, filter_fn).toThrow()

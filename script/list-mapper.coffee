@@ -7,6 +7,23 @@ app.factory 'ksc.ListMapper', [
 
 
     ###
+    Helper function that looks up named source references on .map and .pseudo
+    hierarchies (aka target)
+
+    @param [Object] target .map or .pseudo
+    @param [Array] source_names (optional) list of source_names that ID target
+
+    @return [undefined]
+    ###
+    deep_target = (target, source_names) ->
+      if source_names
+        for source_name in source_names
+          if source_name and source_name isnt '_'
+            target = target[source_name]
+      target
+
+
+    ###
     A helper class that features creating look-up objects for mappable lists
     like {List} and {ListFilter}.
 
@@ -28,16 +45,15 @@ app.factory 'ksc.ListMapper', [
       map: null
 
       ###
-      @property [boolean] indicates multiple named sources on parent
+      @property [boolean|undefined] indicates multiple named sources on parent.
+        Set to boolean if parent is {ListFilter} or undefined {List}.
       ###
-      multi: false
+      multi: null
 
       # @property [List/ListFilter] parent {List} or {ListFilter}
       parent: null
 
-      ###
       # @property [Object] key-value (recordPseudoId: {Record}) mapping
-      ###
       pseudo: null
 
 
@@ -54,29 +70,43 @@ app.factory 'ksc.ListMapper', [
 
         source = parent.source
 
-        mapper.map    = {}
-        mapper.pseudo = {}
-        mapper.multi  = source and not source._
+        define_value mapper, 'map',      {}, false, true
+        define_value mapper, 'pseudo',   {}, false, true
+        define_value mapper, 'multi',    (source and not source._), false, true
+        define_value mapper, '_sources', [], false, true
 
-        if mapper.multi
-          for source_name, source_list of source
-            mapper.map[source_name]    = {}
-            mapper.pseudo[source_name] = {}
+        build_maps = (parent, target_map, target_pseudo, names) ->
+          if src = parent.source # chained ListFilter
+            if src._ # ListFilter with no named sources
+              build_maps src._, target_map, target_pseudo, names
+            else # named sources, append names to .map and .pseudo
+              for source_name, source_list of src
+                target_map[source_name]    = {}
+                target_pseudo[source_name] = {}
+                subnames = (item for item in names)
+                subnames.push source_name
+                build_maps source_list, target_map[source_name],
+                           target_pseudo[source_name], subnames
+          else
+            mapper._sources.push {names, source: parent}
+        build_maps parent, mapper.map, mapper.pseudo, []
 
         define_value parent, '_mapper', mapper,        false, true
         define_value parent, 'map',     mapper.map,    false, true
         define_value parent, 'pseudo',  mapper.pseudo, false, true
+
+        Object.freeze mapper._sources
 
 
       ###
       Add record to .map or .pseudo (whichever fits)
 
       @param [Record] record reference to a record
-      @param [string] source_name (optional) named source identifier
+      @param [Array<string>] source_names (optional) named source identifier
 
       @return [Record] the added record
       ###
-      add: (record, source_name) ->
+      add: (record, source_names) ->
         mapper = @
 
         if record._id?
@@ -86,8 +116,7 @@ app.factory 'ksc.ListMapper', [
           id     = record._pseudo
           target = mapper.pseudo
 
-        if mapper.multi
-          target = target[source_name]
+        target = deep_target target, source_names
 
         target[id] = record
 
@@ -95,18 +124,18 @@ app.factory 'ksc.ListMapper', [
       ###
       Delete record from .map or .pseudo (whichever fits)
 
-      @overload del(map_id, pseudo_id, source_name)
+      @overload del(map_id, pseudo_id, source_names)
         @param [string|number] map_id (optional) ._id of record
         @param [string|number] pseudo_id (optional) ._pseudo ID of record
-        @param [string] source_name (optional) named source identifier
-      @overload del(record, na, source_name)
+        @param [Array<string>] source_names (optional) named source identifier
+      @overload del(record, na, source_names)
         @param [Record] record reference to a record on .map or .pseudo
         @param [null] na (skipped)
-        @param [string] source_name (optional) named source identifier
+        @param [Array<string>] source_names (optional) named source identifier
 
       @return [undefined]
       ###
-      del: (map_id, pseudo_id, source_name) ->
+      del: (map_id, pseudo_id, source_names) ->
         mapper = @
 
         if util.isObject map_id
@@ -119,8 +148,7 @@ app.factory 'ksc.ListMapper', [
         else
           target = mapper.map
 
-        if mapper.multi
-          target = target[source_name]
+        target = deep_target target, source_names
 
         delete target[map_id]
         return
@@ -129,18 +157,18 @@ app.factory 'ksc.ListMapper', [
       ###
       Find a record on .map or .pseudo (whichever fits)
 
-      @overload has(map_id, pseudo_id, source_name)
+      @overload has(map_id, pseudo_id, source_names)
         @param [string|number] map_id (optional) ._id of record
         @param [string|number] pseudo_id (optional) ._pseudo ID of record
-        @param [string] source_name (optional) named source identifier
-      @overload has(record, na, source_name)
+        @param [Array<string>] source_names (optional) named source identifier
+      @overload has(record, na, source_names)
         @param [Record] record reference to a record on .map or .pseudo
         @param [null] na (skipped)
-        @param [string] source_name (optional) named source identifier
+        @param [Array<string>] source_names (optional) named source identifier
 
       @return [Record|false] found record or false if not found
       ###
-      has: (map_id, pseudo_id, source_name) ->
+      has: (map_id, pseudo_id, source_names) ->
         mapper = @
 
         if util.isObject map_id
@@ -154,8 +182,7 @@ app.factory 'ksc.ListMapper', [
           id     = map_id
           target = mapper.parent.map
 
-        if mapper.multi
-          target = target[source_name]
+        target = deep_target target, source_names
 
         target[id] or false
 ]

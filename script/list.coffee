@@ -63,8 +63,10 @@ app.factory 'ksc.List', [
     ###
     class List
 
-      # @property [ListMapper] helper object that handles references to records
-      #   by their unique IDs (._id) or pseudo IDs (._pseudo)
+      ###
+      @property [ListMapper] helper object that handles references to records
+        by their unique IDs (._id) or pseudo IDs (._pseudo)
+      ###
       _mapper: null
 
       # @property [EventEmitter] reference to related event-emitter instance
