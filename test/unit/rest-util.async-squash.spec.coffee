@@ -1,16 +1,16 @@
 
 describe 'app.service', ->
 
-  describe 'restUtils', ->
+  describe 'restUtil', ->
 
-    $http = $httpBackend = restUtils = null
+    $http = $httpBackend = restUtil = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         $http        = $injector.get '$http'
         $httpBackend = $injector.get '$httpBackend'
-        restUtils    = $injector.get 'ksc.restUtils'
+        restUtil     = $injector.get 'ksc.restUtil'
 
 
     describe 'Method .asyncSquash()', ->
@@ -33,7 +33,7 @@ describe 'app.service', ->
           item_iterated.push record
           $http.get '/' # returns promise
 
-        promise = restUtils.asyncSquash records, iteration, done_cb
+        promise = restUtil.asyncSquash records, iteration, done_cb
 
         expect(promise.success).not.toBeUndefined()
         expect(item_iterated.length).toBe 1
@@ -64,7 +64,7 @@ describe 'app.service', ->
           item_iterated.push record
           $http.get '/' # returns promise
 
-        promise = restUtils.asyncSquash records, iteration, done_cb
+        promise = restUtil.asyncSquash records, iteration, done_cb
 
         # chained promise is not an HTTP promise
         expect(promise.success).toBeUndefined()
@@ -100,7 +100,7 @@ describe 'app.service', ->
           item_iterated.push record
           $http.get '/' # returns promise
 
-        promise = restUtils.asyncSquash records, iteration, done_cb
+        promise = restUtil.asyncSquash records, iteration, done_cb
 
         # chained promise is not an HTTP promise
         expect(promise.success).toBeUndefined()
@@ -138,7 +138,7 @@ describe 'app.service', ->
           item_iterated.push record
           $http.get '/' # returns promise
 
-        promise = restUtils.asyncSquash records, iteration, done_cb
+        promise = restUtil.asyncSquash records, iteration, done_cb
 
         # chained promise is not an HTTP promise
         expect(promise.success).toBeUndefined()

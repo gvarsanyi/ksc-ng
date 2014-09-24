@@ -1,14 +1,14 @@
 
 app.factory 'ksc.RestList', [
   '$http', '$q', 'ksc.List', 'ksc.batchLoaderRegistry', 'ksc.error',
-  'ksc.restUtils', 'ksc.utils',
+  'ksc.restUtil', 'ksc.util',
   ($http, $q, List, batchLoaderRegistry, error,
-   restUtils, utils) ->
+   restUtil, util) ->
 
     REST_PENDING = 'restPending'
     PRIMARY_ID   = '_primaryId'
 
-    define_value = utils.defineValue
+    define_value = util.defineValue
 
     ###
     REST methods for ksc.List
@@ -88,7 +88,7 @@ app.factory 'ksc.RestList', [
 
           promise = $http.get url
 
-        restUtils.wrapPromise promise, (err, result) ->
+        restUtil.wrapPromise promise, (err, result) ->
           define_value list, REST_PENDING, list[REST_PENDING] - 1, false, true
           callback err, result
 
@@ -363,7 +363,7 @@ app.factory 'ksc.RestList', [
 
         unique_record_map = {}
         for record, i in records
-          unless utils.isObject record
+          unless util.isObject record
             records[i] = record = list.map[record]
 
           orig_rec = record
@@ -440,7 +440,7 @@ app.factory 'ksc.RestList', [
         args.push(data) if saving
         list[REST_PENDING] += 1
         promise = $http[method] args...
-        return restUtils.wrapPromise promise, (err, raw_response) ->
+        return restUtil.wrapPromise promise, (err, raw_response) ->
           list[REST_PENDING] -= 1
           ready = ->
             callback? err, related, raw_response
@@ -508,7 +508,7 @@ app.factory 'ksc.RestList', [
           args.push(record._entity()) if save_type
           list[REST_PENDING] += 1
           promise = $http[method](args...)
-          restUtils.wrapPromise promise, (err, raw_response) ->
+          restUtil.wrapPromise promise, (err, raw_response) ->
             list[REST_PENDING] -= 1
             related = RestList.relatedRecords list, record
             unless err
@@ -523,5 +523,5 @@ app.factory 'ksc.RestList', [
             record_list.push related...
             return
 
-        restUtils.asyncSquash records, iteration, finished
+        restUtil.asyncSquash records, iteration, finished
 ]

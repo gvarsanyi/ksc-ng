@@ -1,14 +1,14 @@
 
 describe 'app.service', ->
 
-  describe 'utils', ->
+  describe 'util', ->
 
-    utils = null
+    util = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        utils = $injector.get 'ksc.utils'
+        util = $injector.get 'ksc.util'
 
 
     describe 'Method .propertyRefs()', ->
@@ -20,7 +20,7 @@ describe 'app.service', ->
         c = Object.create b
         c.c = 3
 
-        res = utils.propertyRefs c
+        res = util.propertyRefs c
 
         expect(Array.isArray res.a).toBe true
         expect(res.a.length).toBe 1
@@ -32,4 +32,4 @@ describe 'app.service', ->
         expect(res.c[0]).toBe c
 
       it 'Error case for non-object provided', ->
-        expect(-> utils.propertyRefs false).toThrow()
+        expect(-> util.propertyRefs false).toThrow()

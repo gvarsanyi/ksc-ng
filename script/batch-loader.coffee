@@ -1,10 +1,10 @@
 
 app.factory 'ksc.BatchLoader', [
-  '$http', '$q', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.utils',
-  ($http, $q, batchLoaderRegistry, error, utils) ->
+  '$http', '$q', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.util',
+  ($http, $q, batchLoaderRegistry, error, util) ->
 
     argument_type_error = error.ArgumentType
-    is_object           = utils.isObject
+    is_object           = util.isObject
 
     ###
     Batch loader class that can take GET requests for predefined URLs and
@@ -58,9 +58,9 @@ app.factory 'ksc.BatchLoader', [
           if open and not value
             loader.flush()
           open = !!value
-        utils.defineGetSet loader, 'open', (-> open), setter, true
+        util.defineGetSet loader, 'open', (-> open), setter, true
 
-        utils.defineValue loader, 'requests', [], false, true
+        util.defineValue loader, 'requests', [], false, true
 
         batchLoaderRegistry.register loader
 

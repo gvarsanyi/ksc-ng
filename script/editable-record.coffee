@@ -1,7 +1,7 @@
 
 app.factory 'ksc.EditableRecord', [
-  'ksc.Record', 'ksc.error', 'ksc.utils',
-  (Record, error, utils) ->
+  'ksc.Record', 'ksc.error', 'ksc.util',
+  (Record, error, util) ->
 
     CHANGES      = '_changes'
     CHANGED_KEYS = '_changedKeys'
@@ -13,10 +13,10 @@ app.factory 'ksc.EditableRecord', [
     PARENT_KEY   = '_parentKey'
     SAVED        = '_saved'
 
-    define_value  = utils.defineValue
-    has_own       = utils.hasOwn
-    is_enumerable = utils.isEnumerable
-    is_object     = utils.isObject
+    define_value  = util.defineValue
+    has_own       = util.hasOwn
+    is_enumerable = util.isEnumerable
+    is_object     = util.isObject
 
 
     ###
@@ -133,7 +133,7 @@ app.factory 'ksc.EditableRecord', [
         changed = []
 
         for key, i in keys
-          unless utils.isKeyConform key
+          unless util.isKeyConform key
             error.Key {key, argument: i, required: 'key conform value'}
 
           if not i and contract = record[OPTIONS].contract
@@ -288,10 +288,10 @@ app.factory 'ksc.EditableRecord', [
             unless update is null or typeof update in ['string', 'number']
               error.Value {update, required: 'string or number or null'}
 
-          if utils.identical saved[key], update
+          if util.identical saved[key], update
             delete edited[key]
             changed = true
-          else unless utils.identical edited[key], update
+          else unless util.identical edited[key], update
             contract?._match key, update
 
             res = update
@@ -320,7 +320,7 @@ app.factory 'ksc.EditableRecord', [
           was_changed = record[CHANGED_KEYS][key]
 
           if (is_object(saved[key]) and saved[key]._changes) or
-          (has_own(edited, key) and not utils.identical saved[key], edited[key])
+          (has_own(edited, key) and not util.identical saved[key], edited[key])
             unless was_changed
               define_value record, CHANGES, record[CHANGES] + 1
               define_value record[CHANGED_KEYS], key, true, false, true
@@ -338,7 +338,7 @@ app.factory 'ksc.EditableRecord', [
             Record.emitUpdate record, 'set', {key}
 
         # not enumerable if value is undefined
-        utils.defineGetSet record, key, getter, setter, 1
+        util.defineGetSet record, key, getter, setter, 1
         return
 
       ###

@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Record', [
-  'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.utils',
-  (EventEmitter, RecordContract, error, utils) ->
+  'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util',
+  (EventEmitter, RecordContract, error, util) ->
 
     EVENTS      = '_events'
     ID          = '_id'
@@ -11,9 +11,9 @@ app.factory 'ksc.Record', [
     PARENT_KEY  = '_parentKey'
     PSEUDO      = '_pseudo'
 
-    define_value = utils.defineValue
-    has_own      = utils.hasOwn
-    is_object    = utils.isObject
+    define_value = util.defineValue
+    has_own      = util.hasOwn
+    is_object    = util.isObject
 
     object_required = (name, value, arg) ->
       unless is_object value
@@ -100,7 +100,7 @@ app.factory 'ksc.Record', [
           define_value record, PARENT, parent
 
           if parent_key?
-            unless utils.isKeyConform parent_key
+            unless util.isKeyConform parent_key
               error.Type
                 parent_key: parent_key
                 argument:   4
@@ -110,7 +110,7 @@ app.factory 'ksc.Record', [
             delete record[PSEUDO]
 
         # hide (set to non-enumerable) non-data properties/methods
-        for key, refs of utils.propertyRefs Object.getPrototypeOf record
+        for key, refs of util.propertyRefs Object.getPrototypeOf record
           for ref in refs
             Object.defineProperty ref, key, enumerable: false
 
@@ -223,7 +223,7 @@ app.factory 'ksc.Record', [
         changed = false
 
         set_property = (key, value) ->
-          if utils.identical record[key], value
+          if util.identical record[key], value
             return
 
           if is_object value
@@ -335,7 +335,7 @@ app.factory 'ksc.Record', [
           if id_property instanceof Array
             composite = []
             for part, i in id_property
-              if utils.isKeyConform record[part]
+              if util.isKeyConform record[part]
                 composite.push record[part]
               else unless i # if first part is unset, fall back to null
                 break

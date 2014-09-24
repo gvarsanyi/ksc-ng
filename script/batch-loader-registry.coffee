@@ -1,7 +1,7 @@
 
 app.service 'ksc.batchLoaderRegistry', [
-  'ksc.error', 'ksc.utils',
-  (error, utils) ->
+  'ksc.error', 'ksc.util',
+  (error, util) ->
 
     ###
     A registry service for {BatchLoader} instances and interface for $http.get
@@ -44,7 +44,7 @@ app.service 'ksc.batchLoaderRegistry', [
       ###
       register: (loader) ->
         unless typeof (endpoint = loader?.endpoint) is 'string' and
-        utils.isKeyConform endpoint
+        util.isKeyConform endpoint
           error.Key {endpoint: endpoint, required: 'url'}
 
         if @map[endpoint]

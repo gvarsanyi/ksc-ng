@@ -1,15 +1,15 @@
 
 app.factory 'ksc.RestRecord', [
   '$http', 'ksc.Record', 'ksc.batchLoaderRegistry', 'ksc.error',
-  'ksc.restUtils', 'ksc.utils',
+  'ksc.restUtil', 'ksc.util',
   ($http, Record, batchLoaderRegistry, error,
-   restUtils, utils) ->
+   restUtil, util) ->
 
     OPTIONS      = '_options'
     REST_CACHE   = '_restCache'
     REST_PENDING = '_restPending'
 
-    define_value = utils.defineValue
+    define_value = util.defineValue
 
     ###
     Record with REST load binding ($http GET wrapper)
@@ -80,7 +80,7 @@ app.factory 'ksc.RestRecord', [
         if not record[OPTIONS].cache or not record[REST_CACHE] or force_load
           define_value record, REST_CACHE, get callback
         else if callback
-          restUtils.wrapPromise record[REST_CACHE], callback
+          restUtil.wrapPromise record[REST_CACHE], callback
 
         record[REST_CACHE]
 
@@ -99,7 +99,7 @@ app.factory 'ksc.RestRecord', [
       @async: (record, promise, callback) ->
         define_value record, REST_PENDING, record[REST_PENDING] + 1
 
-        restUtils.wrapPromise promise, (err, raw_response) ->
+        restUtil.wrapPromise promise, (err, raw_response) ->
           define_value record, REST_PENDING, record[REST_PENDING] - 1
 
           if not err and raw_response.data

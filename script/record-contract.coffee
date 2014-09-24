@@ -1,10 +1,10 @@
 
 app.factory 'ksc.RecordContract', [
-  'ksc.error', 'ksc.utils',
-  (error, utils) ->
+  'ksc.error', 'ksc.util',
+  (error, util) ->
 
-    has_own   = utils.hasOwn
-    is_object = utils.isObject
+    has_own   = util.hasOwn
+    is_object = util.isObject
 
 
     ###

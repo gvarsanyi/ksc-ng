@@ -1,16 +1,16 @@
 
 app.factory 'ksc.ListFilter', [
   '$rootScope', 'ksc.EventEmitter', 'ksc.ListMapper', 'ksc.ListSorter',
-  'ksc.error', 'ksc.utils',
+  'ksc.error', 'ksc.util',
   ($rootScope, EventEmitter, ListMapper, ListSorter,
-   error, utils) ->
+   error, util) ->
 
     SCOPE_UNSUBSCRIBER  = '_scopeUnsubscriber'
     SOURCE_UNSUBSCRIBER = '_sourceUnsubscriber'
 
     argument_type_error = error.ArgumentType
 
-    define_value = utils.defineValue
+    define_value = util.defineValue
 
     array_push = Array::push
 
@@ -191,7 +191,7 @@ app.factory 'ksc.ListFilter', [
 
         unless options?
           options = {}
-        unless utils.isObject options
+        unless util.isObject options
           argument_type_error {options, argument: 3, required: 'object'}
 
         if $rootScope.isPrototypeOf options
@@ -224,7 +224,7 @@ app.factory 'ksc.ListFilter', [
           filter = filter_function
           list.update()
 
-        utils.defineGetSet list, 'filter', filter_get, filter_set, true
+        util.defineGetSet list, 'filter', filter_get, filter_set, true
 
         define_value list, 'options', options
 

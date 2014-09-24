@@ -1,9 +1,9 @@
 
 app.factory 'ksc.ListMapper', [
-  'ksc.utils',
-  (utils) ->
+  'ksc.util',
+  (util) ->
 
-    define_value = utils.defineValue
+    define_value = util.defineValue
 
 
     ###
@@ -109,7 +109,7 @@ app.factory 'ksc.ListMapper', [
       del: (map_id, pseudo_id, source_name) ->
         mapper = @
 
-        if utils.isObject map_id
+        if util.isObject map_id
           pseudo_id = map_id._pseudo
           map_id    = map_id._id
 
@@ -143,7 +143,7 @@ app.factory 'ksc.ListMapper', [
       has: (map_id, pseudo_id, source_name) ->
         mapper = @
 
-        if utils.isObject map_id
+        if util.isObject map_id
           pseudo_id = map_id._pseudo
           map_id    = map_id._id
 

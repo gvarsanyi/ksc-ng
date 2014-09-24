@@ -1,7 +1,7 @@
 
 app.factory 'ksc.Mixin', [
-  'ksc.error', 'ksc.utils',
-  (error, utils) ->
+  'ksc.error', 'ksc.util',
+  (error, util) ->
 
     normalize = (explicit, properties, next) ->
       if explicit?
@@ -9,13 +9,13 @@ app.factory 'ksc.Mixin', [
           properties.unshift explicit
           explicit = true
 
-      for property in properties when not utils.isKeyConform property
+      for property in properties when not util.isKeyConform property
         error.Key {property, required: 'key conform value'}
 
       next explicit, properties
 
     validate_key = (extensible, key, explicit, properties) ->
-      if utils.hasProperty extensible, key
+      if util.hasProperty extensible, key
         return false
 
       unless explicit?

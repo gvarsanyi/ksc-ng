@@ -1,14 +1,14 @@
 
 app.factory 'ksc.EventEmitter', [
-  '$interval', '$rootScope', '$timeout', 'ksc.error', 'ksc.utils',
-  ($interval, $rootScope, $timeout, error, utils) ->
+  '$interval', '$rootScope', '$timeout', 'ksc.error', 'ksc.util',
+  ($interval, $rootScope, $timeout, error, util) ->
 
     UNSUBSCRIBER = '__unsubscriber__'
 
     argument_type_error = error.ArgumentType
 
-    is_function = utils.isFunction
-    is_object   = utils.isObject
+    is_function = util.isFunction
+    is_object   = util.isObject
 
     ###
     A class used by EventEmitter to store and manage callbacks.

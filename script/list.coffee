@@ -1,16 +1,16 @@
 
 app.factory 'ksc.List', [
   '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListFilter',
-  'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.utils',
+  'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
   ($rootScope, EditableRecord, EventEmitter, ListFilter,
-   ListMapper, ListSorter, Record, error, utils) ->
+   ListMapper, ListSorter, Record, error, util) ->
 
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
     argument_type_error = error.ArgumentType
 
-    define_value = utils.defineValue
-    is_object    = utils.isObject
+    define_value = util.defineValue
+    is_object    = util.isObject
 
     normalize_return_action = (items, return_action) ->
       unless typeof return_action is 'boolean'
@@ -97,7 +97,7 @@ app.factory 'ksc.List', [
       constructor: (options={}, scope) ->
         list = []
 
-        unless utils.isObject options
+        unless util.isObject options
           argument_type_error {options, argument: 3, required: 'object'}
 
         if $rootScope.isPrototypeOf options
@@ -422,7 +422,7 @@ app.factory 'ksc.List', [
           if count > 0
             action = list.cut (list.slice pos, pos + count)...
           if items.length
-            utils.mergeIn action, List.add list, items, pos
+            util.mergeIn action, List.add list, items, pos
         finally
           list.events.unhalt()
 
@@ -569,7 +569,7 @@ app.factory 'ksc.List', [
           try
             unless record._id? # map -> pseudo
               mapper.del old_id
-              define_value record, '_pseudo', utils.uid 'record.pseudo'
+              define_value record, '_pseudo', util.uid 'record.pseudo'
               mapper.add record
               info.move =
                 from: {map: old_id}
@@ -677,7 +677,7 @@ app.factory 'ksc.List', [
               if item._pseudo
                 define_value item, '_pseudo', null
             else
-              define_value item, '_pseudo', utils.uid 'record.pseudo'
+              define_value item, '_pseudo', util.uid 'record.pseudo'
 
               mapper.add item
               tmp.push item

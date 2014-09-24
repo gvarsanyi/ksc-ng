@@ -1,5 +1,5 @@
 
-app.service 'ksc.utils', [
+app.service 'ksc.util', [
   'ksc.error',
   (error) ->
 
@@ -13,11 +13,11 @@ app.service 'ksc.utils', [
 
     ###
     Miscellaneous utilities that do not belong to other named utility groups
-    (like restUtils)
+    (like restUtil)
 
     @author Greg Varsanyi
     ###
-    class Utils
+    class Util
 
       ###
       Add/update an object property with a getter and an (optional) setter
@@ -108,7 +108,7 @@ app.service 'ksc.utils', [
           return comparable1 is comparable2
 
         for key, v1 of comparable1
-          unless Utils.identical(v1, comparable2[key]) and
+          unless Util.identical(v1, comparable2[key]) and
           has_own comparable2, key
             return false
         for key of comparable2 when not has_own comparable1, key
@@ -227,10 +227,10 @@ app.service 'ksc.utils', [
         group
       ###
       @uid: (name) ->
-        uid_store = (Utils._uidStore ?= {named: {}})
+        uid_store = (Util._uidStore ?= {named: {}})
 
         if name?
-          unless Utils.isKeyConform name
+          unless Util.isKeyConform name
             error.Key {name, requirement: 'Key type name'}
 
           target = uid_store.named
@@ -242,10 +242,8 @@ app.service 'ksc.utils', [
 
 
     # resolved names for minification and name resolution performance
-    has_own   = Utils.hasOwn
-    is_object = Utils.isObject
+    has_own   = Util.hasOwn
+    is_object = Util.isObject
 
-
-    # returns utils
-    Utils
+    Util
 ]

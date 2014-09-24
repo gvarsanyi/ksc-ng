@@ -1,16 +1,16 @@
 
 describe 'app.service', ->
 
-  describe 'restUtils', ->
+  describe 'restUtil', ->
 
-    $http = $httpBackend = restUtils = null
+    $http = $httpBackend = restUtil = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         $http        = $injector.get '$http'
         $httpBackend = $injector.get '$httpBackend'
-        restUtils    = $injector.get 'ksc.restUtils'
+        restUtil     = $injector.get 'ksc.restUtil'
 
 
     describe 'Method .wrapPromise()', ->
@@ -31,7 +31,7 @@ describe 'app.service', ->
           promise_err = 1
           promise_result = result
 
-        restUtils.wrapPromise promise, (err, result) ->
+        restUtil.wrapPromise promise, (err, result) ->
           cb_err = err
           cb_result = result
 
@@ -58,7 +58,7 @@ describe 'app.service', ->
           promise_err = 1
           promise_result = result
 
-        restUtils.wrapPromise promise, (err, result) ->
+        restUtil.wrapPromise promise, (err, result) ->
           cb_err = err
           cb_result = result
 

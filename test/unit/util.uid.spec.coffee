@@ -1,36 +1,36 @@
 
 describe 'app.service', ->
 
-  describe 'utils', ->
+  describe 'util', ->
 
-    utils = null
+    util = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        utils = $injector.get 'ksc.utils'
+        util = $injector.get 'ksc.util'
 
 
     it 'Method .uid()', ->
-      uid = utils.uid()
+      uid = util.uid()
 
       expect(!!uid).toBe true
       expect(typeof uid).toBe 'number'
 
-      uid2 = utils.uid()
+      uid2 = util.uid()
       expect(!!uid2).toBe true
       expect(typeof uid2).toBe 'number'
       expect(uid2).not.toBe uid
 
     it 'Method .uid(\'name\')', ->
-      uid = utils.uid 'named'
+      uid = util.uid 'named'
 
       expect(!!uid).toBe true
       expect(typeof uid).toBe 'number'
 
-      uid2 = utils.uid 'named'
+      uid2 = util.uid 'named'
       expect(!!uid2).toBe true
       expect(typeof uid2).toBe 'number'
       expect(uid2).not.toBe uid
 
-      expect(-> utils.uid true).toThrow()
+      expect(-> util.uid true).toThrow()

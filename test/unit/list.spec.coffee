@@ -3,7 +3,7 @@ describe 'app.factory', ->
 
   describe 'List', ->
 
-    $rootScope = EditableRecord = List = Record = utils = null
+    $rootScope = EditableRecord = List = Record = util = null
 
     beforeEach ->
       module 'app'
@@ -12,7 +12,7 @@ describe 'app.factory', ->
         EditableRecord = $injector.get 'ksc.EditableRecord'
         List           = $injector.get 'ksc.List'
         Record         = $injector.get 'ksc.Record'
-        utils          = $injector.get 'ksc.utils'
+        util           = $injector.get 'ksc.util'
 
     it 'Constructs a vanilla Array instance', ->
       list = new List
@@ -349,13 +349,13 @@ describe 'app.factory', ->
       it 'Not in the map (tempered record._id)', ->
         list = new List
         list.push {id: 1}
-        utils.defineValue list[0], '_id', 11
+        util.defineValue list[0], '_id', 11
         expect(-> list.cut list[0]).toThrow()
 
       it 'Not in the pseudo map (tempered record._pseudo)', ->
         list = new List
         list.push {id: 1}
-        utils.defineValue list[0], '_pseudo', 11
+        util.defineValue list[0], '_pseudo', 11
         expect(-> list.cut list[0]).toThrow()
 
     it 'Method .empty()', ->

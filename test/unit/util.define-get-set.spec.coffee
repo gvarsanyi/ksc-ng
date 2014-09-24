@@ -1,14 +1,14 @@
 
 describe 'app.service', ->
 
-  describe 'utils', ->
+  describe 'util', ->
 
-    utils = null
+    util = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
-        utils = $injector.get 'ksc.utils'
+        util = $injector.get 'ksc.util'
 
 
     describe 'Method .defineGetSet()', ->
@@ -17,7 +17,7 @@ describe 'app.service', ->
         obj = {}
         getter = -> 1 + 1
 
-        utils.defineGetSet obj, 'a', getter
+        util.defineGetSet obj, 'a', getter
 
         found_keys = {}
         for own k of obj
@@ -34,7 +34,7 @@ describe 'app.service', ->
         getter = -> 1 + 1
         setter = -> @x = 1
 
-        utils.defineGetSet obj, 'a', getter, setter
+        util.defineGetSet obj, 'a', getter, setter
 
         found_keys = {}
         for own k of obj
@@ -48,7 +48,7 @@ describe 'app.service', ->
 
       it 'Set visible getter/setter', ->
         obj = {}
-        utils.defineGetSet obj, 'a', (->), true
+        util.defineGetSet obj, 'a', (->), true
 
         found_keys = {}
         for k of obj
