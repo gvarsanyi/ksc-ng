@@ -17,7 +17,7 @@ app.service 'ksc.utils', [
 
     @author Greg Varsanyi
     ###
-    class utils
+    class Utils
 
       ###
       Add/update an object property with a getter and an (optional) setter
@@ -108,7 +108,7 @@ app.service 'ksc.utils', [
           return comparable1 is comparable2
 
         for key, v1 of comparable1
-          unless utils.identical(v1, comparable2[key]) and
+          unless Utils.identical(v1, comparable2[key]) and
           has_own comparable2, key
             return false
         for key of comparable2 when not has_own comparable1, key
@@ -227,10 +227,10 @@ app.service 'ksc.utils', [
         group
       ###
       @uid: (name) ->
-        uid_store = (utils._uidStore ?= {named: {}})
+        uid_store = (Utils._uidStore ?= {named: {}})
 
         if name?
-          unless utils.isKeyConform name
+          unless Utils.isKeyConform name
             error.Key {name, requirement: 'Key type name'}
 
           target = uid_store.named
@@ -242,10 +242,10 @@ app.service 'ksc.utils', [
 
 
     # resolved names for minification and name resolution performance
-    has_own   = utils.hasOwn
-    is_object = utils.isObject
+    has_own   = Utils.hasOwn
+    is_object = Utils.isObject
 
 
     # returns utils
-    utils
+    Utils
 ]

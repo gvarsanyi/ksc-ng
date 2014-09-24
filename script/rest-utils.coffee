@@ -8,7 +8,7 @@ app.service 'ksc.restUtils', [
 
     @author Greg Varsanyi
     ###
-    class restUtils
+    class RestUtils
 
       ###
       Squash multiple requests into a single one
@@ -45,7 +45,7 @@ app.service 'ksc.restUtils', [
             done_callback error, results...
 
         promises = for iteration_data_set in iteration_data_sets
-          restUtils.wrapPromise iteration_fn(iteration_data_set),
+          RestUtils.wrapPromise iteration_fn(iteration_data_set),
                                  iteration_callback
 
         if promises.length < 2
