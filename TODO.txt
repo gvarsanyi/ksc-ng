@@ -1,11 +1,5 @@
-unit test
-----------------------------
-- list-mapper: does not have dedicated unit tests yet
-
 research, ideas
 ----------------------------
-- record: handle multiple list-parents
 - record/record-contract: support for array property type (+ record-contract, editable-record)
-- list/list-filter: write-protect list and list.map elements (perfofmance penalty and Array compatibility issues for using getters/setters)
 - generic list cache logic
 - poller/push event receiver/refresher service, API
