@@ -33,6 +33,17 @@ describe 'app.factory', ->
     afterEach ->
       unsubscribe()
 
+    it 'Filter is optional', ->
+      list = new List
+      list.push {id: 1, a: 'xyz', b: 'a'}, {id: 2, a: 'abc', b: 'b'},
+                {id: null, a: 'aaa', b: 'c'}
+      expect(-> sublist = new ListFilter list).not.toThrow()
+      expect(sublist.length).toBe 3
+
+    it 'Filter function can be neutralized', ->
+      expect(sublist.length).toBe 1
+      sublist.filter = false
+      expect(sublist.length).toBe 2
 
     it 'Filters immediately when created', ->
       list = new List sorter: 'b'

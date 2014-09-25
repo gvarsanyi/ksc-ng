@@ -161,8 +161,9 @@ app.factory 'ksc.ListFilter', [
         list is provided, .map and .pseudo references will be used just like in
         {List}. If names are provided, records get mapped like .map.listname[id]
         and .pseudo.listname[pseudo_id]
-      @param [function] filter function with signiture `(record) ->` and boolean
-        return value indicating if record should be in the filtered list
+      @param [function|falsy] filter function with signiture `(record) ->` and
+        boolean return value indicating if record should be in the filtered list
+        OR a falsy/empty value to indicate no filtering (all records get added)
       @param [Object] options (optional) options for the filtered list
       @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
         '$destroy' event
@@ -193,6 +194,8 @@ app.factory 'ksc.ListFilter', [
               source:   source
               conflict: 'Can not have unnamed ("_") and named sources mixed'
 
+        unless filter
+          filter = (-> true)
         unless typeof filter is 'function'
           argument_type_error {filter, argument: 2, required: 'function'}
 
@@ -226,6 +229,9 @@ app.factory 'ksc.ListFilter', [
           filter
 
         filter_set = (filter_function) ->
+          unless filter_function
+            filter_function = (-> true)
+
           unless typeof filter_function is 'function'
             error.Type {filter_function, required: 'function'}
           filter = filter_function
