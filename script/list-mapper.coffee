@@ -18,8 +18,7 @@ app.factory 'ksc.ListMapper', [
     deep_target = (target, source_names) ->
       if source_names
         for source_name in source_names
-          if source_name and source_name isnt '_'
-            target = target[source_name]
+          target = target[source_name]
       target
 
 
