@@ -24,14 +24,14 @@ app.factory 'ksc.ListMapper', [
 
     ###
     A helper class that features creating look-up objects for mappable lists
-    like {List} and {ListFilter}.
+    like {List} and {ListMask}.
 
     On construction, it creates .map={} (for {Record}s with ._id) and .pseudo={}
     (for {Record}s with no valid ._id but with valid ._pseudo ID) on the parent.
 
-    @note Methods are prepped to handle multiple named sources for {ListFilter}.
+    @note Methods are prepped to handle multiple named sources for {ListMask}.
       If multi-sourced, .map and .pseudo will have sub-objects with keys being
-      the source names. See: {ListFilter}
+      the source names. See: {ListMask}
 
     @note This class - being just an extension - has no error handling. All
       error cases should be handled by the callers
@@ -45,11 +45,11 @@ app.factory 'ksc.ListMapper', [
 
       ###
       @property [boolean|undefined] indicates multiple named sources on parent.
-        Set to boolean if parent is {ListFilter} or undefined {List}.
+        Set to boolean if parent is {ListMask} or undefined {List}.
       ###
       multi: null
 
-      # @property [List/ListFilter] parent {List} or {ListFilter}
+      # @property [List/ListMask] parent {List} or {ListMask}
       parent: null
 
       # @property [Object] key-value (recordPseudoId: {Record}) mapping
@@ -62,7 +62,7 @@ app.factory 'ksc.ListMapper', [
 
       Adds references to itself (as ._mapper) and .map and .pseudo to parent.
 
-      @param [List/ListFilter] list reference to parent {List} or {ListFilter}
+      @param [List/ListMask] list reference to parent {List} or {ListMask}
       ###
       constructor: (@parent) ->
         mapper = @
@@ -75,8 +75,8 @@ app.factory 'ksc.ListMapper', [
         define_value mapper, '_sources', [], false, true
 
         build_maps = (parent, target_map, target_pseudo, names) ->
-          if src = parent.source # chained ListFilter
-            if src._ # ListFilter with no named sources
+          if src = parent.source # chained ListMask
+            if src._ # ListMask with no named sources
               build_maps src._, target_map, target_pseudo, names
             else # named sources, append names to .map and .pseudo
               for source_name, source_list of src

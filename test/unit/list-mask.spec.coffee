@@ -1,9 +1,9 @@
 
 describe 'app.factory', ->
 
-  describe 'ListFilter', ->
+  describe 'ListMask', ->
 
-    $rootScope = List = ListFilter = action = filter_c = list = list2 = null
+    $rootScope = List = ListMask = action = filter_c = list = list2 = null
     sublist = unsubscribe = null
 
     filter_fn = (record) -> # has letter 'A' or 'a' in stringified record.a
@@ -14,7 +14,7 @@ describe 'app.factory', ->
       inject ($injector) ->
         $rootScope = $injector.get '$rootScope'
         List       = $injector.get 'ksc.List'
-        ListFilter = $injector.get 'ksc.ListFilter'
+        ListMask   = $injector.get 'ksc.ListMask'
 
         list = new List
         list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}
@@ -24,7 +24,7 @@ describe 'app.factory', ->
 
         filter_c = 'a'
 
-        sublist = new ListFilter list, filter_fn
+        sublist = new ListMask list, filter_fn
 
         action = null
         unsubscribe = sublist.events.on 'update', (info) ->
@@ -37,7 +37,7 @@ describe 'app.factory', ->
       list = new List
       list.push {id: 1, a: 'xyz', b: 'a'}, {id: 2, a: 'abc', b: 'b'},
                 {id: null, a: 'aaa', b: 'c'}
-      expect(-> sublist = new ListFilter list).not.toThrow()
+      expect(-> sublist = new ListMask list).not.toThrow()
       expect(sublist.length).toBe 3
 
     it 'Filter function can be neutralized', ->
@@ -50,7 +50,7 @@ describe 'app.factory', ->
       list.push {id: 1, a: 'xyz', b: 'a'}, {id: 2, a: 'abc', b: 'b'},
                 {id: null, a: 'aaa', b: 'c'}
 
-      sublist = new ListFilter list, filter_fn
+      sublist = new ListMask list, filter_fn
 
       expect(sublist.length).toBe 2
       expect(sublist[0].id).toBe 2
@@ -60,7 +60,7 @@ describe 'app.factory', ->
       list = new List
       list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
 
-      sublist = new ListFilter list, filter_fn, sorter: 'a'
+      sublist = new ListMask list, filter_fn, sorter: 'a'
 
       expect(sublist.length).toBe 2
       expect(sublist[0].a).toBe 'aaa'
@@ -68,7 +68,7 @@ describe 'app.factory', ->
 
     it 'Keeps parent list sort', ->
       list = new List sorter: 'a'
-      sublist = new ListFilter list, filter_fn
+      sublist = new ListMask list, filter_fn
 
       list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
 
@@ -84,7 +84,7 @@ describe 'app.factory', ->
 
     it 'Sorted sublist updates', ->
       list = new List
-      sublist = new ListFilter list, filter_fn, sorter: 'a'
+      sublist = new ListMask list, filter_fn, sorter: 'a'
 
       list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}, {id: null, a: 'aaa'}
 
@@ -151,23 +151,23 @@ describe 'app.factory', ->
       expect(-> sublist.filter = true).toThrow()
 
     it 'Constructor argument type checks', ->
-      expect(-> new ListFilter [], (->)).toThrow()
-      expect(-> new ListFilter list, true).toThrow()
-      expect(-> new ListFilter list, (->), true).toThrow()
-      expect(-> new ListFilter list, (->), {}, {}).toThrow()
+      expect(-> new ListMask [], (->)).toThrow()
+      expect(-> new ListMask list, true).toThrow()
+      expect(-> new ListMask list, (->), true).toThrow()
+      expect(-> new ListMask list, (->), {}, {}).toThrow()
 
     it '$scope unsubscriber, method .destroy()', ->
       scope = $rootScope.$new()
 
-      sublist = new ListFilter list, (->), scope
+      sublist = new ListMask list, (->), scope
       scope.$emit '$destroy'
       expect(sublist.destroy()).toBe false # already destroyed
 
-      sublist = new ListFilter list, (->), {}, scope
+      sublist = new ListMask list, (->), {}, scope
       scope.$emit '$destroy'
       expect(sublist.destroy()).toBe false # already destroyed
 
-      sublist = new ListFilter list, (->), scope
+      sublist = new ListMask list, (->), scope
       called = false
       old_fn = sublist._scopeUnsubscriber
       Object.defineProperty sublist, '_scopeUnsubscriber', writable: true
@@ -178,7 +178,7 @@ describe 'app.factory', ->
       sublist.destroy()
       expect(called).toBe true
 
-      sublist = new ListFilter list, (->)
+      sublist = new ListMask list, (->)
       list.destroy()
       expect(sublist.destroy()).toBe false
 
@@ -362,10 +362,10 @@ describe 'app.factory', ->
     describe 'Multiple sources', ->
 
       it 'Error if trying to mix unnamed and named', ->
-        expect(-> new ListFilter {_: list, l2: list2}, filter_fn).toThrow()
+        expect(-> new ListMask {_: list, l2: list2}, filter_fn).toThrow()
 
       it 'Takes multiple sources, names .map and .pseudo', ->
-        sublist = new ListFilter {l1: list, l2: list2}, filter_fn
+        sublist = new ListMask {l1: list, l2: list2}, filter_fn
         expect(sublist.length).toBe 2
         expect(sublist.map.l1[2]).toBe list[1]
         expect(sublist.map.l2[22]).toBe list2[1]
@@ -373,7 +373,7 @@ describe 'app.factory', ->
         expect(sublist.pseudo.l2).toEqual {}
 
       it 'Update scenarios: add, remove by rename, move to pseudo', ->
-        sublist = new ListFilter {l1: list, l2: list2}, filter_fn
+        sublist = new ListMask {l1: list, l2: list2}, filter_fn
         list.push {id: 9, a: 'axa'}
         expect(sublist.length).toBe 3
         expect(sublist.map.l1[9]).toBe list[2]
@@ -387,13 +387,13 @@ describe 'app.factory', ->
         expect(sublist.map.l1[2]).toBeUndefined()
         expect(sublist.pseudo.l1[1]).toBe list[1]
 
-      it 'Chained ListFilters with multiple sources', ->
+      it 'Chained ListMasks with multiple sources', ->
         list3 = new List
         list3.push {id3: 1, a: 'xyz'}, {id3: 2, a: 'abc'}
 
-        sublist1 = new ListFilter {l1: list, l2: list2}, filter_fn
+        sublist1 = new ListMask {l1: list, l2: list2}, filter_fn
 
-        sublist2 = new ListFilter {sub: sublist1, ls: list3}, filter_fn
+        sublist2 = new ListMask {sub: sublist1, ls: list3}, filter_fn
         expect(sublist2.length).toBe 3
 
         list.push {id: 9, a: 'axa'}, {id: 10, a: 'fsdf'}
@@ -412,4 +412,4 @@ describe 'app.factory', ->
 
       it 'Should not allow double-referencing list sources', ->
         refs = {l0: list, l1: list2, l2: list2}
-        expect(-> new ListFilter refs, filter_fn).toThrow()
+        expect(-> new ListMask refs, filter_fn).toThrow()

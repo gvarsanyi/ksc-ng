@@ -3,7 +3,7 @@ describe 'app.factory', ->
 
   describe 'ListMapper', ->
 
-    List = ListFilter = ListMapper = null
+    List = ListMapper = ListMask = null
     list = list2 = list3 = sublist = sublist2 = sublist3 = null
 
     beforeEach ->
@@ -11,8 +11,8 @@ describe 'app.factory', ->
       inject ($injector) ->
         $rootScope = $injector.get '$rootScope'
         List       = $injector.get 'ksc.List'
-        ListFilter = $injector.get 'ksc.ListFilter'
         ListMapper = $injector.get 'ksc.ListMapper'
+        ListMask   = $injector.get 'ksc.ListMask'
 
         list = new List
         list.push {id: 1, a: 'xyz'}, {id: null, a: 'abc'}
@@ -23,9 +23,9 @@ describe 'app.factory', ->
         list3 = new List
         list3.push {id3: 1, a: 'xyz'}, {id3: 2, a: 'abc'}
 
-        sublist = new ListFilter list, (-> true)
-        sublist2 = new ListFilter {list1: list, list2}, (-> true)
-        sublist3 = new ListFilter {sub: sublist2, list3}, (-> true)
+        sublist  = new ListMask list, (-> true)
+        sublist2 = new ListMask {list1: list, list2}, (-> true)
+        sublist3 = new ListMask {sub: sublist2, list3}, (-> true)
 
 
     it 'Creates ._mapper, .map and .pseudo', ->
