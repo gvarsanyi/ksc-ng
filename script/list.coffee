@@ -661,11 +661,14 @@ app.factory 'ksc.List', [
             unless is_object item
               error.Type {item, required: 'object'}
 
-            unless item instanceof record_class
+            if item instanceof record_class
+              if item._parent and item._parent isnt list
+                item._parent.cut item # remove record from old parent list
+              define_value item, '_parent', list # mark this record as parent
+            else
               if item instanceof Record
-                item = new record_class item._clone(true), record_opts, list
-              else
-                item = new record_class item, record_opts, list
+                item = item._clone true
+              item = new record_class item, record_opts, list
 
             if item._id?
               if existing = mapper.has item._id

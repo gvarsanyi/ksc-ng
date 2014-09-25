@@ -428,3 +428,19 @@ describe 'app.factory', ->
         list.shift()
         expect(list.length).toBe 1
         expect(list.pseudo[1]).toBeUndefined()
+
+    it 'Records may only have 1 or 0 list parents', ->
+      list1  = new List record: idProperty: 'id'
+      list2  = new List record: idProperty: 'id'
+      record = new EditableRecord {id: 1, a: 'abc'}
+      expect(list1.length).toBe 0
+
+      list1.push record
+      expect(list1.length).toBe 1
+      expect(list1[0]).toBe record
+
+      list2.push record
+      expect(list1.length).toBe 0
+      expect(list1[0]).toBeUndefined()
+      expect(list2.length).toBe 1
+      expect(list2[0]).toBe record

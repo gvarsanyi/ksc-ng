@@ -85,7 +85,7 @@ app.factory 'ksc.Record', [
       @param [number|string] parent_key (optional) parent record's key
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
-        object_required 'data', data, 1
+        object_required 'data',    data,    1
         object_required 'options', options, 2
 
         record = @
