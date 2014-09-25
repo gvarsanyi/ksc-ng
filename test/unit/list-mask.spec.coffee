@@ -40,6 +40,9 @@ describe 'app.factory', ->
       expect(-> sublist = new ListMask list).not.toThrow()
       expect(sublist.length).toBe 3
 
+      expect(-> sublist = new ListMask list, {xopt: 1}).not.toThrow()
+      expect(sublist.length).toBe 3
+
     it 'Filter function can be neutralized', ->
       expect(sublist.length).toBe 1
       sublist.filter = false

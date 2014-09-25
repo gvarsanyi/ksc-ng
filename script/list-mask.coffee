@@ -163,16 +163,23 @@ app.factory 'ksc.ListMask', [
       pop/shift/push/unshift since thes are supposed to be used on the source
       (aka parent) list only
 
-      @param [List/Object] source reference(s) to parent {List}(s). If a single
-        list is provided, .map and .pseudo references will be used just like in
-        {List}. If names are provided, records get mapped like .map.listname[id]
-        and .pseudo.listname[pseudo_id]
-      @param [function|falsy] filter function with signiture `(record) ->` and
-        boolean return value indicating if record should be in the filtered list
-        OR a falsy/empty value to indicate no filtering (all records get added)
-      @param [Object] options (optional) configuration
-      @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
-        '$destroy' event
+      @note If a single {List} or {ListMask} source/parent is provided as first
+        argument, .map and .pseudo references will work just like in {List}. If
+        object with key-value pairs provided (values being sources/parents),
+        records get mapped like .map.keyname[id] and .pseudo.keyname[pseudo_id]
+
+      @overload constructor(source, options, scope)
+        @param [List/Object] source reference(s) to parent {List}(s)
+        @param [Object] options (optional) configuration
+        @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
+          '$destroy' event
+      @overload constructor(source, filter, options, scope)
+        @param [List/Object] source reference(s) to parent {List}(s)
+        @param [function] filter function with signiture `(record) ->` and
+          boolean return value indicating if record should appear in the list
+        @param [Object] options (optional) configuration
+        @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
+          '$destroy' event
 
       @return [Array] returns plain [] with processed contents
       ###
@@ -200,6 +207,10 @@ app.factory 'ksc.ListMask', [
               source:   source
               conflict: 'Can not have unnamed ("_") and named sources mixed'
 
+        if util.isObject filter
+          scope   = options
+          options = filter
+          filter  = null
         unless filter
           filter = (-> true)
         unless typeof filter is 'function'
