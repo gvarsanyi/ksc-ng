@@ -4,7 +4,7 @@ describe 'app.factory', ->
   describe 'ListMask', ->
 
     $rootScope = List = ListMask = action = filter_c = list = list2 = null
-    split_filter = sublist = unsubscribe = null
+    splitter = sublist = unsubscribe = null
 
     filter_fn = (record) -> # has letter 'A' or 'a' in stringified record.a
       String(record.a).toLowerCase().indexOf(filter_c) > -1
@@ -24,13 +24,13 @@ describe 'app.factory', ->
 
         filter_c = 'a'
 
-        split_filter = (record) ->
+        splitter = (record) ->
           step = 10
           if record.end - record.start > step
             fakes = for i in [record.start ... record.end] by step
               {start: i, end: Math.min record.end, i + step}
             return fakes
-          true # just use the record
+          false # just use the record
 
         sublist = new ListMask list, filter_fn
 
@@ -47,7 +47,7 @@ describe 'app.factory', ->
         list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8},
                   {id: 3, start: 20, end: 41}
 
-        sublist = new ListMask list, split_filter
+        sublist = new ListMask list, {splitter}
         expect(sublist.length).toBe 6
         expect(sublist[5].start).toBe 40
         expect(sublist[5].end).toBe 41
@@ -60,8 +60,10 @@ describe 'app.factory', ->
         list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8},
                   {id: 3, start: 19, end: 41}
 
-        sublist = new ListMask list, split_filter, sorter: (a, b) ->
+        sorter = (a, b) ->
           if a.start > b.start then 1 else -1
+
+        sublist = new ListMask list, {splitter, sorter}
         expect(sublist.length).toBe 6
         expect(sublist[5].start).toBe 40
         expect(sublist[5].end).toBe 50
@@ -76,11 +78,34 @@ describe 'app.factory', ->
         expect(sublist[2]._original).toBe sublist.pseudo[1]
         expect(sublist[2]._original).toBe list[0]
 
-      it 'Throws error if filter fn returns array with non-object values', ->
+      it 'Changing splitter fn triggers reprocessing', ->
+        list = new List
+        list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8},
+                  {id: 3, start: 20, end: 41}
+
+        sublist = new ListMask list, {splitter}
+
+        sublist.splitter = null # sets to no splitting
+        expect(sublist.length).toBe 3
+
+        sublist.splitter = splitter # back to splitting
+        expect(sublist.length).toBe 6
+
+      it 'Throws error if splitter fn returns array with non-object values', ->
         list = new List
         list.push {id: 1, start: 30, end: 50}
 
-        expect(-> sublist = new ListMask list, (-> ['a', {x: 1}])).toThrow()
+        splitter = ->
+          ['a', {x: 1}]
+
+        expect(-> sublist = new ListMask list, {splitter}).toThrow()
+
+      it 'Throws error if splitter fn is truthy but not a fn', ->
+        splitter = 1
+        expect(-> sublist = new ListMask list, {splitter}).toThrow()
+
+        sublist = new ListMask list
+        expect(-> sublist.splitter = splitter).toThrow()
 
     it 'Filter is optional', ->
       list = new List
