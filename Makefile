@@ -22,6 +22,8 @@ js:
 	@ls -la libs.js
 
 jsmin: js
+	@node_modules/.bin/uglifyjs libs.js -b -o libs.sans-comments.js
+	@ls -la libs.sans-comments.js
 	@node_modules/.bin/uglifyjs libs.js -c -m -o libs.min.js
 	@ls -la libs.min.js
 	@gzip < libs.min.js > libs.min.js.gz
