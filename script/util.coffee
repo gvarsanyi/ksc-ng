@@ -65,6 +65,31 @@ app.service 'ksc.util', [
           writable:     !!writable
 
       ###
+      Helper function that clears Array elements and/or Object properties
+
+      @note For arrays it will pop all the elements
+      @note For objects it will delete all owned properties
+
+      @param [Array|Object] objects... Array and/or Object instance(s) to empty
+
+      @return [undefined]
+      ###
+      @empty: (objects...) ->
+        unless objects.length
+          error.MissingArgument {argument: 1}
+        unless is_object.apply @, objects
+          error.Type
+            arguments: objects
+            required:  'All arguments must be objects'
+        for obj in objects
+          if Array.isArray obj
+            while Array::pop.call(obj) then
+          else
+            for own key of obj
+              delete obj[key]
+        return
+
+      ###
       Check if object has own property with provided name and (optionally) if
       it matches enumerability requirement
 

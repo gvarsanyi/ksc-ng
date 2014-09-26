@@ -12,7 +12,7 @@ describe 'app.service', ->
 
 
     describe 'Method .hasOwn()', ->
-      it 'enumerable does not mattter', ->
+      it 'enumerable does not matter', ->
         a = {a: 1}
         b = Object.create a
 

@@ -1,9 +1,9 @@
 
 app.factory 'ksc.List', [
-  '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMask',
-  'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
-  ($rootScope, EditableRecord, EventEmitter, ListMask,
-   ListMapper, ListSorter, Record, error, util) ->
+  '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMapper',
+  'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
+  ($rootScope, EditableRecord, EventEmitter, ListMapper,
+   ListSorter, Record, error, util) ->
 
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
@@ -135,13 +135,33 @@ app.factory 'ksc.List', [
 
       ###
       Unsubscribes from list, destroy all properties and freeze
-      See: {ListMask#destroy}
 
       @event 'destroy' sends out message pre-destruction
 
       @return [boolean] false if the object was already destroyed
       ###
-      destroy: ListMask::destroy
+      destroy: ->
+        list = @
+
+        if Object.isFrozen list
+          return false
+
+        list.events.emit 'destroy'
+
+        list[SCOPE_UNSUBSCRIBER]?()
+
+        list._sourceUnsubscriber?()
+
+        util.empty list
+
+        for key of list when key isnt 'destroy'
+          delete list[key]
+
+        delete list.options
+        delete list._sourceUnsubscriber
+
+        Object.freeze list
+        true
 
       ###
       Cut 1 or more records from the list
