@@ -85,7 +85,7 @@ app.factory 'ksc.ListSorter', [
       constructor: (list, description) ->
         sorter = @
 
-        define_value sorter, 'list', list, false, false
+        define_value sorter, 'list', list, 0, 0
 
         if typeof description is 'function'
           sorter.fn = description
@@ -107,11 +107,11 @@ app.factory 'ksc.ListSorter', [
           else
             type = 'natural'
 
-          define_value sorter, 'key',     key, false, true
-          define_value sorter, 'reverse', !!description.reverse, false, true
-          define_value sorter, 'type',    type, false, true
+          define_value sorter, 'key',     key, 0, 1
+          define_value sorter, 'reverse', !!description.reverse, 0, 1
+          define_value sorter, 'type',    type, 0, 1
 
-          define_value sorter, 'fn', ListSorter.getSortFn(sorter), false, true
+          define_value sorter, 'fn', ListSorter.getSortFn(sorter), 0, 1
 
         Object.preventExtensions sorter
 
@@ -282,8 +282,8 @@ app.factory 'ksc.ListSorter', [
           else
             sorter = null
 
-        for target in [list, list.options]
-          util.defineGetSet target, 'sorter', getter, setter, true
+        util.defineGetSet list, 'sorter', getter, setter, 1
+        util.defineGetSet list.options, 'sorter', getter, setter, 1
 
         return
 ]

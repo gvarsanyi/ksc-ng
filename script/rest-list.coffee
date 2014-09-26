@@ -76,7 +76,7 @@ app.factory 'ksc.RestList', [
         typeof url is 'string'
           error.Type {'options.endpoint.url': url, required: 'string'}
 
-        define_value list, REST_PENDING, list[REST_PENDING] + 1, false, true
+        define_value list, REST_PENDING, list[REST_PENDING] + 1, 0, 1
 
         unless promise = batchLoaderRegistry.get url, query_parameters
           if query_parameters
@@ -89,7 +89,7 @@ app.factory 'ksc.RestList', [
           promise = $http.get url
 
         restUtil.wrapPromise promise, (err, result) ->
-          define_value list, REST_PENDING, list[REST_PENDING] - 1, false, true
+          define_value list, REST_PENDING, list[REST_PENDING] - 1, 0, 1
           callback err, result
 
       ###

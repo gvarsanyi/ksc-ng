@@ -112,13 +112,13 @@ app.factory 'ksc.List', [
 
         for key, value of @constructor.prototype
           if key.indexOf('constructor') is -1
-            define_value list, key, value, false, true
+            define_value list, key, value, 0, 1
 
         options = angular.copy options
         define_value list, 'options', options
         list.options.record ?= {}
 
-        define_value list, 'events', new EventEmitter, false, true
+        define_value list, 'events', new EventEmitter, 0, 1
 
         # sets @_mapper, @map and @pseudo
         ListMapper.register list

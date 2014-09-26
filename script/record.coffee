@@ -239,7 +239,7 @@ app.factory 'ksc.Record', [
             value = new class_ref value, subopts, record, key
 
           changed = true
-          define_value record, key, value, false, true
+          define_value record, key, value, 0, 1
 
         # check if data is changing with the replacement
         if contract

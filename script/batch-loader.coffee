@@ -58,9 +58,9 @@ app.factory 'ksc.BatchLoader', [
           if open and not value
             loader.flush()
           open = !!value
-        util.defineGetSet loader, 'open', (-> open), setter, true
+        util.defineGetSet loader, 'open', (-> open), setter, 1
 
-        util.defineValue loader, 'requests', [], false, true
+        util.defineValue loader, 'requests', [], 0, 1
 
         batchLoaderRegistry.register loader
 

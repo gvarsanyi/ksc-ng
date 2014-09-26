@@ -69,10 +69,10 @@ app.factory 'ksc.ListMapper', [
 
         source = parent.source
 
-        define_value mapper, 'map',      {}, false, true
-        define_value mapper, 'pseudo',   {}, false, true
-        define_value mapper, 'multi',    (source and not source._), false, true
-        define_value mapper, '_sources', [], false, true
+        define_value mapper, 'map',      {}, 0, 1
+        define_value mapper, 'pseudo',   {}, 0, 1
+        define_value mapper, 'multi',    (source and not source._), 0, 1
+        define_value mapper, '_sources', [], 0, 1
 
         build_maps = (parent, target_map, target_pseudo, names) ->
           if src = parent.source # chained ListMask
@@ -193,9 +193,9 @@ app.factory 'ksc.ListMapper', [
       @register: (list) ->
         mapper = new ListMapper list
 
-        define_value list, '_mapper', mapper,        false, true
-        define_value list, 'map',     mapper.map,    false, true
-        define_value list, 'pseudo',  mapper.pseudo, false, true
+        define_value list, '_mapper', mapper,        0, 1
+        define_value list, 'map',     mapper.map,    0, 1
+        define_value list, 'pseudo',  mapper.pseudo, 0, 1
 
         return
 ]
