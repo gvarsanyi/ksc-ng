@@ -6,3 +6,4 @@ node_modules
 doc/*
 test/coverage/*
 libs*.js*
+test/tmp/
