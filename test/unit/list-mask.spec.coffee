@@ -4,7 +4,7 @@ describe 'app.factory', ->
   describe 'ListMask', ->
 
     $rootScope = List = ListMask = action = filter_c = list = list2 = null
-    sublist = unsubscribe = null
+    split_filter = sublist = unsubscribe = null
 
     filter_fn = (record) -> # has letter 'A' or 'a' in stringified record.a
       String(record.a).toLowerCase().indexOf(filter_c) > -1
@@ -24,6 +24,14 @@ describe 'app.factory', ->
 
         filter_c = 'a'
 
+        split_filter = (record) ->
+          step = 10
+          if record.end - record.start > step
+            fakes = for i in [record.start ... record.end] by step
+              {start: i, end: Math.min record.end, i + step}
+            return fakes
+          true # just use the record
+
         sublist = new ListMask list, filter_fn
 
         action = null
@@ -32,6 +40,47 @@ describe 'app.factory', ->
 
     afterEach ->
       unsubscribe()
+
+    describe 'Split records', ->
+      it 'basic scenario', ->
+        list = new List
+        list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8},
+                  {id: 3, start: 20, end: 41}
+
+        sublist = new ListMask list, split_filter
+        expect(sublist.length).toBe 6
+        expect(sublist[5].start).toBe 40
+        expect(sublist[5].end).toBe 41
+
+        list.pop()
+        expect(sublist.length).toBe 3
+
+      it 'Split records w/ sorting', ->
+        list = new List
+        list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8},
+                  {id: 3, start: 19, end: 41}
+
+        sublist = new ListMask list, split_filter, sorter: (a, b) ->
+          if a.start > b.start then 1 else -1
+        expect(sublist.length).toBe 6
+        expect(sublist[5].start).toBe 40
+        expect(sublist[5].end).toBe 50
+
+        list.pop()
+        expect(sublist.length).toBe 3
+
+        expect(sublist[2].id).toBe 1
+        sublist[1].id = null
+        expect(sublist.length).toBe 3
+        expect(sublist[2].id).toBe null
+        expect(sublist[2]._original).toBe sublist.pseudo[1]
+        expect(sublist[2]._original).toBe list[0]
+
+      it 'Throws error if filter fn returns array with non-object values', ->
+        list = new List
+        list.push {id: 1, start: 30, end: 50}
+
+        expect(-> sublist = new ListMask list, (-> ['a', {x: 1}])).toThrow()
 
     it 'Filter is optional', ->
       list = new List
