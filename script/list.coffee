@@ -121,7 +121,7 @@ app.factory 'ksc.List', [
         define_value list, 'events', new EventEmitter, false, true
 
         # sets @_mapper, @map and @pseudo
-        new ListMapper list
+        ListMapper.register list
 
         if scope
           define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->

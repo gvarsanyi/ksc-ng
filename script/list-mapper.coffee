@@ -90,10 +90,6 @@ app.factory 'ksc.ListMapper', [
             mapper._sources.push {names, source: parent}
         build_maps parent, mapper.map, mapper.pseudo, []
 
-        define_value parent, '_mapper', mapper,        false, true
-        define_value parent, 'map',     mapper.map,    false, true
-        define_value parent, 'pseudo',  mapper.pseudo, false, true
-
         Object.freeze mapper._sources
 
 
@@ -184,4 +180,22 @@ app.factory 'ksc.ListMapper', [
         target = deep_target target, source_names
 
         target[id] or false
+
+
+      ###
+      Helper method that creates and registers mapper objects (.map, .pseudo and
+      ._mapper) on provided Array instances created by {List} or {ListMask}
+
+      @param [List] list reference to the list
+
+      @return [undefined]
+      ###
+      @register: (list) ->
+        mapper = new ListMapper list
+
+        define_value list, '_mapper', mapper,        false, true
+        define_value list, 'map',     mapper.map,    false, true
+        define_value list, 'pseudo',  mapper.pseudo, false, true
+
+        return
 ]

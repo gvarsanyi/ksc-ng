@@ -257,7 +257,7 @@ app.factory 'ksc.ListSorter', [
 
       ###
       Helper method that registers a sorter getter/setter on an Array created
-      by {List}
+      by {List} or {ListMask}
 
       @param [List] list reference to the list (not) to be auto-sorted
       @param [null|function|object|string|Array] description sort logic

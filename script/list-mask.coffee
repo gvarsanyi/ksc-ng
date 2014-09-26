@@ -319,7 +319,7 @@ app.factory 'ksc.ListMask', [
         define_value list, 'source', source, false, true
 
         # sets @_mapper, @map and @pseudo
-        new ListMapper list
+        ListMapper.register list
         sources = list._mapper._sources
 
         if scope
