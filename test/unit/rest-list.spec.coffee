@@ -3,8 +3,8 @@ describe 'app.factory', ->
 
   describe 'RestList', ->
 
-    $httpBackend = BatchLoader = EditableRecord = List = RestList = null
-    expected_raw_response = list_cfg = list_response = null
+    $httpBackend = $rootScope = BatchLoader = EditableRecord = List = null
+    RestList = expected_raw_response = list_cfg = list_response = null
 
     id_url = '/api/Test/<id>'
     url    = '/api/Test/'
@@ -13,6 +13,7 @@ describe 'app.factory', ->
       module 'app'
       inject ($injector) ->
         $httpBackend   = $injector.get '$httpBackend'
+        $rootScope     = $injector.get '$rootScope'
         BatchLoader    = $injector.get 'ksc.BatchLoader'
         EditableRecord = $injector.get 'ksc.EditableRecord'
         List           = $injector.get 'ksc.List'
@@ -209,6 +210,83 @@ describe 'app.factory', ->
                                                     expected_raw_response
       expect(spyable2.callback).toHaveBeenCalled()
       expect(list.restPending).toBe 0
+
+    it 'Method .restLoad() with cache', ->
+      list_cfg.cache = 1
+      list = new RestList list_cfg
+      response = null
+      $httpBackend.expectGET(url).respond list_response
+
+      promise = list.restLoad()
+      promise.then (body) ->
+        response = body.data
+
+      expect(list.restPending).toBe 1
+
+      $httpBackend.flush()
+
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+      expect(list.restPending).toBe 0
+
+      called = response = null
+
+      promise = list.restLoad (err, body) ->
+        called = body.data
+      promise.then (body) ->
+        response = body.data
+
+      # fake promises .flush()
+      $rootScope.$apply()
+
+      expect(list.restPending).toBe 0
+      expect(called.success).toBe true
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+
+      promise = list.restLoad()
+      promise.then (body) ->
+        response = body.data
+
+      response = null
+      # fake promises .flush()
+      $rootScope.$apply()
+
+      expect(response.success).toBe true
+
+    it 'Method .restLoad() with cache ignored because force_load arg', ->
+      list_cfg.cache = 1
+      list = new RestList list_cfg
+      response = null
+      $httpBackend.expectGET(url).respond list_response
+
+      expected_changed_records = insert: list_response.elements
+
+      promise = list.restLoad()
+      promise.then (body) ->
+        response = body.data
+
+      expect(list.restPending).toBe 1
+
+      $httpBackend.flush()
+
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+      expect(list.restPending).toBe 0
+
+      response = null
+
+      promise = list.restLoad true, {a: 1}
+      promise.then (body) ->
+        response = body.data
+
+      $httpBackend.expectGET(url + '?a=1').respond list_response
+      $httpBackend.flush()
+
+      expect(list.restPending).toBe 0
+      expect(response.success).toBe true
+      expect(response.elements.length).toBe 2
+
 
     it 'Method .restLoad() auto identifying array in response', ->
       delete list_cfg.endpoint.responseProperty

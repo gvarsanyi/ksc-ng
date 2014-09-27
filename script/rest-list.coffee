@@ -5,6 +5,7 @@ app.factory 'ksc.RestList', [
   ($http, $q, List, batchLoaderRegistry, error,
    restUtil, util) ->
 
+    REST_CACHE   = 'restCache'
     REST_PENDING = 'restPending'
     PRIMARY_ID   = '_primaryId'
 
@@ -24,6 +25,7 @@ app.factory 'ksc.RestList', [
               url: '/api/MyEndpoint/<id>'
 
     Options that may be used by methods of ksc.RestList
+    - .options.cache (full cache - use if the entire list is loaded)
     - .options.endpoint.bulkDelete (delete 2+ records in 1 request)
     - .options.endpoint.bulkSavel (save 2+ records in 1 request)
     - .options.endpoint.responseProperty (array of records in list response)
@@ -39,6 +41,8 @@ app.factory 'ksc.RestList', [
     @author Greg Varsanyi
     ###
     class RestList extends List
+      # @property [object] load promise used if .options.cache is set
+      restCache: null
 
       ###
       @property [number] The number of REST requests pending
@@ -96,11 +100,13 @@ app.factory 'ksc.RestList', [
       Query list endpoint for records
 
       Options that may be used:
+      - .options.cache (full cache - use if the entire list is loaded)
       - .options.endpoint.responseProperty (array of records in list response)
       - .options.endpoint.url (url for endpoint)
       - .options.record.class (class reference for record objects)
       - .options.record.idProperty (property/properties that define record ID)
 
+      @param [boolean] force_load (optional) Request disregarding cache
       @param [Object] query_parameters (optional) Query string arguments
       @param [function] callback (optional) Callback function with signiture:
         (err, record_list, raw_response) ->
@@ -117,21 +123,35 @@ app.factory 'ksc.RestList', [
 
       @return [Promise] Promise returned by $http
       ###
-      restLoad: (query_parameters, callback) ->
+      restLoad: (force_load, query_parameters, callback) ->
+        unless typeof force_load is 'boolean'
+          callback         = query_parameters
+          query_parameters = force_load
+          force_load       = null
+
         if typeof query_parameters is 'function'
-          callback = query_parameters
+          callback         = query_parameters
           query_parameters = null
 
-        list = @
+        list    = @
+        options = list.options
 
-        list.restGetRaw query_parameters, (err, raw_response) ->
-          unless err
-            try
-              data = RestList.getResponseArray list, raw_response.data
-              record_list = list.push data..., true
-            catch _err
-              err = _err
-          callback? err, record_list, raw_response
+        http_get = ->
+          list.restGetRaw query_parameters, (err, raw_response) ->
+            unless err
+              try
+                data = RestList.getResponseArray list, raw_response.data
+                record_list = list.push data..., true
+              catch _err
+                err = _err
+            callback? err, record_list, raw_response
+
+        if not options.cache or not list.restCache or force_load
+          define_value list, 'restCache', http_get(), 0, 1
+        else if callback
+          restUtil.wrapPromise list.restCache, callback
+
+        list.restCache
 
       ###
       Save record(s)

@@ -50,7 +50,7 @@ app.factory 'ksc.RestRecord', [
       Bumps up ._restPending counter by 1 when starting to load (and will
       decrease by 1 when done)
 
-      @param [boolean] force_load (optinal) request disregarding cache
+      @param [boolean] force_load (optinal) Request disregarding cache
       @param [function] callback (optional) will call back with signiture:
         (err, raw_response) ->
       @option raw_response [HttpError] error (optional) errorous response info
@@ -67,7 +67,7 @@ app.factory 'ksc.RestRecord', [
       _restLoad: (force_load, callback) ->
         record = @
 
-        get = ->
+        http_get = ->
           url = RestRecord.getUrl record
           unless promise = batchLoaderRegistry.get url
             promise = $http.get url
@@ -78,7 +78,7 @@ app.factory 'ksc.RestRecord', [
           force_load = null
 
         if not record[OPTIONS].cache or not record[REST_CACHE] or force_load
-          define_value record, REST_CACHE, get callback
+          define_value record, REST_CACHE, http_get()
         else if callback
           restUtil.wrapPromise record[REST_CACHE], callback
 
