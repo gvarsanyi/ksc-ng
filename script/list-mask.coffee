@@ -368,9 +368,10 @@ app.factory 'ksc.ListMask', [
           define_value list, key, value, 0, 1
 
         # disable methods that change contents
-        for key in ['push', 'unshift', 'pop', 'shift', 'splice', 'reverse',
-                    'sort']
-          define_value list, key, undefined
+        for key in ['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift',
+                    'sort', 'splice', 'unshift']
+          if list[key]
+            define_value list, key, undefined
 
         define_value list, 'events', new EventEmitter, 0, 1
 

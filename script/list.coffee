@@ -22,6 +22,22 @@ app.factory 'ksc.List', [
       list.events.emit 'update', {node: list, action}
 
     ###
+    A helper function, similar to Array::splice, except it does not delete.
+    This is a central place for injecting into the array, a candidate for
+    turning elements into getters/setters if we ever go there.
+
+    @param [Object] list Array with extensions from {List}
+    @param [number] pos Index in array where injection starts
+    @param [Record] records... Element(s) to be injected
+
+    @return [undefined]
+    ###
+    inject = (list, pos, records) ->
+      Array::splice.call list, pos, 0, records...
+      return
+
+
+    ###
     Constructor for an Array instance and methods to be added to that instance
 
     Only contains objects. Methods push() and unshift() take vanilla objects
@@ -217,7 +233,7 @@ app.factory 'ksc.List', [
 
         if tmp_container.length
           tmp_container.reverse()
-          Array::push.apply list, tmp_container
+          inject list, list.length, tmp_container
 
         action = {cut}
         emit_action list, action
@@ -634,7 +650,7 @@ app.factory 'ksc.List', [
           for item, pos in list when item is record
             Array::splice.call list, pos, 1
             new_pos = list.sorter.position record
-            Array::splice.call list, new_pos, 0, record
+            inject list, new_pos, [record]
             break
 
         emit_action list, {update: [info]}
@@ -712,9 +728,9 @@ app.factory 'ksc.List', [
             if list.sorter # sorted (insert to position)
               for item in tmp
                 pos = list.sorter.position item
-                Array::splice.call list, pos, 0, item
+                inject list, pos, [item]
             else # not sorted (actual push/unshift)
-              Array::splice.call list, pos, 0, tmp...
+              inject list, pos, tmp
         finally
           list.events.unhalt()
 
