@@ -1,17 +1,17 @@
 
-app.factory 'ksc.EndpointArchetypeFactory', [
-  'ksc.EditableRecord', 'ksc.RestList',
-  (EditableRecord, RestList) ->
+module_name.factory 'namespace.endpointArchetypeFactory', [
+  'ksc.RestList',
+  (RestList) ->
 
     ->
       new RestList
         endpoint:
-          url: '/api/archetype/'
+          url: '/api/my-endpoint/'
         record
-          class: EditableRecord
+          # class: EditableRecord # ksc.EditableRecord is the default Record class
           contract:
             id:   {type: 'number'}
             name: {type: 'string'}
           idProperty: 'id'
-          url: '/api/archetype/<id>'
+          url: '/api/my-endpoint/<id>'
 ]
