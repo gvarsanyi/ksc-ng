@@ -1,5 +1,5 @@
 
-app.service 'ksc.restUtil', [
+angular.module('ksc').service 'ksc.restUtil', [
   '$q', 'ksc.error',
   ($q, error) ->
 

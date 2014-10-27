@@ -1,5 +1,5 @@
 
-app.factory 'ksc.ListSorter', [
+angular.module('ksc').factory 'ksc.ListSorter', [
   'ksc.error', 'ksc.util',
   (error, util) ->
 

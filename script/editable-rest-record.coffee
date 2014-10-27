@@ -1,5 +1,5 @@
 
-app.factory 'ksc.EditableRestRecord', [
+angular.module('ksc').factory 'ksc.EditableRestRecord', [
   '$http', 'ksc.EditableRecord', 'ksc.Mixin', 'ksc.RestRecord',
   ($http, EditableRecord, Mixin, RestRecord) ->
 

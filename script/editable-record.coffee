@@ -1,5 +1,5 @@
 
-app.factory 'ksc.EditableRecord', [
+angular.module('ksc').factory 'ksc.EditableRecord', [
   'ksc.Record', 'ksc.error', 'ksc.util',
   (Record, error, util) ->
 

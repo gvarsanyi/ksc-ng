@@ -1,5 +1,5 @@
 
-app.factory 'ksc.EventEmitter', [
+angular.module('ksc').factory 'ksc.EventEmitter', [
   '$interval', '$rootScope', '$timeout', 'ksc.error', 'ksc.util',
   ($interval, $rootScope, $timeout, error, util) ->
 

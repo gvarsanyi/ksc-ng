@@ -1,5 +1,5 @@
 
-app.factory 'ksc.Record', [
+angular.module('ksc').factory 'ksc.Record', [
   'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util',
   (EventEmitter, RecordContract, error, util) ->
 

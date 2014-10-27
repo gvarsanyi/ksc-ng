@@ -1,5 +1,5 @@
 
-app.service 'ksc.error', ->
+angular.module('ksc').service 'ksc.error', ->
 
   ###
   Custom error archetype class

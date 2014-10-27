@@ -1,5 +1,5 @@
 
-app.factory 'ksc.BatchLoader', [
+angular.module('ksc').factory 'ksc.BatchLoader', [
   '$http', '$q', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.util',
   ($http, $q, batchLoaderRegistry, error, util) ->
 
