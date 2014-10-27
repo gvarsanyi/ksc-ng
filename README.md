@@ -1,5 +1,5 @@
-rx-list-record
-==============
+ksc-ng
+======
 
 A series of angular factories and services revolving around models, async data
 binding, sharing and segmenting.
@@ -11,8 +11,8 @@ binding, sharing and segmenting.
 - make
 
 ### Download and check out tools
-    git clone https://github.com/gvarsanyi/rx-list-record.git
-    cd rx-list-record
+    git clone https://github.com/gvarsanyi/ksc-ng.git
+    cd ksc-ng
 
 ### One-time install dependencies
     npm update

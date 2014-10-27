@@ -1,8 +1,7 @@
 {
-  "name": "ksc-core",
+  "name": "ksc-ng",
   "version": "1.0.0",
-  "description": "rx-list-record ==============",
-  "main": "-",
+  "description": "Angular component for lists, records and rest bindings",
   "directories": {
     "doc": "doc",
     "test": "test"
@@ -12,27 +11,27 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/gvarsanyi/rx-list-record.git"
+    "url": "git://github.com/gvarsanyi/ksc-ng.git"
   },
   "author": "Greg Varsanyi",
   "license": "TBD",
   "bugs": {
-    "url": "https://github.com/gvarsanyi/rx-list-record/issues"
+    "url": "https://github.com/gvarsanyi/ksc-ng/issues"
   },
-  "homepage": "https://github.com/gvarsanyi/rx-list-record",
+  "homepage": "https://github.com/gvarsanyi/ksc-ng",
   "devDependencies": {
-    "codo": "^2.0.9",
-    "coffee-script": "^1.7.1",
-    "coffeelint": "^1.5.5",
-    "karma": "^0.12.21",
-    "karma-coffee-preprocessor": "^0.2.1",
-    "karma-coverage": "^0.2.6",
-    "karma-jasmine": "^0.1.5",
-    "karma-junit-reporter": "^0.2.2",
-    "karma-phantomjs-launcher": "^0.1.4",
-    "karma-script-launcher": "^0.1.0",
+    "codo": "2.0.9",
+    "coffee-script": "1.8.0",
+    "coffeelint": "1.6.1",
+    "karma": "0.12.24",
+    "karma-coffee-preprocessor": "0.2.1",
+    "karma-coverage": "0.2.6",
+    "karma-jasmine": "0.1.5",
+    "karma-junit-reporter": "0.2.2",
+    "karma-phantomjs-launcher": "0.1.4",
+    "karma-script-launcher": "0.1.0",
     "karma-spec-reporter": "0.0.13",
-    "karma-teamcity-reporter": "^0.1.2",
-    "uglify-js": "^2.4.15"
+    "karma-teamcity-reporter": "0.1.2",
+    "uglify-js": "2.4.15"
   }
 }
