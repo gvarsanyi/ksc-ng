@@ -1,6 +1,43 @@
-.PHONY: all test clean doc
+.PHONY: all clean dist doc lint test
 
-test:
+all: test lint doc dist
+
+dependencies:
+	@if [ ! -d "node_modules" ]; then \
+		echo "installing npm dev dependencies"; \
+		npm install; \
+	fi
+
+clean:
+	-rm -rf dist
+	@mkdir -p dist
+
+dist: clean dependencies
+	@node_modules/.bin/coffee --no-header -b -o dist/tmp/pre script/
+	@cd dist/tmp/pre; \
+		for JS in *.js ; do \
+			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../$$JS; \
+		done
+	@rm -rf dist/tmp/pre
+	@cat test/dep/test/coffeescript-helpers.js test/dep/test/module-init.js dist/tmp/*.js > dist/ksc.js
+	@rm -rf dist/tmp
+	@ls -la dist/ksc.js
+	@node_modules/.bin/uglifyjs dist/ksc.js -b -o dist/ksc.sans-comments.js
+	@ls -la dist/ksc.sans-comments.js
+	@node_modules/.bin/uglifyjs dist/ksc.js -c -m -o dist/ksc.min.js
+	@ls -la dist/ksc.min.js
+	@gzip < dist/ksc.min.js > dist/ksc.min.js.gz
+	@ls -la dist/ksc.min.js.gz
+
+doc: dependencies
+	@rm -rf doc/
+	@node_modules/.bin/codo --undocumented script/
+	@node_modules/.bin/codo script/
+
+lint: dependencies
+	@node_modules/.bin/coffeelint script/ test/unit/
+
+test: dependencies
 	@node_modules/.bin/coffee --no-header -b -o test/tmp/pre script/
 	@cd test/tmp/pre; \
 		for JS in *.js ; do \
@@ -9,32 +46,3 @@ test:
 	@rm -rf test/tmp/pre
 	-node_modules/karma/bin/karma start test/karma.conf.coffee
 	@rm -rf test/tmp
-
-js:
-	@node_modules/.bin/coffee --no-header -b -o test/tmp/pre script/
-	@cd test/tmp/pre; \
-		for JS in *.js ; do \
-			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../$$JS; \
-		done
-	@rm -rf test/tmp/pre
-	@cat test/dep/test/coffeescript-helpers.js test/tmp/*.js > libs.js
-	@rm -rf test/tmp
-	@ls -la libs.js
-
-jsmin: js
-	@node_modules/.bin/uglifyjs libs.js -b -o libs.sans-comments.js
-	@ls -la libs.sans-comments.js
-	@node_modules/.bin/uglifyjs libs.js -c -m -o libs.min.js
-	@ls -la libs.min.js
-	@gzip < libs.min.js > libs.min.js.gz
-	@ls -la libs.min.js.gz
-
-doc:
-	@rm -rf doc/
-	@node_modules/.bin/codo --undocumented script/
-	@node_modules/.bin/codo script/
-
-lint:
-	@node_modules/.bin/coffeelint script/ test/unit/
-
-check: test lint doc jsmin

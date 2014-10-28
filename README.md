@@ -6,7 +6,6 @@ binding, sharing and segmenting.
 
 ## Quick installation usage manual
 ### Requirements
-- git client
 - npm (comes with nodejs)
 - make
 
@@ -20,12 +19,16 @@ binding, sharing and segmenting.
     npm cache clean
     npm update
 
-### Create JavaScript package
-#### Non-minified JavaScript version only (creates: libs.js)
-    make js
-#### Non-minified and minified versions (creates: libs.js, lis.min.js, lis.min.js.gz)
-    make jsmin
-Minifier also checks for unused chunks of code
+### Create JavaScript distributables
+    make dist
+
+Creates dist/ folder with the following files:
+- ksc.js
+- ksc-sans-comments.js
+- ksc.min.js
+- ksc.min.js.gz
+
+Minifier also checks for unused chunks of code.
 
 ### Create docs off of codo inline documentation
     make doc
@@ -38,5 +41,5 @@ See test coverage details at <project_dir>/test/coverage/PhantomJS<version>/inde
 ### Lint check
     make lint
 
-### All checks combined: test, lint, doc, jsmin
-    make check
+### All tasks combined: test, lint, doc, dist
+    make all
