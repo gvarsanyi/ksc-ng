@@ -1,7 +1,7 @@
 {
   "name": "ksc-ng",
-  "version": "1.0.0",
-  "description": "Angular component for lists, records and rest bindings",
+  "version": "1.0.1",
+  "description": "Angular component for lists, records and REST bindings",
   "directories": {
     "doc": "doc",
     "test": "test"

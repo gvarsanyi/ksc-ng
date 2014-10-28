@@ -1,0 +1,27 @@
+{
+  "name": "ksc-ng",
+  "version": "1.0.1",
+  "homepage": "https://github.com/gvarsanyi/ksc-ng",
+  "authors": [
+    "Greg Varsanyi <gvarsanyi@gmail.com>"
+  ],
+  "description": "Angular component for lists, records and REST bindings",
+  "main": "dist/ksc.js",
+  "keywords": [
+    "list",
+    "record",
+    "rest",
+    "api",
+    "async",
+    "data",
+    "repo"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
