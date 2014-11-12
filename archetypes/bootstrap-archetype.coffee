@@ -1,5 +1,7 @@
 
-app.service 'ksc.bootstrapArchetype', [
+example ?= angular.module 'example', ['ksc']
+
+example.service 'ksc.bootstrapArchetype', [
   'ksc.BatchLoader',
   (BatchLoader) ->
 
@@ -7,11 +9,8 @@ app.service 'ksc.bootstrapArchetype', [
       Test:  '/api/Test'
       Other: '/api/Other'
 
-    # NOTE: there might be a better way to trigger flush right after the
-    # controllers are created and first load requests collected
     setTimeout ->
-      bootstrap.flush()
-      bootstrap.open = false
+      bootstrap.open = false # this triggers loading - don't call .flush()
     , 5
 
     bootstrap

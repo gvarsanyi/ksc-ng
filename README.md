@@ -4,6 +4,22 @@ ksc-ng
 A series of angular factories and services revolving around models, async data
 binding, sharing and segmenting.
 
+# Using as a dependency
+1. Install
+    bower install ksc-ng
+2. Link it in your app
+    <script src='ksc-ng/dist/ksc.min.js'></script>
+3. Use components as dependency
+    example ?= angular.module 'example', ['ksc']
+    example.factory 'namespace.endpointArchetypeFactory', [
+      'ksc.RestList',
+      (RestList) ->
+        # ...
+
+Tip: check out the example implementations in folder archetypes/
+
+# Developing
+
 ## Quick installation usage manual
 ### Requirements
 - npm (comes with nodejs)

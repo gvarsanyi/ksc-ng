@@ -1,5 +1,7 @@
 
-module_name.factory 'namespace.endpointArchetypeFactory', [
+example ?= angular.module 'example', ['ksc']
+
+example.factory 'namespace.endpointArchetypeFactory', [
   'ksc.RestList',
   (RestList) ->
 

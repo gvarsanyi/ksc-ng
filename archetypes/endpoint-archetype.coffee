@@ -1,5 +1,7 @@
 
-app.service 'ksc.endpointArchetype', [
+example ?= angular.module 'example', ['ksc']
+
+example.service 'ksc.endpointArchetype', [
   'ksc.endpointArchetypeFactory',
   (endpointArchetypeFactory) ->
 
