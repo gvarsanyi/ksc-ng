@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.BatchLoader', [
+ksc.factory 'ksc.BatchLoader', [
   '$http', '$q', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.util',
   ($http, $q, batchLoaderRegistry, error, util) ->
 
@@ -112,13 +112,13 @@ angular.module('ksc').factory 'ksc.BatchLoader', [
         loader   = @
         requests = loader.requests
 
-        unless requests.length
-          return false
-
         defers = []
-        for request in requests
+        for request in requests when request.deferred
           defers.push request.deferred
           delete request.deferred
+
+        unless defers.length
+          return false
 
         batch_promise = $http.put loader.endpoint, requests
 

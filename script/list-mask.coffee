@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.ListMask', [
+ksc.factory 'ksc.ListMask', [
   '$rootScope', 'ksc.EventEmitter', 'ksc.List', 'ksc.ListMapper',
   'ksc.ListSorter', 'ksc.error', 'ksc.util',
   ($rootScope, EventEmitter, List, ListMapper,

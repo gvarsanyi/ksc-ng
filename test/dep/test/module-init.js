@@ -1,4 +1,4 @@
 
-angular.module('ksc', []);
+ksc = angular.module('ksc', []);
 
 

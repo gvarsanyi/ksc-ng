@@ -14,10 +14,10 @@ var __hasProp = {}.hasOwnProperty,
   __slice = [].slice;
 
 
-angular.module('ksc', []);
+ksc = angular.module('ksc', []);
 
 
-angular.module('ksc').service('ksc.batchLoaderRegistry', [
+ksc.service('ksc.batchLoaderRegistry', [
   'ksc.error', 'ksc.util', function(error, util) {
 
     /*
@@ -110,7 +110,7 @@ angular.module('ksc').service('ksc.batchLoaderRegistry', [
     return new BatchLoaderRegistry;
   }
 ]);
-angular.module('ksc').factory('ksc.BatchLoader', [
+ksc.factory('ksc.BatchLoader', [
   '$http', '$q', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.util', function($http, $q, batchLoaderRegistry, error, util) {
     var BatchLoader, argument_type_error, is_object;
     argument_type_error = error.ArgumentType;
@@ -254,14 +254,17 @@ angular.module('ksc').factory('ksc.BatchLoader', [
         var batch_promise, defers, loader, request, requests, _i, _len;
         loader = this;
         requests = loader.requests;
-        if (!requests.length) {
-          return false;
-        }
         defers = [];
         for (_i = 0, _len = requests.length; _i < _len; _i++) {
           request = requests[_i];
+          if (!request.deferred) {
+            continue;
+          }
           defers.push(request.deferred);
           delete request.deferred;
+        }
+        if (!defers.length) {
+          return false;
         }
         batch_promise = $http.put(loader.endpoint, requests);
         batch_promise.success(function(data, status, headers, config) {
@@ -310,7 +313,7 @@ angular.module('ksc').factory('ksc.BatchLoader', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.EditableRecord', [
+ksc.factory('ksc.EditableRecord', [
   'ksc.Record', 'ksc.error', 'ksc.util', function(Record, error, util) {
     var CHANGED_KEYS, CHANGES, DELETED_KEYS, EDITED, EVENTS, EditableRecord, OPTIONS, PARENT, PARENT_KEY, SAVED, define_value, has_own, is_enumerable, is_object;
     CHANGES = '_changes';
@@ -762,7 +765,7 @@ angular.module('ksc').factory('ksc.EditableRecord', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.EditableRestRecord', [
+ksc.factory('ksc.EditableRestRecord', [
   '$http', 'ksc.EditableRecord', 'ksc.Mixin', 'ksc.RestRecord', function($http, EditableRecord, Mixin, RestRecord) {
 
     /*
@@ -824,7 +827,7 @@ angular.module('ksc').factory('ksc.EditableRestRecord', [
   }
 ]);
 
-angular.module('ksc').service('ksc.error', function() {
+ksc.service('ksc.error', function() {
 
   /*
   Custom error archetype class
@@ -1051,7 +1054,7 @@ angular.module('ksc').service('ksc.error', function() {
   return error;
 });
 
-angular.module('ksc').factory('ksc.EventEmitter', [
+ksc.factory('ksc.EventEmitter', [
   '$interval', '$rootScope', '$timeout', 'ksc.error', 'ksc.util', function($interval, $rootScope, $timeout, error, util) {
     var EventEmitter, EventSubscriptions, UNSUBSCRIBER, argument_type_error, is_function, is_object, name_check, subscription_decorator;
     UNSUBSCRIBER = '__unsubscriber__';
@@ -1617,7 +1620,7 @@ angular.module('ksc').factory('ksc.EventEmitter', [
     })();
   }
 ]);
-angular.module('ksc').factory('ksc.ListMapper', [
+ksc.factory('ksc.ListMapper', [
   'ksc.util', function(util) {
     var ListMapper, deep_target, define_value;
     define_value = util.defineValue;
@@ -1843,7 +1846,7 @@ angular.module('ksc').factory('ksc.ListMapper', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.ListMask', [
+ksc.factory('ksc.ListMask', [
   '$rootScope', 'ksc.EventEmitter', 'ksc.List', 'ksc.ListMapper', 'ksc.ListSorter', 'ksc.error', 'ksc.util', function($rootScope, EventEmitter, List, ListMapper, ListSorter, error, util) {
     var ListMask, SCOPE_UNSUBSCRIBER, add_to_list, argument_type_error, array_push, cut_from_list, define_get_set, define_value, is_object, rebuild_list, register_filter, register_splitter, splitter_wrap;
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber';
@@ -2524,7 +2527,7 @@ angular.module('ksc').factory('ksc.ListMask', [
     })();
   }
 ]);
-angular.module('ksc').factory('ksc.ListSorter', [
+ksc.factory('ksc.ListSorter', [
   'ksc.error', 'ksc.util', function(error, util) {
     var ListSorter, define_value, is_key_conform;
     define_value = util.defineValue;
@@ -2853,7 +2856,7 @@ angular.module('ksc').factory('ksc.ListSorter', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.List', [
+ksc.factory('ksc.List', [
   '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util', function($rootScope, EditableRecord, EventEmitter, ListMapper, ListSorter, Record, error, util) {
     var List, SCOPE_UNSUBSCRIBER, argument_type_error, define_value, emit_action, inject, is_object, normalize_return_action;
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber';
@@ -3769,7 +3772,7 @@ angular.module('ksc').factory('ksc.List', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.Mixin', [
+ksc.factory('ksc.Mixin', [
   'ksc.error', 'ksc.util', function(error, util) {
     var Mixin, normalize, validate_key;
     normalize = function(explicit, properties, next) {
@@ -3915,7 +3918,7 @@ angular.module('ksc').factory('ksc.Mixin', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.RecordContract', [
+ksc.factory('ksc.RecordContract', [
   'ksc.error', 'ksc.util', function(error, util) {
     var RecordContract, has_own, is_object;
     has_own = util.hasOwn;
@@ -4124,7 +4127,7 @@ angular.module('ksc').factory('ksc.RecordContract', [
     })();
   }
 ]);
-angular.module('ksc').factory('ksc.Record', [
+ksc.factory('ksc.Record', [
   'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(EventEmitter, RecordContract, error, util) {
     var EVENTS, ID, ID_PROPERTY, OPTIONS, PARENT, PARENT_KEY, PSEUDO, Record, define_value, has_own, is_object, object_required;
     EVENTS = '_events';
@@ -4544,7 +4547,7 @@ angular.module('ksc').factory('ksc.Record', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.RestList', [
+ksc.factory('ksc.RestList', [
   '$http', '$q', 'ksc.List', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.restUtil', 'ksc.util', function($http, $q, List, batchLoaderRegistry, error, restUtil, util) {
     var PRIMARY_ID, REST_CACHE, REST_PENDING, RestList, define_value;
     REST_CACHE = 'restCache';
@@ -5227,7 +5230,7 @@ angular.module('ksc').factory('ksc.RestList', [
   }
 ]);
 
-angular.module('ksc').factory('ksc.RestRecord', [
+ksc.factory('ksc.RestRecord', [
   '$http', 'ksc.Record', 'ksc.batchLoaderRegistry', 'ksc.error', 'ksc.restUtil', 'ksc.util', function($http, Record, batchLoaderRegistry, error, restUtil, util) {
     var OPTIONS, REST_CACHE, REST_PENDING, RestRecord, define_value;
     OPTIONS = '_options';
@@ -5373,7 +5376,7 @@ angular.module('ksc').factory('ksc.RestRecord', [
   }
 ]);
 
-angular.module('ksc').service('ksc.restUtil', [
+ksc.service('ksc.restUtil', [
   '$q', 'ksc.error', function($q, error) {
 
     /*
@@ -5486,7 +5489,7 @@ angular.module('ksc').service('ksc.restUtil', [
   }
 ]);
 
-angular.module('ksc').service('ksc.util', [
+ksc.service('ksc.util', [
   'ksc.error', function(error) {
     var Util, arg_check, define_property, get_own_property_descriptor, get_prototype_of, has_own, is_object;
     define_property = Object.defineProperty;

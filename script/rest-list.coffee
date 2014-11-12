@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.RestList', [
+ksc.factory 'ksc.RestList', [
   '$http', '$q', 'ksc.List', 'ksc.batchLoaderRegistry', 'ksc.error',
   'ksc.restUtil', 'ksc.util',
   ($http, $q, List, batchLoaderRegistry, error,

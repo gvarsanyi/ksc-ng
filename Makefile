@@ -9,7 +9,7 @@ dependencies:
 	fi
 
 clean:
-	-rm -rf dist
+	-@rm -rf dist
 	@mkdir -p dist
 
 dist: clean dependencies

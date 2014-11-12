@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.ListMapper', [
+ksc.factory 'ksc.ListMapper', [
   'ksc.util',
   (util) ->
 

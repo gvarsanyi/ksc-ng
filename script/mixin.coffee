@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.Mixin', [
+ksc.factory 'ksc.Mixin', [
   'ksc.error', 'ksc.util',
   (error, util) ->
 

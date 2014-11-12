@@ -48,6 +48,9 @@ describe 'app.factory', ->
       bootstrap.open = false # this also triggers bootstrap.flush()
       bootstrap.open = false # won't flush twice, just testing the gate
 
+      # no double-flash, no flushing empty requests
+      expect(bootstrap.flush()).toBe false
+
       $httpBackend.flush()
 
       expect(err1).toBe null

@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.List', [
+ksc.factory 'ksc.List', [
   '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMapper',
   'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
   ($rootScope, EditableRecord, EventEmitter, ListMapper,

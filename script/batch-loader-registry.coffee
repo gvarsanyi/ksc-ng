@@ -1,5 +1,5 @@
 
-angular.module('ksc').service 'ksc.batchLoaderRegistry', [
+ksc.service 'ksc.batchLoaderRegistry', [
   'ksc.error', 'ksc.util',
   (error, util) ->
 

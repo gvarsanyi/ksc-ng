@@ -1,5 +1,5 @@
 
-angular.module('ksc').factory 'ksc.RecordContract', [
+ksc.factory 'ksc.RecordContract', [
   'ksc.error', 'ksc.util',
   (error, util) ->
 
