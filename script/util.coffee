@@ -34,7 +34,7 @@ ksc.service 'ksc.util', [
       @defineGetSet: (object, key, getter, setter, enumerable) ->
         if typeof setter isnt 'function'
           enumerable = setter
-          setter     = ->
+          setter     = undefined
 
         define_property object, key,
           configurable: true

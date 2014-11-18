@@ -44,5 +44,5 @@ test: dependencies
 			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../$$JS; \
 		done
 	@rm -rf test/tmp/pre
-	-node_modules/karma/bin/karma start test/karma.conf.coffee
+	-node_modules/karma/bin/karma start test/karma.conf.coffee $(file)
 	@rm -rf test/tmp

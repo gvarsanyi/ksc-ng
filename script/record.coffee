@@ -49,6 +49,9 @@ ksc.factory 'ksc.Record', [
     ###
     class Record
 
+      # @property [array] array container if data set is array type
+      _array: undefined
+
       # @property [object|null] reference to related event-emitter instance
       _events: undefined
 
@@ -239,7 +242,10 @@ ksc.factory 'ksc.Record', [
             value = new class_ref value, subopts, record, key
 
           changed = true
-          define_value record, key, value, 0, 1
+          if value?._array
+            util.defineGetSet record, key, (-> Record.fakeArray value), 1
+          else
+            define_value record, key, value, 0, 1
 
         # check if data is changing with the replacement
         if contract
@@ -263,6 +269,15 @@ ksc.factory 'ksc.Record', [
           for key of record when not has_own data, key
             delete record[key]
             changed = true
+
+        arr = undefined
+        if Array.isArray data
+          if arr = record._array
+            util.empty arr
+          else
+            arr = []
+          arr.push data...
+        define_value record, '_array', arr
 
         if changed and record[EVENTS] and emit_event
           Record.emitUpdate record, 'replace'
@@ -305,6 +320,22 @@ ksc.factory 'ksc.Record', [
         events.emit 'update', info
 
         return
+
+      @fakeArray: (value) ->
+        arr    = value._array
+        object = value
+        marked = {}
+        while object and object.constructor isnt Object
+          for key in Object.getOwnPropertyNames object
+            if key.substr(0, 1) is '_' and not marked.hasOwnProperty key
+              marked[key] = Object.getOwnPropertyDescriptor object, key
+          object = Object.getPrototypeOf object
+        for own key of arr
+          if key.substr(0, 1) is '_' and not marked.hasOwnProperty key
+            delete arr[key]
+        for key, desc of marked
+          Object.defineProperty arr, key, desc
+        arr
 
       ###
       Define _id for the record
