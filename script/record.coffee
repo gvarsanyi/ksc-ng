@@ -13,6 +13,7 @@ ksc.factory 'ksc.Record', [
 
     define_value = util.defineValue
     has_own      = util.hasOwn
+    is_array     = Array.isArray
     is_object    = util.isObject
 
     object_required = (name, value, arg) ->
@@ -51,6 +52,9 @@ ksc.factory 'ksc.Record', [
 
       # @property [array] array container if data set is array type
       _array: undefined
+
+      # @property [Record] a pseudo-subrecord for array-types - stores contract
+      _arrayPseudo: undefined
 
       # @property [object|null] reference to related event-emitter instance
       _events: undefined
@@ -236,10 +240,19 @@ ksc.factory 'ksc.Record', [
             class_ref = options.subtreeClass or Record
 
             subopts = {}
-            if contract
+            if contract?[key].contract
+              console.log 'ee', contract, key, contract[key].contract
               subopts.contract = contract[key].contract
 
             value = new class_ref value, subopts, record, key
+
+            if value._array and contract
+              subopts = contract: contract[key].array
+              console.log 'subopts', contract[key].array
+              console.log '  --', new RecordContract contract[key].array
+              define_value value, '_arrayPseudo', new Record {}, subopts, record, key
+            else
+              delete value._arrayPseudo
 
           changed = true
           if value?._array
@@ -271,7 +284,7 @@ ksc.factory 'ksc.Record', [
             changed = true
 
         arr = undefined
-        if Array.isArray data
+        if is_array data
           if arr = record._array
             util.empty arr
           else
@@ -324,17 +337,36 @@ ksc.factory 'ksc.Record', [
       @fakeArray: (value) ->
         arr    = value._array
         object = value
+        console.log 'value', value
+        console.log 'value._options', value._options
         marked = {}
         while object and object.constructor isnt Object
           for key in Object.getOwnPropertyNames object
-            if key.substr(0, 1) is '_' and not marked.hasOwnProperty key
+            if key.substr(0, 1) is '_' and not has_own marked, key
               marked[key] = Object.getOwnPropertyDescriptor object, key
           object = Object.getPrototypeOf object
         for own key of arr
-          if key.substr(0, 1) is '_' and not marked.hasOwnProperty key
+          if key.substr(0, 1) is '_' and not has_own marked, key
             delete arr[key]
         for key, desc of marked
           Object.defineProperty arr, key, desc
+
+        unless arr.push._override
+          orig_push = arr.push
+          arr.push = (items...) ->
+            console.log 'pushy!', value, arr, value._options
+            orig_push.apply @, items
+
+          orig_unshift = arr.push
+          arr.unshift = (items...) ->
+            orig_unshift.apply @, items
+
+          orig_splice = arr.push
+          arr.splice = (items...) ->
+            orig_splice.apply @, items
+
+          arr.push._override = 1
+
         arr
 
       ###

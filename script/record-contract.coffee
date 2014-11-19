@@ -3,6 +3,8 @@ ksc.factory 'ksc.RecordContract', [
   'ksc.error', 'ksc.util',
   (error, util) ->
 
+    NULLABLE = 'nullable'
+
     has_own   = util.hasOwn
     is_object = util.isObject
 
@@ -47,6 +49,7 @@ ksc.factory 'ksc.RecordContract', [
       @param [object] contract description object
       ###
       constructor: (contract) ->
+        console.log 'contract:', contract
         if contract is null or contract instanceof RecordContract
           return contract
         unless is_object contract
@@ -59,27 +62,45 @@ ksc.factory 'ksc.RecordContract', [
 
           @[key] = desc
 
-          if desc.nullable
-            desc.nullable = true
+          if desc[NULLABLE]
+            desc[NULLABLE] = true
           else
-            delete desc.nullable
+            delete desc[NULLABLE]
+
+          exclusive_count = 0
+          for desc_key in ['array', 'contract', 'default'] when desc[desc_key]
+            exclusive_count += 1
+            if exclusive_count > 1
+              error.Value
+                key:         desc_key
+                contract:    desc
+                description: 'array, default and contract are mutally exclusive'
+
+          if not (arr = desc.array) and desc.type is 'array'
+            error.Type
+              array:       desc.array
+              description: 'array description object is required'
+          if arr
+            if has_own(desc, 'type') and desc.type isnt 'array'
+              error.Type {type, array: desc.array, requiredType: 'array'}
+            delete desc.type
 
           if desc.type is 'object' and not is_object desc.contract
             error.Type
               contract:    desc.contract
               description: 'contract description object is required'
-
           if desc.contract
             if has_own(desc, 'type') and desc.type isnt 'object'
-              error.Type {contract: desc.contract, required: 'object'}
-
-            if has_own desc, 'default'
-              error.Value
-                default:     desc.default
-                contract:    desc.contract
-                description: 'subcontract can not have default value'
-
+              error.Type {type, contract: desc.contract, requiredType: 'object'}
             delete desc.type
+
+          if arr
+#             if arr.contract
+#               console.log 'creating array-subcontract off of:', arr.contract, arr
+#               arr.contract = new RecordContract {0: arr.contract}
+#             else
+            console.log 'array has no subcontract:', arr
+          else if desc.contract
             desc.contract = new RecordContract desc.contract
           else
             if has_own(desc, 'default') and not has_own(desc, 'type') and
@@ -88,7 +109,7 @@ ksc.factory 'ksc.RecordContract', [
             unless RecordContract.typeDefaults[desc.type]?
               error.Type
                 type:     desc.type
-                required: 'boolean, number, object, string'
+                required: 'array, boolean, number, object, string'
 
           @_match key, @_default key # checks default value
 
@@ -112,8 +133,10 @@ ksc.factory 'ksc.RecordContract', [
 
         if has_own desc, 'default'
           return desc.default
-        if desc.nullable
+        if desc[NULLABLE]
           return null
+        if desc.array
+          return []
         if desc.contract
           value = {}
           for own key of desc.contract
@@ -137,11 +160,12 @@ ksc.factory 'ksc.RecordContract', [
       _match: (key, value) ->
         desc = @[key]
 
-        if desc?
-          if (desc.contract and is_object value) or typeof value is desc.type
-            return true
-          if value is null and desc.nullable
-            return true
+        if desc? and (
+          (desc.array and Array.isArray value) or
+          ((desc.contract and is_object value) or typeof value is desc.type) or
+          (value is null and desc[NULLABLE])
+        )
+          return true
         error.ContractBreak {key, value, contract: desc}
 
 

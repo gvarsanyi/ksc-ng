@@ -35,6 +35,35 @@ describe 'app.factory', ->
       expect(record.b.x).toBe false
       expect(record.b.y).toBe null
 
+    it 'Array contracts', ->
+      record = new Record {},
+        contract:
+          id: {default: 1}
+          a:
+            array:
+              type: 'number'
+              nullable: true
+          b:
+            nullable: true
+            array:
+              type: 'boolean'
+          c:
+            nullable: true
+            array:
+              contract:
+                x: {type: 'boolean'}
+                y: {type: 'boolean', nullable: true}
+
+      expect(Array.isArray record.a).toBe true
+      expect(record.b).toBe null
+      expect(record.c).toBe null
+
+      record.a.push 1
+      expect(record.a.length).toBe 1
+
+      expect(-> record.a.push 'a').toThrow()
+      expect(-> record.a = null).toThrow()
+
     it 'Method .finalizeRecord()', ->
       record = new Record {}, contract: a: type: 'number'
       RecordContract.finalizeRecord record
