@@ -35,8 +35,8 @@ describe 'app.factory', ->
       expect(record.b.x).toBe false
       expect(record.b.y).toBe null
 
-    it 'Array contracts', ->
-      record = new Record {},
+    it 'Read-only array contracts', ->
+      record = new Record {id: 1, c: [{}, {x: true, y: true}]},
         contract:
           id: {default: 1}
           a:
@@ -56,12 +56,15 @@ describe 'app.factory', ->
 
       expect(Array.isArray record.a).toBe true
       expect(record.b).toBe null
-      expect(record.c).toBe null
-
-      record.a.push 1
-      expect(record.a.length).toBe 1
+      expected = JSON.stringify [{x: false, y: null}, {x: true, y: true}]
+      expect(JSON.stringify record.c).toBe expected
 
       expect(-> record.a.push 'a').toThrow()
+      expect(record.a.length).toBe 0
+
+      expect(-> record.a.push 1).toThrow()
+      expect(record.a.length).toBe 0
+
       expect(-> record.a = null).toThrow()
 
     it 'Method .finalizeRecord()', ->

@@ -3920,7 +3920,8 @@ ksc.factory('ksc.Mixin', [
 
 ksc.factory('ksc.RecordContract', [
   'ksc.error', 'ksc.util', function(error, util) {
-    var RecordContract, has_own, is_object;
+    var NULLABLE, RecordContract, has_own, is_object;
+    NULLABLE = 'nullable';
     has_own = util.hasOwn;
     is_object = util.isObject;
 
@@ -3964,7 +3965,7 @@ ksc.factory('ksc.RecordContract', [
       @param [object] contract description object
        */
       function RecordContract(contract) {
-        var desc, key;
+        var arr, desc, desc_key, exclusive_count, key, _i, _len, _ref;
         if (contract === null || contract instanceof RecordContract) {
           return contract;
         }
@@ -3983,10 +3984,42 @@ ksc.factory('ksc.RecordContract', [
             });
           }
           this[key] = desc;
-          if (desc.nullable) {
-            desc.nullable = true;
+          if (desc[NULLABLE]) {
+            desc[NULLABLE] = true;
           } else {
-            delete desc.nullable;
+            delete desc[NULLABLE];
+          }
+          exclusive_count = 0;
+          _ref = ['array', 'contract', 'default'];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            desc_key = _ref[_i];
+            if (!desc[desc_key]) {
+              continue;
+            }
+            exclusive_count += 1;
+            if (exclusive_count > 1) {
+              error.Value({
+                key: desc_key,
+                contract: desc,
+                description: 'array, default and contract are mutally exclusive'
+              });
+            }
+          }
+          if (!(arr = desc.array) && desc.type === 'array') {
+            error.Type({
+              array: desc.array,
+              description: 'array description object is required'
+            });
+          }
+          if (arr) {
+            if (has_own(desc, 'type') && desc.type !== 'array') {
+              error.Type({
+                type: type,
+                array: desc.array,
+                requiredType: 'array'
+              });
+            }
+            delete desc.type;
           }
           if (desc.type === 'object' && !is_object(desc.contract)) {
             error.Type({
@@ -3997,28 +4030,26 @@ ksc.factory('ksc.RecordContract', [
           if (desc.contract) {
             if (has_own(desc, 'type') && desc.type !== 'object') {
               error.Type({
+                type: type,
                 contract: desc.contract,
-                required: 'object'
-              });
-            }
-            if (has_own(desc, 'default')) {
-              error.Value({
-                "default": desc["default"],
-                contract: desc.contract,
-                description: 'subcontract can not have default value'
+                requiredType: 'object'
               });
             }
             delete desc.type;
-            desc.contract = new RecordContract(desc.contract);
-          } else {
-            if (has_own(desc, 'default') && !has_own(desc, 'type') && (RecordContract.typeDefaults[typeof desc["default"]] != null)) {
-              desc.type = typeof desc["default"];
-            }
-            if (RecordContract.typeDefaults[desc.type] == null) {
-              error.Type({
-                type: desc.type,
-                required: 'boolean, number, object, string'
-              });
+          }
+          if (!arr) {
+            if (desc.contract) {
+              desc.contract = new RecordContract(desc.contract);
+            } else {
+              if (has_own(desc, 'default') && !has_own(desc, 'type') && (RecordContract.typeDefaults[typeof desc["default"]] != null)) {
+                desc.type = typeof desc["default"];
+              }
+              if (RecordContract.typeDefaults[desc.type] == null) {
+                error.Type({
+                  type: desc.type,
+                  required: 'array, boolean, number, object, string'
+                });
+              }
             }
           }
           this._match(key, this._default(key));
@@ -4050,8 +4081,11 @@ ksc.factory('ksc.RecordContract', [
         if (has_own(desc, 'default')) {
           return desc["default"];
         }
-        if (desc.nullable) {
+        if (desc[NULLABLE]) {
           return null;
+        }
+        if (desc.array) {
+          return [];
         }
         if (desc.contract) {
           value = {};
@@ -4083,13 +4117,8 @@ ksc.factory('ksc.RecordContract', [
       RecordContract.prototype._match = function(key, value) {
         var desc;
         desc = this[key];
-        if (desc != null) {
-          if ((desc.contract && is_object(value)) || typeof value === desc.type) {
-            return true;
-          }
-          if (value === null && desc.nullable) {
-            return true;
-          }
+        if ((desc != null) && ((desc.array && Array.isArray(value)) || ((desc.contract && is_object(value)) || typeof value === desc.type) || (value === null && desc[NULLABLE]))) {
+          return true;
         }
         return error.ContractBreak({
           key: key,
@@ -4127,9 +4156,10 @@ ksc.factory('ksc.RecordContract', [
     })();
   }
 ]);
+
 ksc.factory('ksc.Record', [
   'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(EventEmitter, RecordContract, error, util) {
-    var EVENTS, ID, ID_PROPERTY, OPTIONS, PARENT, PARENT_KEY, PSEUDO, Record, define_value, has_own, is_object, object_required;
+    var EVENTS, ID, ID_PROPERTY, OPTIONS, PARENT, PARENT_KEY, PSEUDO, Record, define_value, has_own, is_array, is_object, object_required;
     EVENTS = '_events';
     ID = '_id';
     ID_PROPERTY = 'idProperty';
@@ -4139,6 +4169,7 @@ ksc.factory('ksc.Record', [
     PSEUDO = '_pseudo';
     define_value = util.defineValue;
     has_own = util.hasOwn;
+    is_array = Array.isArray;
     is_object = util.isObject;
     object_required = function(name, value, arg) {
       var inf;
@@ -4176,6 +4207,8 @@ ksc.factory('ksc.Record', [
     @author Greg Varsanyi
      */
     return Record = (function() {
+      Record.prototype._array = void 0;
+
       Record.prototype._events = void 0;
 
       Record.prototype._id = void 0;
@@ -4272,7 +4305,7 @@ ksc.factory('ksc.Record', [
        */
 
       Record.prototype._clone = function(return_plain_object) {
-        var clone, key, record, value;
+        var clone, err, key, record, value;
         if (return_plain_object == null) {
           return_plain_object = false;
         }
@@ -4281,7 +4314,14 @@ ksc.factory('ksc.Record', [
         for (key in record) {
           value = record[key];
           if (is_object(value)) {
-            value = value._clone(true);
+            try {
+              value = value._clone(1);
+            } catch (_error) {
+              err = _error;
+              console.log('value', value, value._clone);
+              console.log('  - record', record, key);
+              throw err;
+            }
           }
           clone[key] = value;
         }
@@ -4304,7 +4344,7 @@ ksc.factory('ksc.Record', [
        */
 
       Record.prototype._entity = function() {
-        return this._clone(true);
+        return this._clone(1);
       };
 
 
@@ -4330,7 +4370,7 @@ ksc.factory('ksc.Record', [
        */
 
       Record.prototype._replace = function(data, emit_event) {
-        var changed, contract, id_property, id_property_contract_check, key, options, part, record, set_property, value, _i, _len;
+        var arr, changed, contract, id_property, id_property_contract_check, key, options, part, record, set_property, value, _i, _len;
         if (emit_event == null) {
           emit_event = true;
         }
@@ -4398,22 +4438,31 @@ ksc.factory('ksc.Record', [
             }
             class_ref = options.subtreeClass || Record;
             subopts = {};
-            if (contract) {
+            if (contract != null ? contract[key].contract : void 0) {
               subopts.contract = contract[key].contract;
+            }
+            if (contract != null ? contract[key].array : void 0) {
+              subopts.contract = {
+                all: contract[key].array
+              };
             }
             value = new class_ref(value, subopts, record, key);
           }
           changed = true;
-          return define_value(record, key, value, 0, 1);
+          return util.defineGetSet(record, key, (function() {
+            return (value != null ? value._array : void 0) || value;
+          }), 1);
         };
         if (contract) {
-          for (key in data) {
-            value = data[key];
-            contract._match(key, value);
-          }
-          for (key in contract) {
-            value = has_own(data, key) ? data[key] : contract._default(key);
-            set_property(key, value);
+          if (!is_array(data)) {
+            for (key in data) {
+              value = data[key];
+              contract._match(key, value);
+            }
+            for (key in contract) {
+              value = has_own(data, key) ? data[key] : contract._default(key);
+              set_property(key, value);
+            }
           }
         } else {
           for (key in data) {
@@ -4440,10 +4489,78 @@ ksc.factory('ksc.Record', [
             changed = true;
           }
         }
+        if (is_array(data)) {
+          if (!(arr = record._array)) {
+            define_value(record, '_array', arr = []);
+          } else {
+            util.empty(arr);
+          }
+          util.arrayGetterify(arr, function(index, value) {
+            var class_ref, subopts;
+            if (Object.isFrozen(arr)) {
+              error.Permission({
+                array: arr,
+                index: index,
+                value: value,
+                description: 'Can not set on read-only array'
+              });
+            }
+            if (contract != null) {
+              contract._match('all', value);
+            }
+            if (is_object(value)) {
+              if (value instanceof Record) {
+                value = value._clone(1);
+              }
+              class_ref = options.subtreeClass || Record;
+              subopts = {};
+              if (contract != null ? contract.all.contract : void 0) {
+                subopts.contract = contract.all.contract;
+              }
+              value = new class_ref(value, subopts, record, index);
+            }
+            return value;
+          });
+          arr.push.apply(arr, data);
+          Record.arrayRecord(record);
+          if (contract && !Object.isFrozen(arr)) {
+            Object.freeze(arr);
+          }
+        } else {
+          define_value(record, '_array', void 0);
+        }
         if (changed && record[EVENTS] && emit_event) {
           Record.emitUpdate(record, 'replace');
         }
         return changed;
+      };
+
+      Record.arrayRecord = function(record) {
+        var arr, desc, key, marked, object, _i, _len, _ref;
+        arr = record._array;
+        object = record;
+        marked = {};
+        while (object && object.constructor !== Object) {
+          _ref = Object.getOwnPropertyNames(object);
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            key = _ref[_i];
+            if (key.substr(0, 1) === '_' && !has_own(marked, key)) {
+              marked[key] = Object.getOwnPropertyDescriptor(object, key);
+            }
+          }
+          object = Object.getPrototypeOf(object);
+        }
+        for (key in arr) {
+          if (!__hasProp.call(arr, key)) continue;
+          if (key.substr(0, 1) === '_' && !has_own(marked, key)) {
+            delete arr[key];
+          }
+        }
+        for (key in marked) {
+          desc = marked[key];
+          Object.defineProperty(arr, key, desc);
+        }
+        return arr;
       };
 
 
@@ -5491,7 +5608,7 @@ ksc.service('ksc.restUtil', [
 
 ksc.service('ksc.util', [
   'ksc.error', function(error) {
-    var Util, arg_check, define_property, get_own_property_descriptor, get_prototype_of, has_own, is_object;
+    var Util, arg_check, define_property, define_value, get_own_property_descriptor, get_prototype_of, has_own, is_object;
     define_property = Object.defineProperty;
     get_own_property_descriptor = Object.getOwnPropertyDescriptor;
     get_prototype_of = Object.getPrototypeOf;
@@ -5513,6 +5630,91 @@ ksc.service('ksc.util', [
     Util = (function() {
       function Util() {}
 
+      Util.arrayGetterify = function(arr, pre_set_fn, post_set_fn) {
+        var check_indexes, fn, getterify, i, item, orig_fn, original, setter, _fn, _i, _j, _len, _len1, _ref;
+        if (!arr._getterified) {
+          define_value(arr, '_getterified', 1);
+          original = [];
+          setter = function(index, value) {
+            if (original[index] !== value) {
+              if (pre_set_fn != null) {
+                value = pre_set_fn(index, value);
+              }
+              original[index] = value;
+              return typeof post_set_fn === "function" ? post_set_fn(index, value) : void 0;
+            }
+          };
+          getterify = function(index, value) {
+            setter(index, value);
+            return Util.defineGetSet(arr, index, (function() {
+              return original[index];
+            }), (function(val) {
+              return setter(index, val);
+            }), 1);
+          };
+          for (i = _i = 0, _len = arr.length; _i < _len; i = ++_i) {
+            item = arr[i];
+            getterify(i, item);
+          }
+          check_indexes = function() {
+            var len, orig_length, _j, _k, _ref, _ref1;
+            len = arr.length;
+            orig_length = original.length;
+            for (i = _j = 0, _ref = orig_length - len; _j < _ref; i = _j += 1) {
+              original.pop();
+            }
+            for (i = _k = 0; _k < len; i = _k += 1) {
+              if (!((_ref1 = get_own_property_descriptor(arr, i)) != null ? _ref1.get : void 0)) {
+                getterify(i, arr[i]);
+              }
+            }
+          };
+          _ref = ['push', 'unshift', 'splice'];
+          _fn = function(orig_fn, fn) {
+            var decor;
+            decor = function() {
+              var args, cache, err, res;
+              args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+              cache = (function() {
+                var _k, _len2, _results;
+                _results = [];
+                for (_k = 0, _len2 = original.length; _k < _len2; _k++) {
+                  item = original[_k];
+                  _results.push(item);
+                }
+                return _results;
+              })();
+              try {
+                res = orig_fn.apply(this, args);
+                check_indexes();
+              } catch (_error) {
+                err = _error;
+                Util.empty(original);
+                original.push.apply(original, (function() {
+                  var _k, _len2, _results;
+                  _results = [];
+                  for (_k = 0, _len2 = cache.length; _k < _len2; _k++) {
+                    item = cache[_k];
+                    _results.push(item);
+                  }
+                  return _results;
+                })());
+                arr.length = cache.length;
+                throw err;
+              }
+              return res;
+            };
+            return define_value(arr, fn, decor, 1);
+          };
+          for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+            fn = _ref[_j];
+            orig_fn = arr[fn];
+            _fn(orig_fn, fn);
+          }
+        }
+        return arr;
+      };
+
 
       /*
       Add/update an object property with a getter and an (optional) setter
@@ -5530,7 +5732,7 @@ ksc.service('ksc.util', [
       Util.defineGetSet = function(object, key, getter, setter, enumerable) {
         if (typeof setter !== 'function') {
           enumerable = setter;
-          setter = function() {};
+          setter = void 0;
         }
         return define_property(object, key, {
           configurable: true,
@@ -5865,6 +6067,7 @@ ksc.service('ksc.util', [
       return Util;
 
     })();
+    define_value = Util.defineValue;
     has_own = Util.hasOwn;
     is_object = Util.isObject;
     return Util;

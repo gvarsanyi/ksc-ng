@@ -53,9 +53,6 @@ ksc.factory 'ksc.Record', [
       # @property [array] array container if data set is array type
       _array: undefined
 
-      # @property [Record] a pseudo-subrecord for array-types - stores contract
-      _arrayPseudo: undefined
-
       # @property [object|null] reference to related event-emitter instance
       _events: undefined
 
@@ -148,7 +145,12 @@ ksc.factory 'ksc.Record', [
         record = @
         for key, value of record
           if is_object value
-            value = value._clone true
+            try
+              value = value._clone 1
+            catch err
+              console.log 'value', value, value._clone
+              console.log '  - record', record, key
+              throw err
           clone[key] = value
         if return_plain_object
           return clone
@@ -166,7 +168,7 @@ ksc.factory 'ksc.Record', [
       @return [Object] the new Object instance with the copied data
       ###
       _entity: ->
-        @_clone true
+        @_clone 1
 
       ###
       (Re)define the initial data set
@@ -241,36 +243,30 @@ ksc.factory 'ksc.Record', [
 
             subopts = {}
             if contract?[key].contract
-              console.log 'ee', contract, key, contract[key].contract
               subopts.contract = contract[key].contract
+            if contract?[key].array
+              subopts.contract = all: contract[key].array
 
             value = new class_ref value, subopts, record, key
 
-            if value._array and contract
-              subopts = contract: contract[key].array
-              console.log 'subopts', contract[key].array
-              console.log '  --', new RecordContract contract[key].array
-              define_value value, '_arrayPseudo', new Record {}, subopts, record, key
-            else
-              delete value._arrayPseudo
-
           changed = true
-          if value?._array
-            util.defineGetSet record, key, (-> Record.fakeArray value), 1
-          else
-            define_value record, key, value, 0, 1
+#           getter = ->
+#             if value?._array then Record.arrayRecord(value) else value
+#           util.defineGetSet record, key, getter, 1
+          util.defineGetSet record, key, (-> value?._array or value), 1
 
         # check if data is changing with the replacement
         if contract
-          for key, value of data
-            contract._match key, value
+          unless is_array data
+            for key, value of data
+              contract._match key, value
 
-          for key of contract
-            value = if has_own(data, key)
-              data[key]
-            else
-              contract._default key
-            set_property key, value
+            for key of contract
+              value = if has_own(data, key)
+                data[key]
+              else
+                contract._default key
+              set_property key, value
         else
           for key, value of data
             if key.substr(0, 1) is '_'
@@ -283,20 +279,64 @@ ksc.factory 'ksc.Record', [
             delete record[key]
             changed = true
 
-        arr = undefined
         if is_array data
-          if arr = record._array
-            util.empty arr
+          unless arr = record._array
+            define_value record, '_array', arr = []
           else
-            arr = []
+            util.empty arr
+
+          util.arrayGetterify arr, (index, value) ->
+            if Object.isFrozen arr
+              error.Permission
+                array: arr
+                index: index
+                value: value
+                description: 'Can not set on read-only array'
+
+            contract?._match 'all', value
+            if is_object value
+              if value instanceof Record
+                value = value._clone 1
+
+              class_ref = options.subtreeClass or Record
+
+              subopts = {}
+              if contract?.all.contract
+                subopts.contract = contract.all.contract
+
+              value = new class_ref value, subopts, record, index
+            value
+
           arr.push data...
-        define_value record, '_array', arr
+
+          Record.arrayRecord record
+          if contract and not Object.isFrozen arr
+            Object.freeze arr
+        else
+          define_value record, '_array', undefined
 
         if changed and record[EVENTS] and emit_event
           Record.emitUpdate record, 'replace'
 
         changed
 
+
+      @arrayRecord: (record) ->
+        arr    = record._array
+        object = record
+        marked = {}
+        while object and object.constructor isnt Object
+          for key in Object.getOwnPropertyNames object
+            if key.substr(0, 1) is '_' and not has_own marked, key
+              marked[key] = Object.getOwnPropertyDescriptor object, key
+          object = Object.getPrototypeOf object
+        for own key of arr
+          if key.substr(0, 1) is '_' and not has_own marked, key
+            delete arr[key]
+        for key, desc of marked
+          Object.defineProperty arr, key, desc
+
+        arr
 
       ###
       Event emission - with handling complexity around subobjects
@@ -333,41 +373,6 @@ ksc.factory 'ksc.Record', [
         events.emit 'update', info
 
         return
-
-      @fakeArray: (value) ->
-        arr    = value._array
-        object = value
-        console.log 'value', value
-        console.log 'value._options', value._options
-        marked = {}
-        while object and object.constructor isnt Object
-          for key in Object.getOwnPropertyNames object
-            if key.substr(0, 1) is '_' and not has_own marked, key
-              marked[key] = Object.getOwnPropertyDescriptor object, key
-          object = Object.getPrototypeOf object
-        for own key of arr
-          if key.substr(0, 1) is '_' and not has_own marked, key
-            delete arr[key]
-        for key, desc of marked
-          Object.defineProperty arr, key, desc
-
-        unless arr.push._override
-          orig_push = arr.push
-          arr.push = (items...) ->
-            console.log 'pushy!', value, arr, value._options
-            orig_push.apply @, items
-
-          orig_unshift = arr.push
-          arr.unshift = (items...) ->
-            orig_unshift.apply @, items
-
-          orig_splice = arr.push
-          arr.splice = (items...) ->
-            orig_splice.apply @, items
-
-          arr.push._override = 1
-
-        arr
 
       ###
       Define _id for the record

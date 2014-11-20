@@ -49,7 +49,6 @@ ksc.factory 'ksc.RecordContract', [
       @param [object] contract description object
       ###
       constructor: (contract) ->
-        console.log 'contract:', contract
         if contract is null or contract instanceof RecordContract
           return contract
         unless is_object contract
@@ -94,22 +93,17 @@ ksc.factory 'ksc.RecordContract', [
               error.Type {type, contract: desc.contract, requiredType: 'object'}
             delete desc.type
 
-          if arr
-#             if arr.contract
-#               console.log 'creating array-subcontract off of:', arr.contract, arr
-#               arr.contract = new RecordContract {0: arr.contract}
-#             else
-            console.log 'array has no subcontract:', arr
-          else if desc.contract
-            desc.contract = new RecordContract desc.contract
-          else
-            if has_own(desc, 'default') and not has_own(desc, 'type') and
-            RecordContract.typeDefaults[typeof desc.default]?
-              desc.type = typeof desc.default
-            unless RecordContract.typeDefaults[desc.type]?
-              error.Type
-                type:     desc.type
-                required: 'array, boolean, number, object, string'
+          unless arr # array has no subcontract and is a type
+            if desc.contract
+              desc.contract = new RecordContract desc.contract
+            else
+              if has_own(desc, 'default') and not has_own(desc, 'type') and
+              RecordContract.typeDefaults[typeof desc.default]?
+                desc.type = typeof desc.default
+              unless RecordContract.typeDefaults[desc.type]?
+                error.Type
+                  type:     desc.type
+                  required: 'array, boolean, number, object, string'
 
           @_match key, @_default key # checks default value
 
