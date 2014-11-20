@@ -31,6 +31,8 @@ describe 'app.factory', ->
       r.a.push 3
       expect(r.a[2]).toBe 3
 
+      expect(-> r.a = [11, 12, 13, 14]).toThrow()
+
     it 'Method ._clone()', ->
       example = {id: 1, x: 2, y: {a: 3}, z: [0, 1, 2]}
       record = new Record example

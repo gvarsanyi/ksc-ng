@@ -66,7 +66,7 @@ ksc.factory 'ksc.Record', [
       _parent: undefined
 
       # @property [number|string] key on parent record
-      _parent_key: undefined
+      _parentKey: undefined
 
       # @property [number] record id
       _pseudo: undefined
@@ -145,12 +145,7 @@ ksc.factory 'ksc.Record', [
         record = @
         for key, value of record
           if is_object value
-            try
-              value = value._clone 1
-            catch err
-              console.log 'value', value, value._clone
-              console.log '  - record', record, key
-              throw err
+            value = value._clone 1
           clone[key] = value
         if return_plain_object
           return clone
@@ -253,7 +248,14 @@ ksc.factory 'ksc.Record', [
 #           getter = ->
 #             if value?._array then Record.arrayRecord(value) else value
 #           util.defineGetSet record, key, getter, 1
-          util.defineGetSet record, key, (-> value?._array or value), 1
+          setter = (val) ->
+            if contract
+              error.Permission
+                value:       val
+                description: 'Can not update on read-only array'
+            if is_object value, val
+              value._replace val
+          util.defineGetSet record, key, (-> value?._array or value), setter, 1
 
         # check if data is changing with the replacement
         if contract

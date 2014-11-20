@@ -4217,7 +4217,7 @@ ksc.factory('ksc.Record', [
 
       Record.prototype._parent = void 0;
 
-      Record.prototype._parent_key = void 0;
+      Record.prototype._parentKey = void 0;
 
       Record.prototype._pseudo = void 0;
 
@@ -4305,7 +4305,7 @@ ksc.factory('ksc.Record', [
        */
 
       Record.prototype._clone = function(return_plain_object) {
-        var clone, err, key, record, value;
+        var clone, key, record, value;
         if (return_plain_object == null) {
           return_plain_object = false;
         }
@@ -4314,14 +4314,7 @@ ksc.factory('ksc.Record', [
         for (key in record) {
           value = record[key];
           if (is_object(value)) {
-            try {
-              value = value._clone(1);
-            } catch (_error) {
-              err = _error;
-              console.log('value', value, value._clone);
-              console.log('  - record', record, key);
-              throw err;
-            }
+            value = value._clone(1);
           }
           clone[key] = value;
         }
@@ -4428,7 +4421,7 @@ ksc.factory('ksc.Record', [
         }
         changed = false;
         set_property = function(key, value) {
-          var class_ref, subopts;
+          var class_ref, setter, subopts;
           if (util.identical(record[key], value)) {
             return;
           }
@@ -4449,9 +4442,20 @@ ksc.factory('ksc.Record', [
             value = new class_ref(value, subopts, record, key);
           }
           changed = true;
+          setter = function(val) {
+            if (contract) {
+              error.Permission({
+                value: val,
+                description: 'Can not update on read-only array'
+              });
+            }
+            if (is_object(value, val)) {
+              return value._replace(val);
+            }
+          };
           return util.defineGetSet(record, key, (function() {
             return (value != null ? value._array : void 0) || value;
-          }), 1);
+          }), setter, 1);
         };
         if (contract) {
           if (!is_array(data)) {
