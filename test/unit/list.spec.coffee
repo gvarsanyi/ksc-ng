@@ -48,7 +48,6 @@ describe 'app.factory', ->
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
       len = list.unshift {id: 3, x: 'c'}, {id: 4, x: 'd'}
 
-      expect(-> list.push()).toThrow() # no argument passed
       expect(-> list.push true).toThrow() # no item argument passed
 
       expect(len).toBe 4

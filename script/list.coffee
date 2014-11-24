@@ -694,8 +694,6 @@ ksc.factory 'ksc.List', [
           record_class = record_opts.class or EditableRecord
           for item in items
             original = item
-            unless is_object item
-              error.Type {item, required: 'object'}
 
             if item instanceof record_class
               if item._parent and item._parent isnt list
