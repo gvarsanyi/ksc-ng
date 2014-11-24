@@ -2170,12 +2170,6 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                 for (_i = 0, _len = items.length; _i < _len; _i++) {
                     item = items[_i];
                     original = item;
-                    if (!is_object(item)) {
-                        error.Type({
-                            item: item,
-                            required: "object"
-                        });
-                    }
                     if (item instanceof record_class) {
                         if (item._parent && item._parent !== list) {
                             item._parent.cut(item);
@@ -2456,14 +2450,18 @@ ksc.factory("ksc.RecordContract", [ "ksc.error", "ksc.util", function(error, uti
 } ]);
 
 ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error", "ksc.util", function(EventEmitter, RecordContract, error, util) {
-    var EVENTS, ID, ID_PROPERTY, OPTIONS, PARENT, PARENT_KEY, PSEUDO, Record, define_value, has_own, is_array, is_object, object_required;
-    EVENTS = "_events";
-    ID = "_id";
+    var ARRAY, CONTRACT, ID_PROPERTY, Record, define_value, has_own, is_array, is_object, object_required, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PSEUDO, _SAVED;
+    _ARRAY = "_array";
+    _EVENTS = "_events";
+    _ID = "_id";
+    _OPTIONS = "_options";
+    _PARENT = "_parent";
+    _PARENT_KEY = "_parentKey";
+    _PSEUDO = "_pseudo";
+    _SAVED = "_saved";
+    ARRAY = "array";
+    CONTRACT = "contract";
     ID_PROPERTY = "idProperty";
-    OPTIONS = "_options";
-    PARENT = "_parent";
-    PARENT_KEY = "_parentKey";
-    PSEUDO = "_pseudo";
     define_value = util.defineValue;
     has_own = util.hasOwn;
     is_array = Array.isArray;
@@ -2486,6 +2484,7 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
         Record.prototype._parent = void 0;
         Record.prototype._parentKey = void 0;
         Record.prototype._pseudo = void 0;
+        Record.prototype._saved = void 0;
         function Record(data, options, parent, parent_key) {
             var key, record, ref, refs, _i, _len, _ref;
             if (data == null) {
@@ -2494,16 +2493,22 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
             if (options == null) {
                 options = {};
             }
+            if (!is_object(data)) {
+                error.Type({
+                    data: data,
+                    required: "object"
+                });
+            }
             object_required("data", data, 1);
             object_required("options", options, 2);
             record = this;
-            define_value(record, OPTIONS, options);
-            if (has_own(options, "contract")) {
-                options.contract = new RecordContract(options.contract);
+            define_value(record, _OPTIONS, options);
+            if (has_own(options, CONTRACT)) {
+                options[CONTRACT] = new RecordContract(options[CONTRACT]);
             }
             if (parent != null || parent_key != null) {
                 object_required("options", parent, 3);
-                define_value(record, PARENT, parent);
+                define_value(record, _PARENT, parent);
                 if (parent_key != null) {
                     if (!util.isKeyConform(parent_key)) {
                         error.Type({
@@ -2512,9 +2517,9 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                             required: "key conform value"
                         });
                     }
-                    define_value(record, PARENT_KEY, parent_key);
-                    delete record[ID];
-                    delete record[PSEUDO];
+                    define_value(record, _PARENT_KEY, parent_key);
+                    delete record[_ID];
+                    delete record[_PSEUDO];
                 }
             }
             _ref = util.propertyRefs(Object.getPrototypeOf(record));
@@ -2528,16 +2533,16 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                 }
             }
             if (parent_key == null) {
-                define_value(record, ID, void 0);
-                define_value(record, PSEUDO, void 0);
-                define_value(record, EVENTS, new EventEmitter());
-                record[EVENTS].halt();
+                define_value(record, _ID, void 0);
+                define_value(record, _PSEUDO, void 0);
+                define_value(record, _EVENTS, new EventEmitter());
+                record[_EVENTS].halt();
             }
             record._replace(data);
             if (parent_key != null) {
-                define_value(record, EVENTS, null);
+                define_value(record, _EVENTS, null);
             } else {
-                record[EVENTS].unhalt();
+                record[_EVENTS].unhalt();
             }
             RecordContract.finalizeRecord(record);
         }
@@ -2563,20 +2568,10 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
         Record.prototype._entity = function() {
             return this._clone(1);
         };
-        Record.prototype._replace = function(data, emit_event) {
-            var arr, changed, contract, id_property, id_property_contract_check, key, options, part, record, set_property, value, _i, _len;
-            if (emit_event == null) {
-                emit_event = true;
-            }
-            record = this;
-            if (record[EVENTS] === null) {
-                error.Permission({
-                    key: record[PARENT_KEY],
-                    description: "can not replace subobject"
-                });
-            }
-            options = record[OPTIONS];
-            contract = options.contract;
+        Record.initIdProperty = function(record, data) {
+            var contract, id_property, id_property_contract_check, key, options, part, _i, _len, _results;
+            options = record[_OPTIONS];
+            contract = options[CONTRACT];
             if (options[ID_PROPERTY] == null) {
                 for (key in data) {
                     options[ID_PROPERTY] = key;
@@ -2602,103 +2597,160 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                     }
                 }
             };
-            if (record[EVENTS]) {
+            if (record[_EVENTS]) {
                 if (id_property = options[ID_PROPERTY]) {
                     if (id_property instanceof Array) {
+                        _results = [];
                         for (_i = 0, _len = id_property.length; _i < _len; _i++) {
                             part = id_property[_i];
                             id_property_contract_check(part);
-                            if (data[part] == null) {
-                                data[part] = null;
-                            }
+                            _results.push(data[part] != null ? data[part] : data[part] = null);
                         }
+                        return _results;
                     } else {
                         id_property_contract_check(id_property);
-                        if (data[id_property] == null) {
-                            data[id_property] = null;
-                        }
+                        return data[id_property] != null ? data[id_property] : data[id_property] = null;
                     }
                 }
             }
-            changed = false;
-            set_property = function(key, value) {
-                var class_ref, setter, subopts;
-                if (util.identical(record[key], value)) {
-                    return;
+        };
+        Record.prototype._valueCheck = function(key, value) {
+            var contract;
+            if (contract = this[_OPTIONS][CONTRACT]) {
+                return contract._match(this[_ARRAY] ? "all" : key, value);
+            } else {
+                if (key.substr(0, 1) === "_") {
+                    error.Key({
+                        key: key,
+                        description: 'can not start with "_"'
+                    });
                 }
-                if (is_object(value)) {
-                    if (value instanceof Record) {
-                        value = value._clone(1);
-                    }
-                    class_ref = options.subtreeClass || Record;
-                    subopts = {};
-                    if (contract != null ? contract[key].contract : void 0) {
-                        subopts.contract = contract[key].contract;
-                    }
-                    if (contract != null ? contract[key].array : void 0) {
-                        subopts.contract = {
-                            all: contract[key].array
+                if (typeof value === "function") {
+                    return error.Type({
+                        value: value,
+                        description: "can not be function"
+                    });
+                }
+            }
+        };
+        Record.valueWrap = function(record, key, value) {
+            var class_ref, contract, key_contract, opt, subopts;
+            contract = record[_OPTIONS][CONTRACT];
+            if (is_object(value)) {
+                if (value instanceof Record) {
+                    value = value._clone(1);
+                }
+                class_ref = record[_OPTIONS].subtreeClass || Record;
+                if (key_contract = contract != null ? contract[key] : void 0) {
+                    if (opt = key_contract[ARRAY]) {
+                        subopts = {
+                            contract: {
+                                all: opt
+                            }
                         };
                     }
-                    value = new class_ref(value, subopts, record, key);
-                }
-                changed = true;
-                setter = function(val) {
-                    if (contract) {
-                        error.Permission({
-                            value: val,
-                            description: "Can not update on read-only array"
-                        });
-                    }
-                    if (is_object(value, val)) {
-                        return value._replace(val);
-                    }
-                };
-                return util.defineGetSet(record, key, function() {
-                    return (value != null ? value._array : void 0) || value;
-                }, setter, 1);
-            };
-            if (contract) {
-                if (!is_array(data)) {
-                    for (key in data) {
-                        value = data[key];
-                        contract._match(key, value);
-                    }
-                    for (key in contract) {
-                        value = has_own(data, key) ? data[key] : contract._default(key);
-                        set_property(key, value);
+                    if (opt = key_contract[CONTRACT]) {
+                        subopts = {
+                            contract: opt
+                        };
                     }
                 }
+                value = new class_ref(value, subopts, record, key);
+            }
+            return value;
+        };
+        Record.prototype._initProperty = function(key, value) {
+            var record;
+            record = this;
+            record._valueCheck(key, value);
+            if (has_own(record, key) && util.identical(value, record[key])) {
+                return;
+            }
+            record._removeProperty(key);
+            value = Record.valueWrap(record, key, value);
+            define_value(record[_SAVED], key, value, 0, 1);
+            util.defineGetSet(record, key, function() {
+                return record._getProperty(key);
+            }, function(val) {
+                return record._setProperty(key, val);
+            }, 1);
+            return true;
+        };
+        Record.prototype._getProperty = function(key) {
+            var value;
+            value = this[_SAVED][key];
+            if (!(value != null ? value[_ARRAY] : void 0)) {
+                return value;
+            }
+            return Record.arrayRecord(value[_ARRAY]);
+        };
+        Record.prototype._setProperty = function(key, value) {
+            return error.Permission({
+                key: key,
+                value: value,
+                description: "Read-only Record"
+            });
+        };
+        Record.prototype._removeProperty = function(key) {
+            delete this[key];
+            return delete this[_SAVED][key];
+        };
+        Record.prototype._replace = function(data, emit_event) {
+            var arr, arrayified, changed, contract, key, options, record, value;
+            if (emit_event == null) {
+                emit_event = true;
+            }
+            record = this;
+            options = record[_OPTIONS];
+            contract = options[CONTRACT];
+            if (record[_EVENTS] === null) {
+                error.Permission({
+                    key: record[_PARENT_KEY],
+                    description: "can not replace subobject"
+                });
+            }
+            Record.initIdProperty(record, data);
+            changed = false;
+            if (is_array(data)) {
+                if (!(arr = record[_ARRAY])) {
+                    define_value(record, _ARRAY, arr = []);
+                } else {
+                    util.empty(arr);
+                }
+                util.arrayGetterify(arr, function(index, value) {
+                    if (arrayified) {
+                        return record._setProperty(key, value);
+                    } else {
+                        return record._initProperty(key, value);
+                    }
+                });
+                arrayified = 1;
             } else {
-                for (key in data) {
-                    value = data[key];
-                    if (key.substr(0, 1) === "_") {
-                        error.Key({
-                            key: key,
-                            description: 'can not start with "_"'
-                        });
-                    }
-                    if (typeof value === "function") {
-                        error.Type({
-                            value: value,
-                            description: "can not be function"
-                        });
-                    }
-                    set_property(key, value);
-                }
-                for (key in record) {
-                    if (!!has_own(data, key)) {
-                        continue;
-                    }
-                    delete record[key];
+                delete record[_ARRAY];
+            }
+            for (key in data) {
+                value = data[key];
+                if (record._initProperty(key, value)) {
                     changed = true;
                 }
             }
-            if (is_array(data)) {
-                if (!(arr = record._array)) {
-                    define_value(record, "_array", arr = []);
+            if (!is_array(data)) {
+                if (contract) {
+                    for (key in contract) {
+                        if (!has_own(data, key)) {
+                            if (record._initProperty(key, contract._default(key))) {
+                                changed = true;
+                            }
+                        }
+                    }
                 } else {
-                    util.empty(arr);
+                    for (key in record) {
+                        if (!!has_own(data, key)) {
+                            continue;
+                        }
+                        record._removeProperty(key);
+                        changed = true;
+                    }
                 }
                 util.arrayGetterify(arr, function(index, value) {
                     var class_ref, subopts;
@@ -2719,8 +2771,8 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                         }
                         class_ref = options.subtreeClass || Record;
                         subopts = {};
-                        if (contract != null ? contract.all.contract : void 0) {
-                            subopts.contract = contract.all.contract;
+                        if (contract != null ? contract.all[CONTRACT] : void 0) {
+                            subopts[CONTRACT] = contract.all[CONTRACT];
                         }
                         value = new class_ref(value, subopts, record, index);
                     }
@@ -2731,17 +2783,15 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                 if (contract && !Object.isFrozen(arr)) {
                     Object.freeze(arr);
                 }
-            } else {
-                define_value(record, "_array", void 0);
             }
-            if (changed && record[EVENTS] && emit_event) {
+            if (changed && record[_EVENTS] && emit_event) {
                 Record.emitUpdate(record, "replace");
             }
             return changed;
         };
         Record.arrayRecord = function(record) {
             var arr, desc, key, marked, object, _i, _len, _ref;
-            arr = record._array;
+            arr = record[_ARRAY];
             object = record;
             marked = {};
             while (object && object.constructor !== Object) {
@@ -2773,9 +2823,9 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
             }
             path = [];
             source = record;
-            while (!(events = source[EVENTS])) {
-                path.unshift(source[PARENT_KEY]);
-                source = source[PARENT];
+            while (!(events = source[_EVENTS])) {
+                path.unshift(source[_PARENT_KEY]);
+                source = source[_PARENT];
             }
             info = {
                 node: record
@@ -2789,10 +2839,10 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                 value = extra_info[key];
                 info[key] = value;
             }
-            old_id = source[ID];
+            old_id = source[_ID];
             Record.setId(source);
-            if (!source[EVENTS]._halt) {
-                if ((_ref = source[PARENT]) != null) {
+            if (!source[_EVENTS]._halt) {
+                if ((_ref = source[_PARENT]) != null) {
                     if (typeof _ref._recordChange === "function") {
                         _ref._recordChange(source, info, old_id);
                     }
@@ -2802,7 +2852,7 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
         };
         Record.setId = function(record) {
             var composite, i, id, id_property, part, value, _i, _len;
-            if (id_property = record[OPTIONS][ID_PROPERTY]) {
+            if (id_property = record[_OPTIONS][ID_PROPERTY]) {
                 if (id_property instanceof Array) {
                     composite = [];
                     for (i = _i = 0, _len = id_property.length; _i < _len; i = ++_i) {
@@ -2814,11 +2864,11 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
                         }
                     }
                     id = composite.length ? composite.join("-") : null;
-                    define_value(record, ID, id);
+                    define_value(record, _ID, id);
                     define_value(record, "_primaryId", record[id_property[0]]);
                 } else {
                     value = record[id_property];
-                    define_value(record, ID, value != null ? value : null);
+                    define_value(record, _ID, value != null ? value : null);
                 }
             }
         };
@@ -3335,6 +3385,199 @@ ksc.service("ksc.restUtil", [ "$q", "ksc.error", function($q, error) {
     }();
 } ]);
 
+ksc.factory("ksc.trackArray", [ "ksc.error", "ksc.util", function(error, util) {
+    var TrackedArray, define_get_set, define_getter, define_value, get_fn, has_own, set_fn;
+    define_get_set = util.defineGetSet;
+    define_value = util.defineValue;
+    has_own = util.hasOwn;
+    define_getter = function(tracker, list, store, index) {
+        return define_get_set(list, index, function() {
+            return get_fn(store, tracker.getter, index);
+        }, function(val) {
+            return set_fn(store, tracker.setter, index, val);
+        }, 1);
+    };
+    get_fn = function(store, getter, index) {
+        if (getter) {
+            getter(index, store[index]);
+        }
+        return store[index];
+    };
+    set_fn = function(store, setter, index, value) {
+        var work;
+        work = function() {
+            if (arguments.length) {
+                value = arguments[0];
+            }
+            if (store[index] === value) {
+                return false;
+            }
+            store[index] = value;
+            return true;
+        };
+        if (setter) {
+            return setter(index, value, work);
+        } else {
+            return work();
+        }
+    };
+    TrackedArray = function() {
+        TrackedArray.prototype.get = void 0;
+        TrackedArray.prototype.list = void 0;
+        TrackedArray.prototype.set = void 0;
+        TrackedArray.prototype.store = void 0;
+        function TrackedArray(list, store, setter, getter) {
+            var fnize, index, tracker, value, _i, _len;
+            this.list = list;
+            this.store = store != null ? store : {};
+            if (has_own(list, "_tracker")) {
+                error.Value({
+                    list: list,
+                    description: "List is already tracked"
+                });
+            }
+            if (!Array.isArray(list)) {
+                error.Type({
+                    list: list,
+                    description: "Must be an array"
+                });
+            }
+            if (typeof store !== "object") {
+                error.Type({
+                    store: store,
+                    description: "Must be an object"
+                });
+            }
+            tracker = this;
+            define_value(list, "_tracker", tracker);
+            define_value(tracker, "list", list, 0, 1);
+            define_value(tracker, "store", store, 0, 1);
+            fnize = function(fn) {
+                if (fn == null) {
+                    fn = null;
+                } else if (typeof fn !== "function") {
+                    error.Type({
+                        fn: fn,
+                        "Must be a function": "Must be a function"
+                    });
+                }
+                return fn;
+            };
+            getter = fnize(getter);
+            setter = fnize(setter);
+            define_get_set(tracker, "get", getter, function(fn) {
+                return getter = fnize(fn);
+            }, 1);
+            define_get_set(tracker, "set", setter, function(fn) {
+                return setter = fnize(fn);
+            }, 1);
+            for (index = _i = 0, _len = list.length; _i < _len; index = ++_i) {
+                value = list[index];
+                define_getter(tracker, list, store, index);
+                set_fn(store, setter, index, value);
+            }
+            return list;
+        }
+        return TrackedArray;
+    }();
+    return function() {
+        var args, fn, orig_fn, _fn, _i, _len, _ref;
+        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        (function(func, args, ctor) {
+            ctor.prototype = func.prototype;
+            var child = new ctor(), result = func.apply(child, args);
+            return Object(result) === result ? result : child;
+        })(TrackedArray, args, function() {});
+        _ref = [ "push", "unshift", "splice" ];
+        _fn = function(orig_fn, fn) {
+            var decor;
+            decor = function() {
+                var args, cache, err, i, item, k, orig_len, res, v, _j, _len1;
+                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+                orig_len = cache_arr.length;
+                cache = {};
+                for (k in store) {
+                    v = store[k];
+                    cache[k] = v;
+                }
+                for (i = _j = 0, _len1 = arr.length; _j < _len1; i = ++_j) {
+                    item = arr[i];
+                    define_value(arr, i, get_fn(i), 1, 1);
+                }
+                try {
+                    res = orig_fn.apply(this, args);
+                    check_indexes();
+                } catch (_error) {
+                    err = _error;
+                    Util.empty(arr, store);
+                    arr.push.apply(arr, function() {
+                        var _k, _len2, _results;
+                        _results = [];
+                        for (_k = 0, _len2 = cache_arr.length; _k < _len2; _k++) {
+                            item = cache_arr[_k];
+                            _results.push(item);
+                        }
+                        return _results;
+                    }());
+                    for (k in cache_store) {
+                        v = cache_store[k];
+                        store[k] = v;
+                    }
+                    throw err;
+                }
+                return res;
+            };
+            return define_value(arr, fn, decor, 0);
+        };
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            fn = _ref[_i];
+            orig_fn = arr[fn];
+            _fn(orig_fn, fn);
+        }
+        define_value(arr, "pop", function() {
+            var idx, res;
+            idx = arr.length - 1;
+            res = arr[idx];
+            delete store[idx];
+            arr.length = idx;
+            return res;
+        });
+        define_value(arr, "shift", function() {
+            var i, idx, res, _j;
+            idx = arr.length - 1;
+            res = arr[idx];
+            for (i = _j = 0; _j < idx; i = _j += 1) {
+                store[i] = store[i + 1];
+            }
+            delete store[idx];
+            arr.length = idx;
+            return res;
+        });
+        define_value(arr, "splice", function() {
+            var add, cut, i, idx, len, res, start, _j, _k;
+            start = arguments[0], cut = arguments[1], add = 3 <= arguments.length ? __slice.call(arguments, 2) : [];
+            len = arr.length;
+            if (start < 0) {
+                start = Math.min(0, len + start);
+            } else if (start > len) {
+                start = len;
+            }
+            for (i = _j = 0; _j < idx; i = _j += 1) {
+                store[i] = store[i + 1];
+            }
+            idx = arr.length - 1;
+            res = arr[idx];
+            for (i = _k = 0; _k < idx; i = _k += 1) {
+                store[i] = store[i + 1];
+            }
+            delete store[idx];
+            arr.length = idx;
+            return res;
+        });
+        return arr;
+    };
+} ]);
+
 ksc.service("ksc.util", [ "ksc.error", function(error) {
     var Util, arg_check, define_property, define_value, get_own_property_descriptor, get_prototype_of, has_own, is_object;
     define_property = Object.defineProperty;
@@ -3350,90 +3593,6 @@ ksc.service("ksc.util", [ "ksc.error", function(error) {
     };
     Util = function() {
         function Util() {}
-        Util.arrayGetterify = function(arr, pre_set_fn, post_set_fn) {
-            var check_indexes, fn, getterify, i, item, orig_fn, original, setter, _fn, _i, _j, _len, _len1, _ref;
-            if (!arr._getterified) {
-                define_value(arr, "_getterified", 1);
-                original = [];
-                setter = function(index, value) {
-                    if (original[index] !== value) {
-                        if (pre_set_fn != null) {
-                            value = pre_set_fn(index, value);
-                        }
-                        original[index] = value;
-                        return typeof post_set_fn === "function" ? post_set_fn(index, value) : void 0;
-                    }
-                };
-                getterify = function(index, value) {
-                    setter(index, value);
-                    return Util.defineGetSet(arr, index, function() {
-                        return original[index];
-                    }, function(val) {
-                        return setter(index, val);
-                    }, 1);
-                };
-                for (i = _i = 0, _len = arr.length; _i < _len; i = ++_i) {
-                    item = arr[i];
-                    getterify(i, item);
-                }
-                check_indexes = function() {
-                    var len, orig_length, _j, _k, _ref, _ref1;
-                    len = arr.length;
-                    orig_length = original.length;
-                    for (i = _j = 0, _ref = orig_length - len; _j < _ref; i = _j += 1) {
-                        original.pop();
-                    }
-                    for (i = _k = 0; _k < len; i = _k += 1) {
-                        if (!((_ref1 = get_own_property_descriptor(arr, i)) != null ? _ref1.get : void 0)) {
-                            getterify(i, arr[i]);
-                        }
-                    }
-                };
-                _ref = [ "push", "unshift", "splice" ];
-                _fn = function(orig_fn, fn) {
-                    var decor;
-                    decor = function() {
-                        var args, cache, err, res;
-                        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                        cache = function() {
-                            var _k, _len2, _results;
-                            _results = [];
-                            for (_k = 0, _len2 = original.length; _k < _len2; _k++) {
-                                item = original[_k];
-                                _results.push(item);
-                            }
-                            return _results;
-                        }();
-                        try {
-                            res = orig_fn.apply(this, args);
-                            check_indexes();
-                        } catch (_error) {
-                            err = _error;
-                            Util.empty(original);
-                            original.push.apply(original, function() {
-                                var _k, _len2, _results;
-                                _results = [];
-                                for (_k = 0, _len2 = cache.length; _k < _len2; _k++) {
-                                    item = cache[_k];
-                                    _results.push(item);
-                                }
-                                return _results;
-                            }());
-                            arr.length = cache.length;
-                            throw err;
-                        }
-                        return res;
-                    };
-                    return define_value(arr, fn, decor, 1);
-                };
-                for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
-                    fn = _ref[_j];
-                    orig_fn = arr[fn];
-                    _fn(orig_fn, fn);
-                }
-            }
-            return arr;
-        };
         Util.defineGetSet = function(object, key, getter, setter, enumerable) {
             if (typeof setter !== "function") {
                 enumerable = setter;

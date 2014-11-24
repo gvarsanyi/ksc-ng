@@ -96,6 +96,9 @@ ksc.factory 'ksc.Record', [
       @param [number|string] parent_key (optional) parent record's key
       ###
       constructor: (data={}, options={}, parent, parent_key) ->
+        unless is_object data
+          error.Type {data, required: 'object'}
+
         object_required 'data',    data,    1
         object_required 'options', options, 2
 
