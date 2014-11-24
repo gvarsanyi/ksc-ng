@@ -3,13 +3,17 @@ ksc.factory 'ksc.Record', [
   'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util',
   (EventEmitter, RecordContract, error, util) ->
 
-    EVENTS      = '_events'
-    ID          = '_id'
+    _ARRAY      = '_array'
+    _EVENTS     = '_events'
+    _ID         = '_id'
+    _OPTIONS    = '_options'
+    _PARENT     = '_parent'
+    _PARENT_KEY = '_parentKey'
+    _PSEUDO     = '_pseudo'
+    _SAVED      = '_saved'
+    ARRAY       = 'array'
+    CONTRACT    = 'contract'
     ID_PROPERTY = 'idProperty'
-    OPTIONS     = '_options'
-    PARENT      = '_parent'
-    PARENT_KEY  = '_parentKey'
-    PSEUDO      = '_pseudo'
 
     define_value = util.defineValue
     has_own      = util.hasOwn
@@ -71,6 +75,9 @@ ksc.factory 'ksc.Record', [
       # @property [number] record id
       _pseudo: undefined
 
+      # @property [object] container of saved data
+      _saved: undefined
+
 
       ###
       Create the Record instance with initial data and options
@@ -94,14 +101,14 @@ ksc.factory 'ksc.Record', [
 
         record = @
 
-        define_value record, OPTIONS, options
+        define_value record, _OPTIONS, options
 
-        if has_own options, 'contract'
-          options.contract = new RecordContract options.contract
+        if has_own options, CONTRACT
+          options[CONTRACT] = new RecordContract options[CONTRACT]
 
         if parent? or parent_key?
           object_required 'options', parent, 3
-          define_value record, PARENT, parent
+          define_value record, _PARENT, parent
 
           if parent_key?
             unless util.isKeyConform parent_key
@@ -109,9 +116,9 @@ ksc.factory 'ksc.Record', [
                 parent_key: parent_key
                 argument:   4
                 required:   'key conform value'
-            define_value record, PARENT_KEY, parent_key
-            delete record[ID]
-            delete record[PSEUDO]
+            define_value record, _PARENT_KEY, parent_key
+            delete record[_ID]
+            delete record[_PSEUDO]
 
         # hide (set to non-enumerable) non-data properties/methods
         for key, refs of util.propertyRefs Object.getPrototypeOf record
@@ -119,17 +126,17 @@ ksc.factory 'ksc.Record', [
             Object.defineProperty ref, key, enumerable: false
 
         unless parent_key?
-          define_value record, ID, undefined
-          define_value record, PSEUDO, undefined
-          define_value record, EVENTS, new EventEmitter
-          record[EVENTS].halt()
+          define_value record, _ID, undefined
+          define_value record, _PSEUDO, undefined
+          define_value record, _EVENTS, new EventEmitter
+          record[_EVENTS].halt()
 
         record._replace data
 
         if parent_key?
-          define_value record, EVENTS, null
+          define_value record, _EVENTS, null
         else
-          record[EVENTS].unhalt()
+          record[_EVENTS].unhalt()
 
         RecordContract.finalizeRecord record
 
@@ -185,22 +192,9 @@ ksc.factory 'ksc.Record', [
 
       @return [boolean] indicates change in data
       ###
-      _replace: (data, emit_event=true) ->
-        record = @
-
-        # _replace() is not allowed on subnodes, only for the first run
-        # here it checks against record._events, possible values are:
-        #  - object: top-level node
-        #  - undefined: subnode, but this is init time
-        #  - null: subnode, but this is post init time (should throw an error)
-        if record[EVENTS] is null
-          error.Permission
-            key:         record[PARENT_KEY]
-            description: 'can not replace subobject'
-
-        options = record[OPTIONS]
-
-        contract = options.contract
+      @initIdProperty: (record, data) ->
+        options  = record[_OPTIONS]
+        contract = options[CONTRACT]
 
         unless options[ID_PROPERTY]? # assign first as ID
           for key of data
@@ -214,7 +208,7 @@ ksc.factory 'ksc.Record', [
             unless contract[key].type in ['string', 'number']
               error.ContractBreak {key, contract, required: 'string or number'}
 
-        if record[EVENTS] # a top-level node of record (create _id on top only)
+        if record[_EVENTS] # a top-level node of record (create _id on top only)
           if id_property = options[ID_PROPERTY]
             if id_property instanceof Array
               for part in id_property
@@ -224,68 +218,112 @@ ksc.factory 'ksc.Record', [
               id_property_contract_check id_property
               data[id_property] ?= null
 
+
+      _valueCheck: (key, value) ->
+        if contract = @[_OPTIONS][CONTRACT]
+          contract._match (if @[_ARRAY] then 'all' else key), value
+        else
+          if key.substr(0, 1) is '_'
+            error.Key {key, description: 'can not start with "_"'}
+          if typeof value is 'function'
+            error.Type {value, description: 'can not be function'}
+
+      @valueWrap: (record, key, value) ->
+        contract = record[_OPTIONS][CONTRACT]
+
+        if is_object value
+          if value instanceof Record
+            value = value._clone 1
+
+          class_ref = record[_OPTIONS].subtreeClass or Record
+
+          if key_contract = contract?[key]
+            if opt = key_contract[ARRAY]
+              subopts = contract: all: opt
+            if opt = key_contract[CONTRACT]
+              subopts = contract: opt
+          value = new class_ref value, subopts, record, key
+
+        value
+
+      _initProperty: (key, value) ->
+        record = @
+
+        record._valueCheck key, value
+
+        if has_own(record, key) and util.identical value, record[key]
+          return
+
+        record._removeProperty key
+
+        value = Record.valueWrap record, key, value
+
+        define_value record[_SAVED], key, value, 0, 1
+        util.defineGetSet record, key, (-> record._getProperty key),
+                          ((val) -> record._setProperty key, val), 1
+        true
+
+      _getProperty: (key) ->
+        value = @[_SAVED][key]
+        unless value?[_ARRAY]
+          return value
+        Record.arrayRecord value[_ARRAY]
+
+      _setProperty: (key, value) ->
+        error.Permission {key, value, description: 'Read-only Record'}
+
+      _removeProperty: (key) ->
+        delete @[key]
+        delete @[_SAVED][key]
+
+      _replace: (data, emit_event=true) ->
+        record   = @
+        options  = record[_OPTIONS]
+        contract = options[CONTRACT]
+
+        # _replace() is not allowed on subnodes, only for the first run
+        # here it checks against record._events, possible values are:
+        #  - object: top-level node
+        #  - undefined: subnode, but this is init time
+        #  - null: subnode, but this is post init time (should throw an error)
+        if record[_EVENTS] is null
+          error.Permission
+            key:         record[_PARENT_KEY]
+            description: 'can not replace subobject'
+
+        Record.initIdProperty record, data
+
         changed = false
 
-        set_property = (key, value) ->
-          if util.identical record[key], value
-            return
-
-          if is_object value
-            if value instanceof Record
-              value = value._clone 1
-
-            class_ref = options.subtreeClass or Record
-
-            subopts = {}
-            if contract?[key].contract
-              subopts.contract = contract[key].contract
-            if contract?[key].array
-              subopts.contract = all: contract[key].array
-
-            value = new class_ref value, subopts, record, key
-
-          changed = true
-#           getter = ->
-#             if value?._array then Record.arrayRecord(value) else value
-#           util.defineGetSet record, key, getter, 1
-          setter = (val) ->
-            if contract
-              error.Permission
-                value:       val
-                description: 'Can not update on read-only array'
-            if is_object value, val
-              value._replace val
-          util.defineGetSet record, key, (-> value?._array or value), setter, 1
-
-        # check if data is changing with the replacement
-        if contract
-          unless is_array data
-            for key, value of data
-              contract._match key, value
-
-            for key of contract
-              value = if has_own(data, key)
-                data[key]
-              else
-                contract._default key
-              set_property key, value
-        else
-          for key, value of data
-            if key.substr(0, 1) is '_'
-              error.Key {key, description: 'can not start with "_"'}
-            if typeof value is 'function'
-              error.Type {value, description: 'can not be function'}
-            set_property key, value
-
-          for key of record when not has_own data, key
-            delete record[key]
-            changed = true
-
         if is_array data
-          unless arr = record._array
-            define_value record, '_array', arr = []
+          unless arr = record[_ARRAY]
+            define_value record, _ARRAY, arr = []
           else
             util.empty arr
+
+          util.arrayGetterify arr, (index, value) ->
+            if arrayified
+              record._setProperty key, value
+            else
+              record._initProperty key, value
+
+          arrayified = 1
+        else
+          delete record[_ARRAY]
+
+        for key, value of data
+          if record._initProperty key, value
+            changed = true
+
+        unless is_array data
+          if contract
+            for key of contract when not has_own data, key
+              if record._initProperty key, contract._default key
+                changed = true
+          else
+            for key of record when not has_own data, key
+              record._removeProperty key
+              changed = true
 
           util.arrayGetterify arr, (index, value) ->
             if Object.isFrozen arr
@@ -303,8 +341,8 @@ ksc.factory 'ksc.Record', [
               class_ref = options.subtreeClass or Record
 
               subopts = {}
-              if contract?.all.contract
-                subopts.contract = contract.all.contract
+              if contract?.all[CONTRACT]
+                subopts[CONTRACT] = contract.all[CONTRACT]
 
               value = new class_ref value, subopts, record, index
             value
@@ -314,17 +352,15 @@ ksc.factory 'ksc.Record', [
           Record.arrayRecord record
           if contract and not Object.isFrozen arr
             Object.freeze arr
-        else
-          define_value record, '_array', undefined
 
-        if changed and record[EVENTS] and emit_event
+        if changed and record[_EVENTS] and emit_event
           Record.emitUpdate record, 'replace'
 
         changed
 
 
       @arrayRecord: (record) ->
-        arr    = record._array
+        arr    = record[_ARRAY]
         object = record
         marked = {}
         while object and object.constructor isnt Object
@@ -353,9 +389,9 @@ ksc.factory 'ksc.Record', [
         path   = []
         source = record
 
-        until events = source[EVENTS]
-          path.unshift source[PARENT_KEY]
-          source = source[PARENT]
+        until events = source[_EVENTS]
+          path.unshift source[_PARENT_KEY]
+          source = source[_PARENT]
 
         info = {node: record}
         unless record is source
@@ -366,11 +402,11 @@ ksc.factory 'ksc.Record', [
         for key, value of extra_info
           info[key] = value
 
-        old_id = source[ID]
+        old_id = source[_ID]
         Record.setId source
 
-        unless source[EVENTS]._halt
-          source[PARENT]?._recordChange? source, info, old_id
+        unless source[_EVENTS]._halt
+          source[_PARENT]?._recordChange? source, info, old_id
 
         events.emit 'update', info
 
@@ -401,7 +437,7 @@ ksc.factory 'ksc.Record', [
       @return [undefined]
       ###
       @setId: (record) ->
-        if id_property = record[OPTIONS][ID_PROPERTY]
+        if id_property = record[_OPTIONS][ID_PROPERTY]
           if id_property instanceof Array
             composite = []
             for part, i in id_property
@@ -410,11 +446,11 @@ ksc.factory 'ksc.Record', [
               else unless i # if first part is unset, fall back to null
                 break
             id = if composite.length then composite.join('-') else null
-            define_value record, ID, id
+            define_value record, _ID, id
             define_value record, '_primaryId', record[id_property[0]]
           else
             value = record[id_property]
-            define_value record, ID, if value? then value else null
+            define_value record, _ID, if value? then value else null
 
         return
 ]

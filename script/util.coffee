@@ -19,56 +19,6 @@ ksc.service 'ksc.util', [
     ###
     class Util
 
-      @arrayGetterify: (arr, pre_set_fn, post_set_fn) ->
-        unless arr._getterified
-          define_value arr, '_getterified', 1
-
-          original = []
-
-          setter = (index, value) ->
-            unless original[index] is value
-              if pre_set_fn?
-                value = pre_set_fn index, value
-              original[index] = value
-              post_set_fn? index, value
-
-          getterify = (index, value) ->
-            setter index, value
-            Util.defineGetSet arr, index, (-> original[index]),
-                              ((val) -> setter index, val), 1
-
-          for item, i in arr
-            getterify i, item
-
-          check_indexes = ->
-            len = arr.length
-            orig_length = original.length
-            for i in [0 ... orig_length - len] by 1
-              original.pop()
-            for i in [0 ... len] by 1
-              unless get_own_property_descriptor(arr, i)?.get
-                getterify i, arr[i]
-            return
-
-          for fn in ['push', 'unshift', 'splice']
-            orig_fn = arr[fn]
-            do (orig_fn, fn) ->
-              decor = (args...) ->
-                cache = (item for item in original)
-                try
-                  res = orig_fn.apply @, args
-                  check_indexes()
-                catch err
-                  Util.empty original
-                  original.push (item for item in cache)...
-                  arr.length = cache.length
-                  throw err
-                res
-              define_value arr, fn, decor, 1
-
-        arr
-
-
       ###
       Add/update an object property with a getter and an (optional) setter
 
