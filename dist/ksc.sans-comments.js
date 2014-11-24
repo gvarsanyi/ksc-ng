@@ -2170,12 +2170,6 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                 for (_i = 0, _len = items.length; _i < _len; _i++) {
                     item = items[_i];
                     original = item;
-                    if (!is_object(item)) {
-                        error.Type({
-                            item: item,
-                            required: "object"
-                        });
-                    }
                     if (item instanceof record_class) {
                         if (item._parent && item._parent !== list) {
                             item._parent.cut(item);
@@ -2462,6 +2456,12 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
             }
             if (options == null) {
                 options = {};
+            }
+            if (!is_object(data)) {
+                error.Type({
+                    data: data,
+                    required: "object"
+                });
             }
             object_required("data", data, 1);
             object_required("options", options, 2);
