@@ -5,19 +5,17 @@ ksc.factory 'ksc.Record', [
   (ArrayTracker, EventEmitter, RecordContract, error,
    util) ->
 
-    _ARRAY        = '_array'
-    _DELETED_KEYS = '_deletedKeys'
-    _EDITED       = '_edited'
-    _EVENTS       = '_events'
-    _ID           = '_id'
-    _OPTIONS      = '_options'
-    _PARENT       = '_parent'
-    _PARENT_KEY   = '_parentKey'
-    _PSEUDO       = '_pseudo'
-    _SAVED        = '_saved'
-    ARRAY         = 'array'
-    CONTRACT      = 'contract'
-    ID_PROPERTY   = 'idProperty'
+    _ARRAY      = '_array'
+    _EVENTS     = '_events'
+    _ID         = '_id'
+    _OPTIONS    = '_options'
+    _PARENT     = '_parent'
+    _PARENT_KEY = '_parentKey'
+    _PSEUDO     = '_pseudo'
+    _SAVED      = '_saved'
+    ARRAY       = 'array'
+    CONTRACT    = 'contract'
+    ID_PROPERTY = 'idProperty'
 
     define_value = util.defineValue
     has_own      = util.hasOwn
@@ -193,8 +191,6 @@ ksc.factory 'ksc.Record', [
       @throw [KeyError] Keys can not start with underscore
 
       @param [object] data Key-value map of data
-      @param [boolean] emit_event if replace should trigger event emission
-        (defaults to true)
 
       @event 'update' sends out message on changes:
         events.emit {node: record, action: 'replace'}
@@ -256,36 +252,26 @@ ksc.factory 'ksc.Record', [
         value
 
       _getProperty: (key) ->
-        record = @
-
-        if record[_DELETED_KEYS]?[key]
-          return
-        else if has_own record[_EDITED], key
-          value = record[_EDITED][key]
-        else
-          value = record[_SAVED][key]
-
-        unless value?[_ARRAY]
-          return value
-        Record.arrayRecord value[_ARRAY]
+        value = @[_SAVED][key]
+        value?[_ARRAY] or value
 
       _setProperty: (key, value, initial) ->
         record = @
+        saved  = record[_SAVED]
 
-        if initial
-          target = record[_SAVED]
-        else unless target = record[_EDITED]
+        unless initial
           error.Permission {key, value, description: 'Read-only Record'}
 
         record._valueCheck key, value
-        if has_own(record, key) and util.identical value, record[key]
-          return false
-        value = Record.valueWrap record, key, value
 
-        define_value record[_SAVED], key, value, 0, 1
+        if has_own(saved, key) and util.identical value, record[key]
+          return false
+
+        define_value saved, key, Record.valueWrap(record, key, value), 0, 1
+
         true
 
-      _replace: (data, emit_event=true) ->
+      _replace: (data) ->
         record = @
 
         # _replace() is not allowed on subnodes, only for the first run
@@ -299,8 +285,6 @@ ksc.factory 'ksc.Record', [
             description: 'can not replace subobject'
 
         Record.initIdProperty record, data
-
-        changed = false
 
         if is_array data
 #           unless arr = record[_ARRAY]
@@ -331,28 +315,11 @@ ksc.factory 'ksc.Record', [
             delete record[key]
             delete record[_SAVED][key]
 
-        if changed and record[_EVENTS] and emit_event
+        if changed and record[_EVENTS]
           Record.emitUpdate record, 'replace'
 
-        changed
+        changed or false
 
-
-      @arrayRecord: (record) ->
-        arr    = record[_ARRAY]
-        object = record
-        marked = {}
-        while object and object.constructor isnt Object
-          for key in Object.getOwnPropertyNames object
-            if key.substr(0, 1) is '_' and not has_own marked, key
-              marked[key] = Object.getOwnPropertyDescriptor object, key
-          object = Object.getPrototypeOf object
-        for own key of arr
-          if key.substr(0, 1) is '_' and not has_own marked, key
-            delete arr[key]
-        for key, desc of marked
-          Object.defineProperty arr, key, desc
-
-        arr
 
       ###
       Event emission - with handling complexity around subobjects
