@@ -35,37 +35,37 @@ describe 'app.factory', ->
       expect(record.b.x).toBe false
       expect(record.b.y).toBe null
 
-    it 'Read-only array contracts', ->
-      record = new Record {id: 1, c: [{}, {x: true, y: true}]},
-        contract:
-          id: {default: 1}
-          a:
-            array:
-              type: 'number'
-              nullable: true
-          b:
-            nullable: true
-            array:
-              type: 'boolean'
-          c:
-            nullable: true
-            array:
-              contract:
-                x: {type: 'boolean'}
-                y: {type: 'boolean', nullable: true}
-
-      expect(Array.isArray record.a).toBe true
-      expect(record.b).toBe null
-      expected = JSON.stringify [{x: false, y: null}, {x: true, y: true}]
-      expect(JSON.stringify record.c).toBe expected
-
-      expect(-> record.a.push 'a').toThrow()
-      expect(record.a.length).toBe 0
-
-      expect(-> record.a.push 1).toThrow()
-      expect(record.a.length).toBe 0
-
-      expect(-> record.a = null).toThrow()
+#     it 'Read-only array contracts', ->
+#       record = new Record {id: 1, c: [{}, {x: true, y: true}]},
+#         contract:
+#           id: {default: 1}
+#           a:
+#             array:
+#               type: 'number'
+#               nullable: true
+#           b:
+#             nullable: true
+#             array:
+#               type: 'boolean'
+#           c:
+#             nullable: true
+#             array:
+#               contract:
+#                 x: {type: 'boolean'}
+#                 y: {type: 'boolean', nullable: true}
+#
+#       expect(Array.isArray record.a).toBe true
+#       expect(record.b).toBe null
+#       expected = JSON.stringify [{x: false, y: null}, {x: true, y: true}]
+#       expect(JSON.stringify record.c).toBe expected
+#
+#       expect(-> record.a.push 'a').toThrow()
+#       expect(record.a.length).toBe 0
+#
+#       expect(-> record.a.push 1).toThrow()
+#       expect(record.a.length).toBe 0
+#
+#       expect(-> record.a = null).toThrow()
 
     it 'Method .finalizeRecord()', ->
       record = new Record {}, contract: a: type: 'number'

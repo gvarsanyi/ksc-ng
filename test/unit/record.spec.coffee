@@ -119,15 +119,6 @@ describe 'app.factory', ->
 
         expect(-> new Record {}, {contract, idProperty: ['id', 'x']}).toThrow()
 
-    it 'Method ._replace(false) - will not emit if emission turned off', ->
-      record = new Record {a: 1}
-      distributed = null
-      record._events.on 'update', (update) ->
-        distributed = update
-      record._replace {b: 2}, false
-
-      expect(distributed).toBe null
-
     it 'Data separation', ->
       example_sub = {a: 3}
       example = {id: 1, x: 2, y: example_sub}

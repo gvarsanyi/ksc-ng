@@ -290,13 +290,13 @@ ksc.factory 'ksc.EditableRecord', [
           events.halt()
 
         try
-          dropped = record._revert
-          changed = super data
+          dropped = record._revert 0
+          changed = super data, 0
         finally
           if events
             events.unhalt()
 
-        if dropped or changed
+        if events and (dropped or changed)
           Record.emitUpdate record, 'replace'
 
         dropped or changed
@@ -306,12 +306,15 @@ ksc.factory 'ksc.EditableRecord', [
 
       Drops deletions, edited and added properties (if any)
 
+      @param [boolean] emit_event if replace should trigger event emission
+        (defaults to true)
+
       @event 'update' sends out message on changes:
         events.emit 'update', {node: record, action: 'revert'}
 
       @return [boolean] indicates change in data
       ###
-      _revert: ->
+      _revert: (emit_event=true) ->
         changed = false
 
         record = @
@@ -331,7 +334,8 @@ ksc.factory 'ksc.EditableRecord', [
 
         if changed
           define_value record, _CHANGES, 0
-          Record.emitUpdate record, 'revert'
+          if emit_event
+            Record.emitUpdate record, 'revert'
 
         changed
 

@@ -83,8 +83,10 @@ ksc.service 'ksc.util', [
             required:  'All arguments must be objects'
         for obj in objects
           if Array.isArray obj
+            unless fn = obj.pop
+              fn = Array::pop
             for i in [0 ... obj.length]
-              obj.pop()
+              fn.call obj
           else
             for own key of obj
               delete obj[key]

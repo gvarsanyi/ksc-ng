@@ -13,7 +13,6 @@ ksc.factory 'ksc.Record', [
     _PARENT_KEY = '_parentKey'
     _PSEUDO     = '_pseudo'
     _SAVED      = '_saved'
-    ARRAY       = 'array'
     CONTRACT    = 'contract'
     ID_PROPERTY = 'idProperty'
 
@@ -191,6 +190,8 @@ ksc.factory 'ksc.Record', [
       @throw [KeyError] Keys can not start with underscore
 
       @param [object] data Key-value map of data
+      @param [boolean] emit_event if replace should trigger event emission
+        (defaults to true)
 
       @event 'update' sends out message on changes:
         events.emit {node: record, action: 'replace'}
@@ -215,7 +216,7 @@ ksc.factory 'ksc.Record', [
 
         if record[_EVENTS] # a top-level node of record (create _id on top only)
           if id_property = options[ID_PROPERTY]
-            if id_property instanceof Array
+            if is_array id_property
               for part in id_property
                 id_property_contract_check part
                 data[part] ?= null
@@ -243,7 +244,7 @@ ksc.factory 'ksc.Record', [
           class_ref = record[_OPTIONS].subtreeClass or Record
 
           if key_contract = contract?[key]
-            if opt = key_contract[ARRAY]
+            if opt = key_contract.array
               subopts = contract: all: opt
             if opt = key_contract[CONTRACT]
               subopts = contract: opt
@@ -271,15 +272,16 @@ ksc.factory 'ksc.Record', [
 
         true
 
-      _replace: (data) ->
+      _replace: (data, emit_event) ->
         record = @
+        events = record[_EVENTS]
 
         # _replace() is not allowed on subnodes, only for the first run
         # here it checks against record._events, possible values are:
         #  - object: top-level node
         #  - undefined: subnode, but this is init time
         #  - null: subnode, but this is post init time (should throw an error)
-        if record[_EVENTS] is null
+        if events is null
           error.Permission
             key:         record[_PARENT_KEY]
             description: 'can not replace subobject'
@@ -315,7 +317,7 @@ ksc.factory 'ksc.Record', [
             delete record[key]
             delete record[_SAVED][key]
 
-        if changed and record[_EVENTS]
+        if changed and events and emit_event
           Record.emitUpdate record, 'replace'
 
         changed or false
@@ -383,7 +385,7 @@ ksc.factory 'ksc.Record', [
       ###
       @setId: (record) ->
         if id_property = record[_OPTIONS][ID_PROPERTY]
-          if id_property instanceof Array
+          if is_array id_property
             composite = []
             for part, i in id_property
               if util.isKeyConform record[part]

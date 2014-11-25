@@ -188,23 +188,14 @@ describe 'app.factory', ->
 
     it 'Will not replace if not needed', ->
       record = new EditableRecord {a: 1}
-
-      saved = record._saved
-      record._replace {a: 1}
-      expect(record._saved).toBe saved
-
-      record._replace {a: 1, b: 2}
-      expect(record._saved).not.toBe saved
+      expect(record._replace {a: 1}).toBe false
+      expect(record._replace {a: 1, b: 2}).toBe true
 
       # with contract
       record = new EditableRecord null, {contract: {a: default: 1}}
-
-      saved = record._saved
-      record._replace {}
-      expect(record._saved).toBe saved
-
-      record._replace {a: 2}
-      expect(record._saved).not.toBe saved
+      expect(record._replace {}).toBe false
+      expect(record._replace {a: 1}).toBe false
+      expect(record._replace {a: 2}).toBe true
 
     it 'Does not take functions', ->
       record = new EditableRecord {id: 1, x: 3}
@@ -229,7 +220,7 @@ describe 'app.factory', ->
       expect(-> record.c = 1).toThrow()
       expect(-> record.d = {}).not.toThrow()
       expect(record.d.a).toBe null
-      record.d = {xxx: 1}
+      expect(-> record.d = {xxx: 1}).toThrow()
       expect(record.d.xxx).toBeUndefined()
       expect(-> record.d = null).not.toThrow()
       expect(record.d).toBe null
