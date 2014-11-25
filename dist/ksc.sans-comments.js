@@ -22,6 +22,221 @@ var __hasProp = {}.hasOwnProperty, __bind = function(fn, me) {
 
 ksc = angular.module("ksc", []);
 
+ksc.factory("ksc.ArrayTracker", [ "ksc.error", "ksc.util", function(error, util) {
+    var ArrayTracker, define_get_set, define_value, has_own;
+    define_get_set = util.defineGetSet;
+    define_value = util.defineValue;
+    has_own = util.hasOwn;
+    return ArrayTracker = function() {
+        ArrayTracker.prototype.get = void 0;
+        ArrayTracker.prototype.list = void 0;
+        ArrayTracker.prototype.set = void 0;
+        ArrayTracker.prototype.store = void 0;
+        function ArrayTracker(list, store, setter, getter) {
+            var fn, fnize, index, key, tracker, value, _i, _len;
+            if (store == null) {
+                store = {};
+            }
+            if (has_own(list, "_tracker")) {
+                error.Value({
+                    list: list,
+                    description: "List is already tracked"
+                });
+            }
+            if (!Array.isArray(list)) {
+                error.Type({
+                    list: list,
+                    description: "Must be an array"
+                });
+            }
+            if (typeof store !== "object") {
+                error.Type({
+                    store: store,
+                    description: "Must be an object"
+                });
+            }
+            tracker = this;
+            define_value(list, "_tracker", tracker);
+            define_value(tracker, "list", list, 0, 1);
+            define_value(tracker, "store", store, 0, 1);
+            fnize = function(fn) {
+                if (fn != null) {
+                    if (typeof fn !== "function") {
+                        error.Type({
+                            fn: fn,
+                            "Must be a function": "Must be a function"
+                        });
+                    }
+                } else {
+                    fn = null;
+                }
+                return fn;
+            };
+            getter = fnize(getter);
+            setter = fnize(setter);
+            define_get_set(tracker, "get", function() {
+                return getter;
+            }, function(fn) {
+                return getter = fnize(fn);
+            }, 1);
+            define_get_set(tracker, "set", function() {
+                return setter;
+            }, function(fn) {
+                return setter = fnize(fn);
+            }, 1);
+            for (key in ArrayTracker) {
+                fn = ArrayTracker[key];
+                if (key.substr(0, 1) === "_") {
+                    (function(key) {
+                        return define_value(list, key.substr(1), function() {
+                            var args;
+                            args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+                            return ArrayTracker[key].apply(tracker, args);
+                        });
+                    })(key);
+                }
+            }
+            for (index = _i = 0, _len = list.length; _i < _len; index = ++_i) {
+                value = list[index];
+                ArrayTracker.getterify(tracker, index);
+                ArrayTracker.set(tracker, index, value);
+            }
+        }
+        ArrayTracker.getterify = function(tracker, index) {
+            return define_get_set(tracker.list, index, function() {
+                return ArrayTracker.get(tracker, index);
+            }, function(value) {
+                return ArrayTracker.set(tracker, index, value);
+            }, 1);
+        };
+        ArrayTracker.get = function(tracker, index) {
+            if (tracker.get) {
+                return tracker.get(index, tracker.store[index]);
+            }
+            return tracker.store[index];
+        };
+        ArrayTracker.set = function(tracker, index, value) {
+            var work;
+            work = function() {
+                if (arguments.length) {
+                    value = arguments[0];
+                }
+                if (tracker.store[index] === value) {
+                    return false;
+                }
+                tracker.store[index] = value;
+                return true;
+            };
+            if (tracker.set) {
+                return tracker.set(index, value, work);
+            } else {
+                return work();
+            }
+        };
+        ArrayTracker.add = function(tracker, items, index) {
+            var i, item, items_len, list, orig_len, store, _i, _j, _len, _ref;
+            list = tracker.list, store = tracker.store;
+            items_len = items.length;
+            orig_len = list.length;
+            for (i = _i = _ref = orig_len - 1; _i >= index; i = _i += -1) {
+                store[i + items_len] = store[i];
+            }
+            for (i = _j = 0, _len = items.length; _j < _len; i = ++_j) {
+                item = items[i];
+                list[i + orig_len] = null;
+                ArrayTracker.getterify(tracker, i + orig_len);
+                ArrayTracker.set(tracker, i + index, item);
+            }
+            return list.length;
+        };
+        ArrayTracker._pop = function() {
+            var index, list, res, store;
+            list = this.list, store = this.store;
+            if ((index = list.length - 1) > -1) {
+                res = list[index];
+                list.length = index;
+                delete store[index];
+                return res;
+            }
+        };
+        ArrayTracker._shift = function() {
+            var i, index, list, res, store, _i;
+            list = this.list, store = this.store;
+            if ((index = list.length - 1) > -1) {
+                res = list[0];
+                for (i = _i = 1; _i <= index; i = _i += 1) {
+                    store[i - 1] = store[i];
+                }
+                list.length = index;
+                delete store[index];
+                return res;
+            }
+        };
+        ArrayTracker._push = function() {
+            var items;
+            items = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            return ArrayTracker.add(this, items, this.list.length);
+        };
+        ArrayTracker._unshift = function() {
+            var items;
+            items = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            return ArrayTracker.add(this, items, 0);
+        };
+        ArrayTracker._splice = function() {
+            var how_many, i, index, items, list, orig_len, res, store, _i, _j, _ref;
+            index = arguments[0], how_many = arguments[1], items = 3 <= arguments.length ? __slice.call(arguments, 2) : [];
+            list = this.list, store = this.store;
+            res = [];
+            orig_len = list.length;
+            index = parseInt(index, 10) || 0;
+            if (index < 0) {
+                index = Math.max(0, orig_len + index);
+            } else {
+                index = Math.min(index, orig_len);
+            }
+            how_many = parseInt(how_many, 10) || 0;
+            how_many = Math.max(0, Math.min(how_many, orig_len - index));
+            if (how_many) {
+                for (i = _i = index, _ref = index + how_many; _i < _ref; i = _i += 1) {
+                    res.push(list[i]);
+                    delete store[orig_len + i - index];
+                }
+                for (i = _j = index; _j < orig_len; i = _j += 1) {
+                    store[i] = store[i + how_many];
+                }
+                list.length = orig_len - how_many;
+            }
+            if (items.length) {
+                ArrayTracker.add(this, items, index);
+            }
+            return res;
+        };
+        ArrayTracker._sort = function() {
+            var args, copy, i, index, list, res, store, tracker, value, _i, _len, _ref;
+            args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            _ref = tracker = this, list = _ref.list, store = _ref.store;
+            copy = function() {
+                var _i, _ref1, _results;
+                _results = [];
+                for (i = _i = 0, _ref1 = list.length; _i < _ref1; i = _i += 1) {
+                    _results.push(store[i]);
+                }
+                return _results;
+            }();
+            list.length = 0;
+            Array.prototype.push.apply(list, copy);
+            res = Array.prototype.sort.apply(list, args);
+            for (index = _i = 0, _len = list.length; _i < _len; index = ++_i) {
+                value = list[index];
+                ArrayTracker.getterify(tracker, index);
+                ArrayTracker.set(tracker, index, value);
+            }
+            return res;
+        };
+        return ArrayTracker;
+    }();
+} ]);
+
 ksc.service("ksc.batchLoaderRegistry", [ "ksc.error", "ksc.util", function(error, util) {
     var BatchLoaderRegistry;
     BatchLoaderRegistry = function() {
@@ -2503,6 +2718,7 @@ ksc.factory("ksc.Record", [ "ksc.EventEmitter", "ksc.RecordContract", "ksc.error
             object_required("options", options, 2);
             record = this;
             define_value(record, _OPTIONS, options);
+            define_value(record, _SAVED, {});
             if (has_own(options, CONTRACT)) {
                 options[CONTRACT] = new RecordContract(options[CONTRACT]);
             }
@@ -3383,199 +3599,6 @@ ksc.service("ksc.restUtil", [ "$q", "ksc.error", function($q, error) {
         };
         return RestUtil;
     }();
-} ]);
-
-ksc.factory("ksc.trackArray", [ "ksc.error", "ksc.util", function(error, util) {
-    var TrackedArray, define_get_set, define_getter, define_value, get_fn, has_own, set_fn;
-    define_get_set = util.defineGetSet;
-    define_value = util.defineValue;
-    has_own = util.hasOwn;
-    define_getter = function(tracker, list, store, index) {
-        return define_get_set(list, index, function() {
-            return get_fn(store, tracker.getter, index);
-        }, function(val) {
-            return set_fn(store, tracker.setter, index, val);
-        }, 1);
-    };
-    get_fn = function(store, getter, index) {
-        if (getter) {
-            getter(index, store[index]);
-        }
-        return store[index];
-    };
-    set_fn = function(store, setter, index, value) {
-        var work;
-        work = function() {
-            if (arguments.length) {
-                value = arguments[0];
-            }
-            if (store[index] === value) {
-                return false;
-            }
-            store[index] = value;
-            return true;
-        };
-        if (setter) {
-            return setter(index, value, work);
-        } else {
-            return work();
-        }
-    };
-    TrackedArray = function() {
-        TrackedArray.prototype.get = void 0;
-        TrackedArray.prototype.list = void 0;
-        TrackedArray.prototype.set = void 0;
-        TrackedArray.prototype.store = void 0;
-        function TrackedArray(list, store, setter, getter) {
-            var fnize, index, tracker, value, _i, _len;
-            this.list = list;
-            this.store = store != null ? store : {};
-            if (has_own(list, "_tracker")) {
-                error.Value({
-                    list: list,
-                    description: "List is already tracked"
-                });
-            }
-            if (!Array.isArray(list)) {
-                error.Type({
-                    list: list,
-                    description: "Must be an array"
-                });
-            }
-            if (typeof store !== "object") {
-                error.Type({
-                    store: store,
-                    description: "Must be an object"
-                });
-            }
-            tracker = this;
-            define_value(list, "_tracker", tracker);
-            define_value(tracker, "list", list, 0, 1);
-            define_value(tracker, "store", store, 0, 1);
-            fnize = function(fn) {
-                if (fn == null) {
-                    fn = null;
-                } else if (typeof fn !== "function") {
-                    error.Type({
-                        fn: fn,
-                        "Must be a function": "Must be a function"
-                    });
-                }
-                return fn;
-            };
-            getter = fnize(getter);
-            setter = fnize(setter);
-            define_get_set(tracker, "get", getter, function(fn) {
-                return getter = fnize(fn);
-            }, 1);
-            define_get_set(tracker, "set", setter, function(fn) {
-                return setter = fnize(fn);
-            }, 1);
-            for (index = _i = 0, _len = list.length; _i < _len; index = ++_i) {
-                value = list[index];
-                define_getter(tracker, list, store, index);
-                set_fn(store, setter, index, value);
-            }
-            return list;
-        }
-        return TrackedArray;
-    }();
-    return function() {
-        var args, fn, orig_fn, _fn, _i, _len, _ref;
-        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        (function(func, args, ctor) {
-            ctor.prototype = func.prototype;
-            var child = new ctor(), result = func.apply(child, args);
-            return Object(result) === result ? result : child;
-        })(TrackedArray, args, function() {});
-        _ref = [ "push", "unshift", "splice" ];
-        _fn = function(orig_fn, fn) {
-            var decor;
-            decor = function() {
-                var args, cache, err, i, item, k, orig_len, res, v, _j, _len1;
-                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                orig_len = cache_arr.length;
-                cache = {};
-                for (k in store) {
-                    v = store[k];
-                    cache[k] = v;
-                }
-                for (i = _j = 0, _len1 = arr.length; _j < _len1; i = ++_j) {
-                    item = arr[i];
-                    define_value(arr, i, get_fn(i), 1, 1);
-                }
-                try {
-                    res = orig_fn.apply(this, args);
-                    check_indexes();
-                } catch (_error) {
-                    err = _error;
-                    Util.empty(arr, store);
-                    arr.push.apply(arr, function() {
-                        var _k, _len2, _results;
-                        _results = [];
-                        for (_k = 0, _len2 = cache_arr.length; _k < _len2; _k++) {
-                            item = cache_arr[_k];
-                            _results.push(item);
-                        }
-                        return _results;
-                    }());
-                    for (k in cache_store) {
-                        v = cache_store[k];
-                        store[k] = v;
-                    }
-                    throw err;
-                }
-                return res;
-            };
-            return define_value(arr, fn, decor, 0);
-        };
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            fn = _ref[_i];
-            orig_fn = arr[fn];
-            _fn(orig_fn, fn);
-        }
-        define_value(arr, "pop", function() {
-            var idx, res;
-            idx = arr.length - 1;
-            res = arr[idx];
-            delete store[idx];
-            arr.length = idx;
-            return res;
-        });
-        define_value(arr, "shift", function() {
-            var i, idx, res, _j;
-            idx = arr.length - 1;
-            res = arr[idx];
-            for (i = _j = 0; _j < idx; i = _j += 1) {
-                store[i] = store[i + 1];
-            }
-            delete store[idx];
-            arr.length = idx;
-            return res;
-        });
-        define_value(arr, "splice", function() {
-            var add, cut, i, idx, len, res, start, _j, _k;
-            start = arguments[0], cut = arguments[1], add = 3 <= arguments.length ? __slice.call(arguments, 2) : [];
-            len = arr.length;
-            if (start < 0) {
-                start = Math.min(0, len + start);
-            } else if (start > len) {
-                start = len;
-            }
-            for (i = _j = 0; _j < idx; i = _j += 1) {
-                store[i] = store[i + 1];
-            }
-            idx = arr.length - 1;
-            res = arr[idx];
-            for (i = _k = 0; _k < idx; i = _k += 1) {
-                store[i] = store[i + 1];
-            }
-            delete store[idx];
-            arr.length = idx;
-            return res;
-        });
-        return arr;
-    };
 } ]);
 
 ksc.service("ksc.util", [ "ksc.error", function(error) {

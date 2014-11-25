@@ -105,6 +105,7 @@ ksc.factory 'ksc.Record', [
         record = @
 
         define_value record, _OPTIONS, options
+        define_value record, _SAVED, {}
 
         if has_own options, CONTRACT
           options[CONTRACT] = new RecordContract options[CONTRACT]
@@ -304,7 +305,7 @@ ksc.factory 'ksc.Record', [
           else
             util.empty arr
 
-          util.arrayGetterify arr, (index, value) ->
+          new ArrayTracker arr, record[_SAVED], (index, value, setter_fn) ->
             if arrayified
               record._setProperty key, value
             else
@@ -328,7 +329,7 @@ ksc.factory 'ksc.Record', [
               record._removeProperty key
               changed = true
 
-          util.arrayGetterify arr, (index, value) ->
+          new ArrayTracker arr, record[_SAVED], (index, value) ->
             if Object.isFrozen arr
               error.Permission
                 array: arr
