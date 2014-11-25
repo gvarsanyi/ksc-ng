@@ -1,12 +1,13 @@
 
 describe 'app.service', ->
 
-  ArrayTracker = arr = getter = setter = store = tracker = null
+  ArrayTracker = arr = getter = setter = store = tracker = util = null
 
   beforeEach ->
     module 'app'
     inject ($injector) ->
       ArrayTracker = $injector.get 'ksc.ArrayTracker'
+      util = $injector.get 'ksc.util'
 
       arr = [1, 2, 3]
       store = {}
@@ -27,10 +28,36 @@ describe 'app.service', ->
     it 'Construction', ->
       expect(arr._tracker instanceof ArrayTracker).toBe true
       expect(arr._tracker).toBe tracker
+      expect(tracker.store).toBe store
+      expect(tracker.list).toBe arr
       expect(typeof Object.getOwnPropertyDescriptor(arr, 0).get).toBe 'function'
       expect(store[0]).toBe '1'
       expect(arr[0]).toBe -1
       expect(arr.length).toBe 3
+      expect(Array.isArray arr).toBe true
+      expect(Array.isArray store).toBe false
+
+    it 'Enumerable properties match with regular arrays', ->
+      x = [-1, -2, -3]
+      count = 0
+      diff  = 0
+      for k of x
+        count += 1
+      for k, v of arr
+        if v isnt x[k]
+          diff += 1
+        count -= 1
+      expect(count).toBe 0
+      expect(diff).toBe 0
+
+    it 'util.empty() compliance', ->
+      util.empty arr
+      expect(arr.length).toBe 0
+
+      count = 0
+      for k of store
+        count += 1
+      expect(count).toBe 0
 
     describe 'Overridden Array methods', ->
 

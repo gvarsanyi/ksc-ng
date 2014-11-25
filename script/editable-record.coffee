@@ -195,29 +195,29 @@ ksc.factory 'ksc.EditableRecord', [
 
         try
           dropped = record._revert false
+          changed = super data, false
 
-          if changed = super data, false
-            contract = record[OPTIONS].contract
-
-            define_value record, EDITED, {}
-            define_value record, CHANGES, 0
-            define_value record, CHANGED_KEYS, {}
-            define_value record, DELETED_KEYS, if contract then null else {}
-            define_value record, SAVED, {}
-
-            for key, value of record
-              define_value record[SAVED], key, value, 0, 1
-              EditableRecord.setProperty record, key
-
-            Object.freeze record[SAVED]
-        finally
-          if events
-            events.unhalt()
-
-        if dropped or changed
-          Record.emitUpdate record, 'replace'
-
-        dropped or changed
+#             contract = record[OPTIONS].contract
+#
+#             define_value record, EDITED, {}
+#             define_value record, CHANGES, 0
+#             define_value record, CHANGED_KEYS, {}
+#             define_value record, DELETED_KEYS, if contract then null else {}
+#             define_value record, SAVED, {}
+#
+#             for key, value of record
+#               define_value record[SAVED], key, value, 0, 1
+#               EditableRecord.setProperty record, key
+#
+#             Object.freeze record[SAVED]
+#         finally
+#           if events
+#             events.unhalt()
+#
+#         if dropped or changed
+#           Record.emitUpdate record, 'replace'
+#
+#         dropped or changed
 
       ###
       Return to saved state

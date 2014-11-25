@@ -782,36 +782,15 @@ ksc.factory('ksc.EditableRecord', [
        */
 
       EditableRecord.prototype._replace = function(data) {
-        var changed, contract, dropped, events, key, record, value;
+        var changed, dropped, events, record;
         record = this;
         if (events = record[EVENTS]) {
           events.halt();
         }
         try {
           dropped = record._revert(false);
-          if (changed = EditableRecord.__super__._replace.call(this, data, false)) {
-            contract = record[OPTIONS].contract;
-            define_value(record, EDITED, {});
-            define_value(record, CHANGES, 0);
-            define_value(record, CHANGED_KEYS, {});
-            define_value(record, DELETED_KEYS, contract ? null : {});
-            define_value(record, SAVED, {});
-            for (key in record) {
-              value = record[key];
-              define_value(record[SAVED], key, value, 0, 1);
-              EditableRecord.setProperty(record, key);
-            }
-            Object.freeze(record[SAVED]);
-          }
-        } finally {
-          if (events) {
-            events.unhalt();
-          }
-        }
-        if (dropped || changed) {
-          Record.emitUpdate(record, 'replace');
-        }
-        return dropped || changed;
+          return changed = EditableRecord.__super__._replace.call(this, data, false);
+        } catch (_error) {}
       };
 
 
@@ -4385,9 +4364,11 @@ ksc.factory('ksc.RecordContract', [
 ]);
 
 ksc.factory('ksc.Record', [
-  'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(EventEmitter, RecordContract, error, util) {
-    var ARRAY, CONTRACT, ID_PROPERTY, Record, define_value, has_own, is_array, is_object, object_required, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PSEUDO, _SAVED;
+  'ksc.ArrayTracker', 'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(ArrayTracker, EventEmitter, RecordContract, error, util) {
+    var ARRAY, CONTRACT, ID_PROPERTY, Record, define_value, has_own, is_array, is_object, object_required, _ARRAY, _DELETED_KEYS, _EDITED, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PSEUDO, _SAVED;
     _ARRAY = '_array';
+    _DELETED_KEYS = '_deletedKeys';
+    _EDITED = '_edited';
     _EVENTS = '_events';
     _ID = '_id';
     _OPTIONS = '_options';
@@ -4473,7 +4454,7 @@ ksc.factory('ksc.Record', [
        */
 
       function Record(data, options, parent, parent_key) {
-        var key, record, ref, refs, _i, _len, _ref;
+        var contract, key, record, ref, refs, target, _i, _j, _len, _len1, _ref, _ref1;
         if (data == null) {
           data = {};
         }
@@ -4492,7 +4473,7 @@ ksc.factory('ksc.Record', [
         define_value(record, _OPTIONS, options);
         define_value(record, _SAVED, {});
         if (has_own(options, CONTRACT)) {
-          options[CONTRACT] = new RecordContract(options[CONTRACT]);
+          contract = options[CONTRACT] = new RecordContract(options[CONTRACT]);
         }
         if ((parent != null) || (parent_key != null)) {
           object_required('options', parent, 3);
@@ -4510,14 +4491,18 @@ ksc.factory('ksc.Record', [
             delete record[_PSEUDO];
           }
         }
-        _ref = util.propertyRefs(Object.getPrototypeOf(record));
-        for (key in _ref) {
-          refs = _ref[key];
-          for (_i = 0, _len = refs.length; _i < _len; _i++) {
-            ref = refs[_i];
-            Object.defineProperty(ref, key, {
-              enumerable: false
-            });
+        _ref = (contract ? [record, contract] : [record]);
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          target = _ref[_i];
+          _ref1 = util.propertyRefs(Object.getPrototypeOf(target));
+          for (key in _ref1) {
+            refs = _ref1[key];
+            for (_j = 0, _len1 = refs.length; _j < _len1; _j++) {
+              ref = refs[_j];
+              Object.defineProperty(ref, key, {
+                enumerable: false
+              });
+            }
           }
         }
         if (parent_key == null) {
@@ -4696,54 +4681,49 @@ ksc.factory('ksc.Record', [
         return value;
       };
 
-      Record.prototype._initProperty = function(key, value) {
-        var record;
-        record = this;
-        record._valueCheck(key, value);
-        if (has_own(record, key) && util.identical(value, record[key])) {
-          return;
-        }
-        record._removeProperty(key);
-        value = Record.valueWrap(record, key, value);
-        define_value(record[_SAVED], key, value, 0, 1);
-        util.defineGetSet(record, key, (function() {
-          return record._getProperty(key);
-        }), (function(val) {
-          return record._setProperty(key, val);
-        }), 1);
-        return true;
-      };
-
       Record.prototype._getProperty = function(key) {
-        var value;
-        value = this[_SAVED][key];
+        var record, value, _ref;
+        record = this;
+        if ((_ref = record[_DELETED_KEYS]) != null ? _ref[key] : void 0) {
+          return;
+        } else if (has_own(record[_EDITED], key)) {
+          value = record[_EDITED][key];
+        } else {
+          value = record[_SAVED][key];
+        }
         if (!(value != null ? value[_ARRAY] : void 0)) {
           return value;
         }
         return Record.arrayRecord(value[_ARRAY]);
       };
 
-      Record.prototype._setProperty = function(key, value) {
-        return error.Permission({
-          key: key,
-          value: value,
-          description: 'Read-only Record'
-        });
-      };
-
-      Record.prototype._removeProperty = function(key) {
-        delete this[key];
-        return delete this[_SAVED][key];
+      Record.prototype._setProperty = function(key, value, initial) {
+        var record, target;
+        record = this;
+        if (initial) {
+          target = record[_SAVED];
+        } else if (!(target = record[_EDITED])) {
+          error.Permission({
+            key: key,
+            value: value,
+            description: 'Read-only Record'
+          });
+        }
+        record._valueCheck(key, value);
+        if (has_own(record, key) && util.identical(value, record[key])) {
+          return false;
+        }
+        value = Record.valueWrap(record, key, value);
+        define_value(record[_SAVED], key, value, 0, 1);
+        return true;
       };
 
       Record.prototype._replace = function(data, emit_event) {
-        var arr, arrayified, changed, contract, key, options, record, value;
+        var changed, contract, flat, key, record, value, _fn;
         if (emit_event == null) {
           emit_event = true;
         }
         record = this;
-        options = record[_OPTIONS];
-        contract = options[CONTRACT];
         if (record[_EVENTS] === null) {
           error.Permission({
             key: record[_PARENT_KEY],
@@ -4753,76 +4733,41 @@ ksc.factory('ksc.Record', [
         Record.initIdProperty(record, data);
         changed = false;
         if (is_array(data)) {
-          if (!(arr = record[_ARRAY])) {
-            define_value(record, _ARRAY, arr = []);
-          } else {
-            util.empty(arr);
-          }
-          util.arrayGetterify(arr, function(index, value) {
-            if (arrayified) {
-              return record._setProperty(key, value);
-            } else {
-              return record._initProperty(key, value);
-            }
-          });
-          arrayified = 1;
+
         } else {
-          delete record[_ARRAY];
-        }
-        for (key in data) {
-          value = data[key];
-          if (record._initProperty(key, value)) {
-            changed = true;
+          flat = {};
+          for (key in data) {
+            value = data[key];
+            flat[key] = value;
           }
-        }
-        if (!is_array(data)) {
-          if (contract) {
+          if (contract = record[_OPTIONS][CONTRACT]) {
             for (key in contract) {
-              if (!has_own(data, key)) {
-                if (record._initProperty(key, contract._default(key))) {
-                  changed = true;
-                }
+              value = contract[key];
+              if (!has_own(flat, key)) {
+                flat[key] = contract._default(key);
               }
             }
-          } else {
-            for (key in record) {
-              if (!(!has_own(data, key))) {
-                continue;
-              }
-              record._removeProperty(key);
+          }
+          _fn = function(key) {
+            return util.defineGetSet(record, key, (function() {
+              return record._getProperty(key);
+            }), (function(value) {
+              return record._setProperty(key, value);
+            }), 1);
+          };
+          for (key in flat) {
+            value = flat[key];
+            _fn(key);
+            if (record._setProperty(key, value, 1)) {
               changed = true;
             }
           }
-          util.arrayGetterify(arr, function(index, value) {
-            var class_ref, subopts;
-            if (Object.isFrozen(arr)) {
-              error.Permission({
-                array: arr,
-                index: index,
-                value: value,
-                description: 'Can not set on read-only array'
-              });
+          for (key in record[_SAVED]) {
+            if (!(!has_own(flat, key))) {
+              continue;
             }
-            if (contract != null) {
-              contract._match('all', value);
-            }
-            if (is_object(value)) {
-              if (value instanceof Record) {
-                value = value._clone(1);
-              }
-              class_ref = options.subtreeClass || Record;
-              subopts = {};
-              if (contract != null ? contract.all[CONTRACT] : void 0) {
-                subopts[CONTRACT] = contract.all[CONTRACT];
-              }
-              value = new class_ref(value, subopts, record, index);
-            }
-            return value;
-          });
-          arr.push.apply(arr, data);
-          Record.arrayRecord(record);
-          if (contract && !Object.isFrozen(arr)) {
-            Object.freeze(arr);
+            delete record[key];
+            delete record[_SAVED][key];
           }
         }
         if (changed && record[_EVENTS] && emit_event) {
@@ -5995,7 +5940,7 @@ ksc.service('ksc.util', [
        */
 
       Util.empty = function() {
-        var key, obj, objects, _i, _len;
+        var i, key, obj, objects, _i, _j, _len, _ref;
         objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
         if (!objects.length) {
           error.MissingArgument({
@@ -6011,7 +5956,9 @@ ksc.service('ksc.util', [
         for (_i = 0, _len = objects.length; _i < _len; _i++) {
           obj = objects[_i];
           if (Array.isArray(obj)) {
-            while (Array.prototype.pop.call(obj)) {}
+            for (i = _j = 0, _ref = obj.length; 0 <= _ref ? _j < _ref : _j > _ref; i = 0 <= _ref ? ++_j : --_j) {
+              obj.pop();
+            }
           } else {
             for (key in obj) {
               if (!__hasProp.call(obj, key)) continue;
