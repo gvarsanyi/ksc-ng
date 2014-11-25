@@ -272,7 +272,7 @@ ksc.factory 'ksc.Record', [
 
         true
 
-      _replace: (data, emit_event) ->
+      _replace: (data, emit_event=true) ->
         record = @
         events = record[_EVENTS]
 
