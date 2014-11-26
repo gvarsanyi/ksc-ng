@@ -23,7 +23,8 @@ describe 'app.service', ->
         for own k of obj
           found_keys[k] = true
 
-        expect(-> obj.a = 3).toThrow()
+        expect(obj.a = 3).toBe 3
+        expect(obj.a).toBe 2
 
         expect(found_keys.a).toBeUndefined()
         expect(obj.a).toBe 2
