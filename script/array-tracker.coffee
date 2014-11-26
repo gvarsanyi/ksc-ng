@@ -48,24 +48,23 @@ ksc.factory 'ksc.ArrayTracker', [
             define_value list, key.substr(1), (args...) ->
               ArrayTracker[key].apply tracker, args
 
-        for value, index in list
-          ArrayTracker.getterify tracker, index
-          ArrayTracker.set tracker, index, value
+        ArrayTracker.process tracker
 
 
       @getterify: (tracker, index) ->
-        define_get_set tracker.list, index,
-                       (-> ArrayTracker.get tracker, index),
-                       ((value) -> ArrayTracker.set tracker, index, value), 1
+        unless Object.getOwnPropertyDescriptor(tracker, index)?.set
+          define_get_set tracker.list, index,
+                         (-> ArrayTracker.get tracker, index),
+                         ((value) -> ArrayTracker.set tracker, index, value), 1
 
       @get: (tracker, index) ->
-        # console.log 'get:', index, tracker.store[index]
+        # console.log '@get:', index, tracker.store[index], '::'
         if tracker.get
           return tracker.get index, tracker.store[index]
         tracker.store[index]
 
       @set: (tracker, index, value) ->
-        # console.log 'set:', index, tracker.store[index], '->', value
+        # console.log '@set:', index, tracker.store[index], '->', value
         work = ->
           if arguments.length
             value = arguments[0]
@@ -148,14 +147,29 @@ ksc.factory 'ksc.ArrayTracker', [
 
         res
 
-      @_sort: (args...) ->
-        {list, store} = tracker = @
+      @plainify: (tracker) ->
+        {list, store} = tracker
         copy = (store[i] for i in [0 ... list.length] by 1)
         list.length = 0
         Array::push.apply list, copy
-        res = Array::sort.apply list, args
-        for value, index in list
+
+      @process: (tracker) ->
+        for value, index in tracker.list
           ArrayTracker.getterify tracker, index
           ArrayTracker.set tracker, index, value
+        return
+
+      @_sort: (args...) ->
+        tracker = @
+        ArrayTracker.plainify tracker
+        res = Array::sort.apply tracker.list, args
+        ArrayTracker.process tracker
+        res
+
+      @_reverse: ->
+        tracker = @
+        ArrayTracker.plainify tracker
+        res = Array::reverse.call tracker.list
+        ArrayTracker.process tracker
         res
 ]

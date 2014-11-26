@@ -37,6 +37,10 @@ describe 'app.service', ->
       expect(Array.isArray arr).toBe true
       expect(Array.isArray store).toBe false
 
+    it 'Creates store object if not provided', ->
+      tracker = new ArrayTracker [1]
+      expect(tracker.store[0]).toBe 1
+
     it 'Enumerable properties match with regular arrays', ->
       x = [-1, -2, -3]
       count = 0
@@ -165,3 +169,33 @@ describe 'app.service', ->
         expect(arr[1]).toBe -3
         expect(arr[2]).toBe -2
         expect(arr[3]).toBe -1
+
+      it 'Update element', ->
+        expect(arr[1] = 50).toBe 50
+        expect(arr[1]).toBe -50
+
+      describe 'Exception handling', ->
+
+        it 'Constructor requires array as first argument', ->
+          expect(-> new ArrayTracker).toThrow()
+          expect(-> new ArrayTracker 1).toThrow()
+          expect(-> new ArrayTracker 're').toThrow()
+          expect(-> new ArrayTracker {}).toThrow()
+          expect(-> new ArrayTracker true).toThrow()
+          expect(-> new ArrayTracker null).toThrow()
+
+        it 'Double tracking not allowed', ->
+          expect(-> new ArrayTracker arr).toThrow()
+
+        it 'Store must be object type', ->
+          expect(-> new ArrayTracker [], false).toThrow()
+          expect(-> new ArrayTracker [], 'fdsfs').toThrow()
+          expect(-> new ArrayTracker [], true).toThrow()
+          # should default to creating a new store
+          expect(-> new ArrayTracker [], null).not.toThrow()
+
+        it 'Getter and setter must be functions', ->
+          expect(-> new ArrayTracker [], null, true).toThrow()
+          expect(-> new ArrayTracker [], null, (->), true).toThrow()
+          expect(-> tracker.get = true).toThrow()
+          expect(-> tracker.set = true).toThrow()
