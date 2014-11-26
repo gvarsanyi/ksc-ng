@@ -9,12 +9,13 @@ ksc.factory 'ksc.ArrayTracker', [
 
 
     class ArrayTracker
-      get:   undefined
-      list:  undefined
-      set:   undefined
-      store: undefined
+      get:    undefined
+      list:   undefined
+      origFn: undefined
+      set:    undefined
+      store:  undefined
 
-      constructor: (list, store={}, setter, getter) ->
+      constructor: (list, store={}, functions={}) ->
         if has_own list, '_tracker'
           error.Value {list, description: 'List is already tracked'}
         unless Array.isArray list
@@ -26,6 +27,7 @@ ksc.factory 'ksc.ArrayTracker', [
         define_value list, '_tracker', tracker
         define_value tracker, 'list',  list,  0, 1
         define_value tracker, 'store', store, 0, 1
+        define_value tracker, 'origFn', orig_fn = {}
 
         fnize = (fn) ->
           if fn?
@@ -35,27 +37,59 @@ ksc.factory 'ksc.ArrayTracker', [
             fn = null
           fn
 
-        getter = fnize getter
-        setter = fnize setter
-
-        define_get_set tracker, 'get', (-> getter),
-                       ((fn) -> getter = fnize fn), 1
-        define_get_set tracker, 'set', (-> setter),
-                       ((fn) -> setter = fnize fn), 1
+        for key in fns = ['del', 'get', 'set']
+          functions[key] ?= null
+        for key, fn of functions
+          unless key in fns
+            error.Value {fn: key, description: 'handled: ' + fns}
+          functions[key] = fnize fn
+          do (key) ->
+            define_get_set tracker, key, (-> functions[key] or null),
+                           ((fn) -> functions[key] = fnize fn), 1
 
         for key, fn of ArrayTracker when key.substr(0, 1) is '_'
+          key = key.substr 1
+          orig_fn[key] = if has_own(list, key) then {v: list[key]} else {n: 1}
           do (key) ->
-            define_value list, key.substr(1), (args...) ->
-              ArrayTracker[key].apply tracker, args
+            define_value list, key, (args...) ->
+              ArrayTracker['_' + key].apply tracker, args
 
-        ArrayTracker.process tracker
+        tracker.process()
 
+      plainify: ->
+        {list, store} = @
+        copy = (store[i] for i in [0 ... list.length] by 1)
+        list.length = 0
+        Array::push.apply list, copy
+        return
+
+      process: ->
+        tracker = @
+        for value, index in tracker.list
+          ArrayTracker.getterify tracker, index
+          ArrayTracker.set tracker, index, value
+        return
+
+      unload: ->
+        {list, store} = tracker = @
+        tracker.plainify()
+
+        for key, inf of tracker.origFn
+          if inf.n
+            delete list[key]
+          else
+            define_value list, key, inf.v
+
+        delete tracker.list._tracker
+        delete tracker.list
+
+        util.empty store
+        return
 
       @getterify: (tracker, index) ->
-        unless Object.getOwnPropertyDescriptor(tracker, index)?.set
-          define_get_set tracker.list, index,
-                         (-> ArrayTracker.get tracker, index),
-                         ((value) -> ArrayTracker.set tracker, index, value), 1
+        define_get_set tracker.list, index,
+                       (-> ArrayTracker.get tracker, index),
+                       ((value) -> ArrayTracker.set tracker, index, value), 1
 
       @get: (tracker, index) ->
         # console.log '@get:', index, tracker.store[index], '::'
@@ -94,23 +128,31 @@ ksc.factory 'ksc.ArrayTracker', [
 
         list.length
 
+      @del: (tracker, index=tracker.list.length-1, how_many=1, event_off=0) ->
+        {list, store} = tracker
+        deletable = []
+        orig_len  = list.length
+        res       = list[index]
+        for i in [index + how_many ... orig_len] by 1
+          store[i - how_many] = store[i]
+        for i in [0 ... how_many] by 1
+          del_idx = orig_len - how_many + i
+          if tracker.del and i >= event_off
+            deletable.push store[del_idx]
+          delete store[del_idx]
+        list.length = orig_len - how_many
+        del_len = deletable.length
+        for value, i in deletable
+          tracker.del orig_len - del_len + i, value
+        res
+
       @_pop: ->
-        {list, store} = @
-        if (index = list.length - 1) > -1
-          res = list[index]
-          list.length = index
-          delete store[index]
-          return res
+        if @list.length
+          ArrayTracker.del @
 
       @_shift: ->
-        {list, store} = @
-        if (index = list.length - 1) > -1
-          res = list[0]
-          for i in [1 .. index] by 1
-            store[i - 1] = store[i]
-          list.length = index
-          delete store[index]
-          return res
+        if @list.length
+          ArrayTracker.del @, 0
 
       @_push: (items...) ->
         ArrayTracker.add @, items, @list.length
@@ -120,8 +162,6 @@ ksc.factory 'ksc.ArrayTracker', [
 
       @_splice: (index, how_many, items...) ->
         {list, store} = @
-
-        res = []
 
         orig_len = list.length
 
@@ -134,42 +174,26 @@ ksc.factory 'ksc.ArrayTracker', [
         how_many = parseInt(how_many, 10) or 0
         how_many = Math.max 0, Math.min how_many, orig_len - index
 
-        if how_many
-          for i in [index ... index + how_many] by 1
-            res.push list[i]
-            delete store[orig_len + i - index]
-          for i in [index ... orig_len] by 1
-            store[i] = store[i + how_many]
-          list.length = orig_len - how_many
+        res = list[index ... index + how_many]
 
+        if how_many
+          ArrayTracker.del @, index, how_many, items.length
         if items.length
           ArrayTracker.add @, items, index
 
         res
 
-      @plainify: (tracker) ->
-        {list, store} = tracker
-        copy = (store[i] for i in [0 ... list.length] by 1)
-        list.length = 0
-        Array::push.apply list, copy
-
-      @process: (tracker) ->
-        for value, index in tracker.list
-          ArrayTracker.getterify tracker, index
-          ArrayTracker.set tracker, index, value
-        return
-
       @_sort: (args...) ->
         tracker = @
-        ArrayTracker.plainify tracker
+        tracker.plainify()
         res = Array::sort.apply tracker.list, args
-        ArrayTracker.process tracker
+        tracker.process()
         res
 
       @_reverse: ->
         tracker = @
-        ArrayTracker.plainify tracker
+        tracker.plainify()
         res = Array::reverse.call tracker.list
-        ArrayTracker.process tracker
+        tracker.process()
         res
 ]

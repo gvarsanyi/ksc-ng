@@ -20,7 +20,9 @@ describe 'app.service', ->
         # console.log 'get:', index, value
         value * -1
 
-      tracker = new ArrayTracker arr, store, setter, getter
+      tracker = new ArrayTracker arr, store,
+        set: setter
+        get: getter
 
 
   describe 'ArrayTracker', ->
@@ -39,6 +41,7 @@ describe 'app.service', ->
 
     it 'Creates store object if not provided', ->
       tracker = new ArrayTracker [1]
+      expect(tracker.list[0]).toBe 1
       expect(tracker.store[0]).toBe 1
 
     it 'Enumerable properties match with regular arrays', ->
@@ -62,6 +65,49 @@ describe 'app.service', ->
       for k of store
         count += 1
       expect(count).toBe 0
+
+    it 'Methods .plainify() and .process()', ->
+      expect(tracker.plainify()).toBeUndefined()
+      expect(arr.length).toBe 3
+      expect(arr[0]).toBe '1'
+      expect(Object.getOwnPropertyDescriptor(arr, 0).value).toBe '1'
+
+      expect(tracker.process()).toBeUndefined()
+      expect(arr[0]).toBe -1
+      obj_setter = typeof Object.getOwnPropertyDescriptor(arr, 0).set
+      expect(obj_setter).toBe 'function'
+
+    it 'Methods .unload() and restore original functions/properties', ->
+      arr = [1, 2, 3]
+      pop = arr.pop
+      tracker = new ArrayTracker arr
+
+      expect(arr.length).toBe 3
+      expect(arr[0]).toBe 1
+      expect(arr.pop).not.toBe pop
+
+      expect(tracker.unload()).toBeUndefined()
+      expect(arr.length).toBe 3
+      expect(arr[0]).toBe 1
+      expect(arr._tracker).toBeUndefined()
+      expect(arr.pop).toBe pop
+
+      expect((key for key of tracker.store).length).toBe 0
+
+      # won't restore properties that were deleted originally
+      arr = [1, 2, 3]
+      delete arr.pop # isn't supposed to do anything, pop() lives on prototype
+      arr.push = 1
+      arr.shift = undefined
+      tracker = new ArrayTracker arr
+      tracker.unload()
+      expect(arr.pop).toBe pop
+      expect(arr.push).toBe 1
+      expect(arr.shift).toBeUndefined()
+
+    it 'Update element', ->
+      expect(arr[1] = 50).toBe 50
+      expect(arr[1]).toBe -50
 
     describe 'Overridden Array methods', ->
 
@@ -162,6 +208,17 @@ describe 'app.service', ->
         expect(arr[2]).toBe -2
         expect(arr[3]).toBe -3
 
+      it '.sort(fn)', ->
+        arr.push 2
+        count = 0
+        arr.sort (a, b) ->
+          count += 1
+          if a > b then 1 else if a is b then 0 else -1
+        expect(arr[0]).toBe -1
+        expect(arr[1]).toBe -2
+        expect(arr[2]).toBe -2
+        expect(arr[3]).toBe -3
+
       it '.reverse()', ->
         arr.push 2
         arr.reverse()
@@ -170,32 +227,88 @@ describe 'app.service', ->
         expect(arr[2]).toBe -2
         expect(arr[3]).toBe -1
 
-      it 'Update element', ->
-        expect(arr[1] = 50).toBe 50
-        expect(arr[1]).toBe -50
+    describe 'Event functions', ->
 
-      describe 'Exception handling', ->
+      it 'get', ->
+        tracker.get = (index, value) ->
+          expect(index).toBe 1
+          expect(value).toBe '2'
+          'yo'
+        expect(arr[1]).toBe 'yo'
 
-        it 'Constructor requires array as first argument', ->
-          expect(-> new ArrayTracker).toThrow()
-          expect(-> new ArrayTracker 1).toThrow()
-          expect(-> new ArrayTracker 're').toThrow()
-          expect(-> new ArrayTracker {}).toThrow()
-          expect(-> new ArrayTracker true).toThrow()
-          expect(-> new ArrayTracker null).toThrow()
+      it 'set', ->
+        tracker.set = (index, value, worker_fn) ->
+          expect(index).toBe 1
+          expect(value).toBe 'yo'
+          worker_fn '10'
+        expect(arr[1] = 'yo').toBe 'yo'
+        expect(arr[1]).toBe -10
 
-        it 'Double tracking not allowed', ->
-          expect(-> new ArrayTracker arr).toThrow()
+        tracker.set = (index, value, worker_fn) ->
+          expect(index).toBe 2
+          expect(value).toBe 'yo'
+          worker_fn()
+        expect(arr[2] = 'yo').toBe 'yo'
+        expect(arr[2]).toBeNaN()
 
-        it 'Store must be object type', ->
-          expect(-> new ArrayTracker [], false).toThrow()
-          expect(-> new ArrayTracker [], 'fdsfs').toThrow()
-          expect(-> new ArrayTracker [], true).toThrow()
-          # should default to creating a new store
-          expect(-> new ArrayTracker [], null).not.toThrow()
+        count = 0
+        last_index = last_value = null
+        tracker.set = (index, value, worker_fn) ->
+          count += 1
+          last_index = index
+          last_value = value
+          worker_fn()
 
-        it 'Getter and setter must be functions', ->
-          expect(-> new ArrayTracker [], null, true).toThrow()
-          expect(-> new ArrayTracker [], null, (->), true).toThrow()
-          expect(-> tracker.get = true).toThrow()
-          expect(-> tracker.set = true).toThrow()
+        arr.push 99
+        expect(last_index).toBe 3
+        expect(last_value).toBe 99
+        expect(count).toBe 1
+
+        arr.unshift 98
+        expect(last_index).toBe 0
+        expect(last_value).toBe 98
+        expect(count).toBe 2
+
+        arr.splice 2, 3, 97, 96
+        expect(last_index).toBe 3
+        expect(last_value).toBe 96
+        expect(count).toBe 4
+
+#       it 'del', ->
+#         count = 0
+#         last_index = last_value = null
+#         tracker.set = (index, value, worker_fn) ->
+#           count += 1
+#           last_index = index
+#           last_value = value
+#           worker_fn()
+
+
+    describe 'Exception handling', ->
+
+      it 'Constructor requires array as first argument', ->
+        expect(-> new ArrayTracker).toThrow()
+        expect(-> new ArrayTracker 1).toThrow()
+        expect(-> new ArrayTracker 're').toThrow()
+        expect(-> new ArrayTracker {}).toThrow()
+        expect(-> new ArrayTracker true).toThrow()
+        expect(-> new ArrayTracker null).toThrow()
+
+      it 'Double tracking not allowed', ->
+        expect(-> new ArrayTracker arr).toThrow()
+
+      it 'Store must be object type', ->
+        expect(-> new ArrayTracker [], false).toThrow()
+        expect(-> new ArrayTracker [], 'fdsfs').toThrow()
+        expect(-> new ArrayTracker [], true).toThrow()
+        # should default to creating a new store
+        expect(-> new ArrayTracker [], null).not.toThrow()
+
+      it 'Get/set/del/move functions def', ->
+        expect(-> new ArrayTracker [], null, {get: []}).toThrow()
+        expect(-> new ArrayTracker [], null, {set: 'x'}).toThrow()
+        expect(-> new ArrayTracker [], null, {del: 1}).toThrow()
+        expect(-> new ArrayTracker [], null, {fdsfds: (->)}).toThrow()
+        expect(-> tracker.get = true).toThrow()
+        expect(-> tracker.set = false).toThrow()
+        expect(-> tracker.del = {}).toThrow()
