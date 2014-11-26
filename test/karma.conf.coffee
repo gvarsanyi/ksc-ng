@@ -20,7 +20,7 @@ module.exports = (config) ->
 
   config.set
     autoWatch:        false
-    browsers:         ['Chrome', 'Firefox']
+    browsers:         ['Chrome']
     coverageReporter:
       instrumenter:
         '**/*.coffee': 'istanbul'
