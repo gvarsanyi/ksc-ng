@@ -9,13 +9,18 @@ module.exports = (config) ->
       file.substr(file.length - 12) isnt '.spec.coffee'
         file += '.spec.coffee'
       files.push 'unit/' + file
+    preprocessors =
+      'unit/**/*.coffee': 'coffee'
   else
     files.push 'unit/**/*.coffee'
     reporters.push 'coverage'
+    preprocessors =
+      'tmp/**/*.js':      'coverage'
+      'unit/**/*.coffee': 'coffee'
 
   config.set
     autoWatch:        false
-    browsers:         ['PhantomJS']
+    browsers:         ['Chrome', 'Firefox']
     coverageReporter:
       instrumenter:
         '**/*.coffee': 'istanbul'
@@ -27,8 +32,6 @@ module.exports = (config) ->
                        'tmp/**/*.js'].concat files
     frameworks:       ['jasmine']
     logLevel:         'WARN'
-    preprocessors:
-      'tmp/**/*.js':      'coverage'
-      'unit/**/*.coffee': 'coffee'
+    preprocessors:    preprocessors
     reporters:        ['spec'].concat reporters
     singleRun:        true
