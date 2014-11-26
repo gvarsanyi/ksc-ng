@@ -274,14 +274,43 @@ describe 'app.service', ->
         expect(last_value).toBe 96
         expect(count).toBe 4
 
-#       it 'del', ->
-#         count = 0
-#         last_index = last_value = null
-#         tracker.set = (index, value, worker_fn) ->
-#           count += 1
-#           last_index = index
-#           last_value = value
-#           worker_fn()
+      it 'del', ->
+        arr.push 4, 5, 6, 7, 8, 9, 10
+        count = 0
+        last_index = last_value = null
+        tracker.del = (index, value) ->
+          count += 1
+          last_index = index
+          last_value = value
+
+        expect(arr.pop()).toBe -10
+        expect(last_index).toBe 9
+        expect(last_value).toBe '10'
+        expect(count).toBe 1
+
+        # always deletes the last
+        expect(arr.shift()).toBe -1
+        expect(last_index).toBe 8
+        expect(last_value).toBe '9'
+        expect(count).toBe 2
+
+        # should not delete any (inserted.length == cut_count)
+        arr.splice 2, 2, 97, 96
+        expect(last_index).toBe 8
+        expect(last_value).toBe '9'
+        expect(count).toBe 2
+
+        # deletes only 1 (del_count = cut_count - inserted.length)
+        arr.splice 2, 2, 96
+        expect(last_index).toBe 7
+        expect(last_value).toBe '9'
+        expect(count).toBe 3
+
+        # deletes many
+        arr.splice 1, 2
+        expect(last_index).toBe 6
+        expect(last_value).toBe '9'
+        expect(count).toBe 5 # bumped by 2
 
 
     describe 'Exception handling', ->
