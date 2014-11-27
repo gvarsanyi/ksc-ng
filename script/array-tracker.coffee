@@ -171,7 +171,7 @@ ksc.factory 'ksc.ArrayTracker', [
       Detach tracker from array, revert to plain values and restore original
       methods for pop, shift, push, unshift, splice, reverse, sort.
 
-      @return [undefined]
+      @return [void]
       ###
       unload: ->
         {list, store} = tracker = @
@@ -191,15 +191,47 @@ ksc.factory 'ksc.ArrayTracker', [
 
 
       ###
+      Helper function that inserts elements to a given index while pushing
+      existing elements to the right (if needed). Used by {ArrayTracker._push},
+      {ArrayTracker._unshift} and {ArrayTracker._splice}
+
+      @param [ArrayTracker] tracker
+      @param [array] items Values to be inserted
+      @param [number] index Insertation point
+      @param [boolean] move_to_right Whether to push elements to the right.
+        {ArrayTracker._splice} has its own logic to do that, hence the need for
+        this flag
+
+      @return [number] new length of the array
+      ###
+      @add: (tracker, items, index, move_to_right=true) ->
+        {list, store} = tracker
+        items_len = items.length
+        orig_len  = list.length
+
+        # copy to right
+        if move_to_right and orig_len > index
+          for i in [orig_len - 1 .. index] by -1
+            ArrayTracker.setElement tracker, i + items_len, store[i], 1
+
+        for value, i in items
+          if move_to_right
+            ArrayTracker.getterify tracker, i + orig_len
+          ArrayTracker.setElement tracker, i + index, value
+
+        list.length
+
+      ###
       Helper function that is used by element getters and element reading
-      functions to return stored value or trigger user-defined get function
+      functions to return stored value or - if defined - trigger user-defined
+      {ArrayTracker#get} function
 
       @param [ArrayTracker] tracker
       @param [number] index
 
       @return [mixed] value
       ###
-      @get: (tracker, index) ->
+      @getElement: (tracker, index) ->
         # console.log '@get:', index, tracker.store[index], '::'
         if tracker.get
           return tracker.get index, tracker.store[index]
@@ -207,26 +239,26 @@ ksc.factory 'ksc.ArrayTracker', [
 
       ###
       Helper function that turns an element into getter/setter. Used by
-      {ArrayTracker#add}, {ArrayTracker#process} and {ArrayTracker#splice}
+      {ArrayTracker.add}, {ArrayTracker.process} and {ArrayTracker._splice}
 
       @param [ArrayTracker] tracker
       @param [number] index
 
-      @return [undefined]
+      @return [void]
       ###
       @getterify: (tracker, index) ->
         define_get_set tracker.list, index,
-                       (-> ArrayTracker.get tracker, index),
-                       ((value) -> ArrayTracker.set tracker, index, value), 1
+                       (-> ArrayTracker.getElement tracker, index),
+                       ((val) -> ArrayTracker.setElement tracker, index, val), 1
         return
 
       ###
       Helper function that updates array with plain values. Used by
-      {ArrayTracker#unload}, {ArrayTracker#reverse} and {ArrayTracker#sort}
+      {ArrayTracker#unload}, {ArrayTracker._reverse} and {ArrayTracker._sort}
 
       @param [ArrayTracker] tracker
 
-      @return [undefined]
+      @return [void]
       ###
       @plainify: (tracker) ->
         {list, store} = tracker
@@ -237,20 +269,58 @@ ksc.factory 'ksc.ArrayTracker', [
 
       ###
       Helper function that turns plain values into getters/setters and stores
-      values. Used by {ArrayTracker#constructor}, {ArrayTracker#reverse} and
-      {ArrayTracker#sort}
+      values. Used by {ArrayTracker#constructor}, {ArrayTracker._reverse} and
+      {ArrayTracker._sort}
 
       @param [ArrayTracker] tracker
 
-      @return [undefined]
+      @return [void]
       ###
       @process: (tracker) ->
         for value, index in tracker.list
           ArrayTracker.getterify tracker, index
-          ArrayTracker.set tracker, index, value
+          ArrayTracker.setElement tracker, index, value
         return
 
-      @set: (tracker, index, value, moving) ->
+      ###
+      Helper function that removes an element from index while pushing
+      existing elements to the left (if needed). Used by {ArrayTracker._pop},
+      {ArrayTracker._shift} and {ArrayTracker._splice}
+
+      @param [ArrayTracker] tracker
+      @param [number] index Insertation point
+
+      @return [mixed] stored value of the removed element (or void if nothing
+        was removed e.g. when array is empty.
+      ###
+      @rm: (tracker, index) ->
+        {list, store} = tracker
+        if list.length
+          orig_len  = list.length
+          res       = list[index]
+          for i in [index + 1 ... orig_len] by 1
+            ArrayTracker.setElement tracker, i - 1, store[i], 1
+          if del = tracker.del
+            deletable = store[orig_len - 1]
+          delete store[orig_len - 1]
+          list.length = orig_len - 1
+          del? orig_len - 1, deletable
+          res
+
+      ###
+      Helper function that is used by element setters and functions that
+      store values. If provided, it triggers a user defined {ArrayTracker#set}
+      method. Otherwise it will store value as-is.
+
+      @param [ArrayTracker] tracker
+      @param [number] index
+      @param [mixed] value
+      @param [boolean] moving Indicates if element was moved around (e.g. value
+        reflects previously processed stored value, not new incoming value)
+
+      @return [void]
+      ###
+      @setElement: (tracker, index, value, moving) ->
         # console.log '@set:', index, tracker.store[index], '->', value
         work = ->
           if arguments.length
@@ -264,43 +334,13 @@ ksc.factory 'ksc.ArrayTracker', [
           tracker.set index, value, work, !!moving
         else
           work()
-
-      @add: (tracker, items, index, move_to_right=true) ->
-        {list, store} = tracker
-        items_len = items.length
-        orig_len  = list.length
-
-        # copy to right
-        if move_to_right and orig_len > index
-          for i in [orig_len - 1 .. index] by -1
-            ArrayTracker.set tracker, i + items_len, store[i], true
-
-        for value, i in items
-          if move_to_right
-            ArrayTracker.getterify tracker, i + orig_len
-          ArrayTracker.set tracker, i + index, value
-
-        list.length
-
-      @del: (tracker, index) ->
-        {list, store} = tracker
-        if list.length
-          orig_len  = list.length
-          res       = list[index]
-          for i in [index + 1 ... orig_len] by 1
-            ArrayTracker.set tracker, i - 1, store[i], true
-          if del = tracker.del
-            deletable = store[orig_len - 1]
-          delete store[orig_len - 1]
-          list.length = orig_len - 1
-          del? orig_len - 1, deletable
-          res
+        return
 
       @_pop: ->
-        ArrayTracker.del @, @list.length - 1
+        ArrayTracker.rm @, @list.length - 1
 
       @_shift: ->
-        ArrayTracker.del @, 0
+        ArrayTracker.rm @, 0
 
       @_push: (items...) ->
         ArrayTracker.add @, items, @list.length
@@ -326,13 +366,13 @@ ksc.factory 'ksc.ArrayTracker', [
         res = list[index ... index + how_many]
 
         move = (i) ->
-          ArrayTracker.set tracker, i - how_many + items_len, store[i], true
+          ArrayTracker.setElement tracker, i - how_many + items_len, store[i], 1
 
         if how_many > items_len # cut_count >= 1
           for i in [index + how_many ... orig_len] by 1
             move i
           for i in [0 ... how_many - items_len] by 1
-            ArrayTracker.del tracker, orig_len - i - 1
+            ArrayTracker.rm tracker, orig_len - i - 1
         else if how_many < items_len # copy to right
           for i in [orig_len - 1 .. index + how_many] by -1
             move i
