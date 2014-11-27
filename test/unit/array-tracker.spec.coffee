@@ -251,6 +251,9 @@ describe 'app.service', ->
         expect(arr[2] = 'yo').toBe 'yo'
         expect(arr[2]).toBeNaN()
 
+        tracker.set = null
+        arr.push 30, 31, 32, 33, 34
+
         count = 0
         last_index = last_value = null
         tracker.set = (index, value, worker_fn) ->
@@ -260,19 +263,19 @@ describe 'app.service', ->
           worker_fn()
 
         arr.push 99
-        expect(last_index).toBe 3
+        expect(last_index).toBe 8
         expect(last_value).toBe 99
         expect(count).toBe 1
 
         arr.unshift 98
         expect(last_index).toBe 0
         expect(last_value).toBe 98
-        expect(count).toBe 2
+        expect(count).toBe 11
 
         arr.splice 2, 3, 97, 96
         expect(last_index).toBe 3
         expect(last_value).toBe 96
-        expect(count).toBe 4
+        expect(count).toBe 18
 
       it 'del', ->
         arr.push 4, 5, 6, 7, 8, 9, 10
@@ -308,7 +311,7 @@ describe 'app.service', ->
 
         # deletes many
         arr.splice 1, 2
-        expect(last_index).toBe 6
+        expect(last_index).toBe 5
         expect(last_value).toBe '9'
         expect(count).toBe 5 # bumped by 2
 
@@ -340,4 +343,4 @@ describe 'app.service', ->
         expect(-> new ArrayTracker [], null, {fdsfds: (->)}).toThrow()
         expect(-> tracker.get = true).toThrow()
         expect(-> tracker.set = false).toThrow()
-        expect(-> tracker.del = {}).toThrow()
+        expect(-> tracker.del = {}).toThrow()###

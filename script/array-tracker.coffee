@@ -97,7 +97,7 @@ ksc.factory 'ksc.ArrayTracker', [
           return tracker.get index, tracker.store[index]
         tracker.store[index]
 
-      @set: (tracker, index, value) ->
+      @set: (tracker, index, value, moving) ->
         # console.log '@set:', index, tracker.store[index], '->', value
         work = ->
           if arguments.length
@@ -108,51 +108,46 @@ ksc.factory 'ksc.ArrayTracker', [
           true
 
         if tracker.set
-          tracker.set index, value, work
+          tracker.set index, value, work, moving
         else
           work()
 
-      @add: (tracker, items, index) ->
+      @add: (tracker, items, index, move_to_right=true) ->
         {list, store} = tracker
         items_len = items.length
         orig_len  = list.length
 
         # copy to right
-        for i in [orig_len - 1 .. index] by -1
-          store[i + items_len] = store[i]
+        if move_to_right and orig_len > index
+          for i in [orig_len - 1 .. index] by -1
+            ArrayTracker.set tracker, i + items_len, store[i], true
 
-        for item, i in items
-          list[i + orig_len] = null
-          ArrayTracker.getterify tracker, i + orig_len
-          ArrayTracker.set tracker, i + index, item
+        for value, i in items
+          if move_to_right
+            ArrayTracker.getterify tracker, i + orig_len
+          ArrayTracker.set tracker, i + index, value
 
         list.length
 
-      @del: (tracker, index=tracker.list.length-1, how_many=1, event_off=0) ->
+      @del: (tracker, index) ->
         {list, store} = tracker
-        deletable = []
-        orig_len  = list.length
-        res       = list[index]
-        for i in [index + how_many ... orig_len] by 1
-          store[i - how_many] = store[i]
-        for i in [0 ... how_many] by 1
-          del_idx = orig_len - how_many + i
-          if tracker.del and i >= event_off
-            deletable.push store[del_idx]
-          delete store[del_idx]
-        list.length = orig_len - how_many
-        del_len = deletable.length
-        for value, i in deletable
-          tracker.del orig_len - del_len + i, value
-        res
+        if list.length
+          orig_len  = list.length
+          res       = list[index]
+          for i in [index + 1 ... orig_len] by 1
+            ArrayTracker.set tracker, i - 1, store[i], true
+          if del = tracker.del
+            deletable = store[orig_len - 1]
+          delete store[orig_len - 1]
+          list.length = orig_len - 1
+          del? orig_len - 1, deletable
+          res
 
       @_pop: ->
-        if @list.length
-          ArrayTracker.del @
+        ArrayTracker.del @, @list.length - 1
 
       @_shift: ->
-        if @list.length
-          ArrayTracker.del @, 0
+        ArrayTracker.del @, 0
 
       @_push: (items...) ->
         ArrayTracker.add @, items, @list.length
@@ -161,9 +156,10 @@ ksc.factory 'ksc.ArrayTracker', [
         ArrayTracker.add @, items, 0
 
       @_splice: (index, how_many, items...) ->
-        {list, store} = @
+        {list, store} = tracker = @
 
-        orig_len = list.length
+        items_len = items.length
+        orig_len  = list.length
 
         index = parseInt(index, 10) or 0
         if index < 0
@@ -176,10 +172,22 @@ ksc.factory 'ksc.ArrayTracker', [
 
         res = list[index ... index + how_many]
 
-        if how_many
-          ArrayTracker.del @, index, how_many, items.length
-        if items.length
-          ArrayTracker.add @, items, index
+        move = (i) ->
+          ArrayTracker.set tracker, i - how_many + items_len, store[i], true
+
+        if how_many > items_len # cut_count >= 1
+          for i in [index + how_many ... orig_len] by 1
+            move i
+          for i in [orig_len - how_many + items_len ... orig_len] by 1
+            ArrayTracker.del tracker, i
+        else if how_many < items_len # copy to right
+          for i in [orig_len - 1 .. index + how_many] by -1
+            move i
+
+        if items_len
+          for i in [how_many ... items_len] by 1
+            ArrayTracker.getterify tracker, i + orig_len
+          ArrayTracker.add tracker, items, index, false
 
         res
 
