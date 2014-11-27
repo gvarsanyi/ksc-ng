@@ -20,9 +20,10 @@ describe 'app.service', ->
         # console.log 'get:', index, value
         value * -1
 
-      tracker = new ArrayTracker arr, store,
-        set: setter
-        get: getter
+      tracker = new ArrayTracker arr,
+        get:   getter
+        set:   setter
+        store: store
 
 
   describe 'ArrayTracker', ->
@@ -312,7 +313,7 @@ describe 'app.service', ->
         # deletes many
         arr.splice 1, 2
         expect(last_index).toBe 5
-        expect(last_value).toBe '9'
+        expect(last_value).toBe '8'
         expect(count).toBe 5 # bumped by 2
 
 
@@ -326,21 +327,24 @@ describe 'app.service', ->
         expect(-> new ArrayTracker true).toThrow()
         expect(-> new ArrayTracker null).toThrow()
 
+      it 'Options must be an object', ->
+        expect(-> new ArrayTracker [], 1).toThrow()
+        expect(-> new ArrayTracker [], false).toThrow()
+        expect(-> new ArrayTracker [], 'ds').toThrow()
+
       it 'Double tracking not allowed', ->
         expect(-> new ArrayTracker arr).toThrow()
 
       it 'Store must be object type', ->
-        expect(-> new ArrayTracker [], false).toThrow()
-        expect(-> new ArrayTracker [], 'fdsfs').toThrow()
-        expect(-> new ArrayTracker [], true).toThrow()
-        # should default to creating a new store
-        expect(-> new ArrayTracker [], null).not.toThrow()
+        expect(-> new ArrayTracker [], store: false).toThrow()
+        expect(-> new ArrayTracker [], store: 'fdsfs').toThrow()
+        expect(-> new ArrayTracker [], store: true).toThrow()
+        expect(-> new ArrayTracker [], store: null).toThrow()
 
       it 'Get/set/del/move functions def', ->
-        expect(-> new ArrayTracker [], null, {get: []}).toThrow()
-        expect(-> new ArrayTracker [], null, {set: 'x'}).toThrow()
-        expect(-> new ArrayTracker [], null, {del: 1}).toThrow()
-        expect(-> new ArrayTracker [], null, {fdsfds: (->)}).toThrow()
+        expect(-> new ArrayTracker [], {get: []}).toThrow()
+        expect(-> new ArrayTracker [], {set: 'x'}).toThrow()
+        expect(-> new ArrayTracker [], {del: 1}).toThrow()
         expect(-> tracker.get = true).toThrow()
         expect(-> tracker.set = false).toThrow()
         expect(-> tracker.del = {}).toThrow()###
