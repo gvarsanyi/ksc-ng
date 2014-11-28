@@ -67,13 +67,13 @@ describe 'app.service', ->
         count += 1
       expect(count).toBe 0
 
-    it 'Methods .plainify() and .process()', ->
-      expect(tracker.plainify()).toBeUndefined()
+    it 'Class methods .plainify() and .process()', ->
+      expect(ArrayTracker.plainify tracker).toBeUndefined()
       expect(arr.length).toBe 3
       expect(arr[0]).toBe '1'
       expect(Object.getOwnPropertyDescriptor(arr, 0).value).toBe '1'
 
-      expect(tracker.process()).toBeUndefined()
+      expect(ArrayTracker.process tracker).toBeUndefined()
       expect(arr[0]).toBe -1
       obj_setter = typeof Object.getOwnPropertyDescriptor(arr, 0).set
       expect(obj_setter).toBe 'function'
