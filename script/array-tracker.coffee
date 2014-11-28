@@ -336,18 +336,94 @@ ksc.factory 'ksc.ArrayTracker', [
           work()
         return
 
+      ###
+      Override function that replaces original .pop() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::pop()
+
+      Removes and returns the last element of the array.
+
+      If defined on tracker, the following handlers will be triggered:
+        - {ArrayTracker#get}(index, value) for the popped (last) element
+        - {ArrayTracker#del}(index, value) for the last element
+
+      @return [mixed] popped value or undefined if the array was empty
+      ###
       @_pop: ->
         ArrayTracker.rm @, @list.length - 1
 
+      ###
+      Override function that replaces original .shift() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::shift()
+
+      Removes and returns the first element of the array.
+
+      If defined on tracker, the following handlers will be triggered:
+        - {ArrayTracker#get}(index, value) for the shifted (first) element
+        - {ArrayTracker#set}(index, value, next_fn, true) for all remaining
+          elements as the move left
+        - {ArrayTracker#del}(index, value) for the last element
+
+      @return [mixed] popped value or undefined if the array was empty
+      ###
       @_shift: ->
         ArrayTracker.rm @, 0
 
+      ###
+      Override function that replaces original .push() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::push()
+
+      Appends element(s) to the end of the array.
+
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#set}(index, value, next_fn, false) for all new elements
+
+      @param [mixed] items... Elements to add
+
+      @return [number] the new length of the array
+      ###
       @_push: (items...) ->
         ArrayTracker.add @, items, @list.length
 
+      ###
+      Override function that replaces original .unshift() method of the tracked
+      array. From the user's standpoint, it behaves exactly like
+      Array::unshift()
+
+      Prepends array with the provided element(s).
+
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#set}(index, value, next_fn, false) for all new elements
+        - {ArrayTracker#set}(index, value, next_fn, true) for all previously
+          existing elements pushed to the right
+
+      @param [mixed] items... Elements to add
+
+      @return [number] the new length of the array
+      ###
       @_unshift: (items...) ->
         ArrayTracker.add @, items, 0
 
+      ###
+      Override function that replaces original .splice() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::splice()
+
+      Cuts a part out of the array and/or inserts element(s) starting at a
+      provided index.
+
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#get}(index, value) for the cut elements
+        - {ArrayTracker#del}(index, value) for the cut elements
+        - {ArrayTracker#set}(index, value, next_fn, false) for all new elements
+        - {ArrayTracker#set}(index, value, next_fn, true) for all previously
+          existing elements pushed to either left (if how_many > n new items) or
+          right (if how_many < n new items)
+
+      @param [number] index Index to start cutting/inserting at
+      @param [number] how_many Number of elements to cut
+      @param [mixed] items... Elements to add
+
+      @return [array] a list of cut elements
+      ###
       @_splice: (index, how_many, items...) ->
         {list, store} = tracker = @
 
@@ -384,13 +460,50 @@ ksc.factory 'ksc.ArrayTracker', [
 
         res
 
-      @_sort: (args...) ->
+      ###
+      Override function that replaces original .sort() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::sort()
+
+      Sorts the array based on default sort or provided sort function.
+
+      Will turn the array into a plain-values array based on stored values and
+      {ArrayTracker#get} if defined.
+      After sorting, will turn it back to a getter/setter array saving new
+      values back to store and using {ArrayTracker#set} if defined.
+
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#get}(index, value) for all elements
+        - {ArrayTracker#set}(index, value, next_fn, false) for all elements
+
+      @param [function] fn (optional) sort function that returns <0, 0 or >0
+
+      @return [array] returns the tracked array itself
+      ###
+      @_sort: (fn) ->
         tracker = @
         ArrayTracker.plainify tracker
-        res = Array::sort.apply tracker.list, args
+        res = Array::sort.call tracker.list, fn
         ArrayTracker.process tracker
         res
 
+      ###
+      Override function that replaces original .reverse() method of the tracked
+      array. From the user's standpoint, it behaves exactly like
+      Array::reverse()
+
+      Reverses array elements.
+
+      Will turn the array into a plain-values array based on stored values and
+      {ArrayTracker#get} if defined.
+      After sorting, will turn it back to a getter/setter array saving new
+      values back to store and using {ArrayTracker#set} if defined.
+
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#get}(index, value) for all elements
+        - {ArrayTracker#set}(index, value, next_fn, false) for all elements
+
+      @return [array] returns the tracked array itself
+      ###
       @_reverse: ->
         tracker = @
         ArrayTracker.plainify tracker
