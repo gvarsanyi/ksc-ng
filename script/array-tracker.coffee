@@ -75,7 +75,7 @@ ksc.factory 'ksc.ArrayTracker', [
       ###
 
       ###
-      @method #set(index, value)
+      @method #set(index, value, next, set_type)
         Inject setter logic or set to/leave as null for default behavior
         (elements stored as-is). See second example in class def.
 
@@ -85,12 +85,14 @@ ksc.factory 'ksc.ArrayTracker', [
 
         @param [number] index of element in array
         @param [mixed] value to be set
-        @param [function] call when your biz logic is ready. Takes 0 or 1
+        @param [function] next call when your biz logic is ready. Takes 0 or 1
           argument. If argument is provided that will be stored as value.
-        @param [boolean] True indicates that value is originated in the store
-          (i.e. was already altered if you alter values). It happens when
-          elements move to the left or to the right (for example when .shift()
-          or .unshift() methods are used and elements move around)
+        @param [string] set_type Any of the following values:
+          - 'external': coming from oustide by updating an element or adding new
+          - 'move': previously processed element moved to new index (after pop,
+            unshift or splice)
+          - 'reload': after temporarly reloading array with processed values,
+            values receive updated indexes (sort and reverse)
 
         @return [mixed] whetever you define. Return value will not be used
       ###
@@ -212,12 +214,12 @@ ksc.factory 'ksc.ArrayTracker', [
         # copy to right
         if move_to_right and orig_len > index
           for i in [orig_len - 1 .. index] by -1
-            ArrayTracker.setElement tracker, i + items_len, store[i], 1
+            set_element tracker, i + items_len, store[i], 'move'
 
         for value, i in items
           if move_to_right
             ArrayTracker.getterify tracker, i + orig_len
-          ArrayTracker.setElement tracker, i + index, value
+          set_element tracker, i + index, value
 
         list.length
 
@@ -249,7 +251,7 @@ ksc.factory 'ksc.ArrayTracker', [
       @getterify: (tracker, index) ->
         define_get_set tracker.list, index,
                        (-> ArrayTracker.getElement tracker, index),
-                       ((val) -> ArrayTracker.setElement tracker, index, val), 1
+                       ((val) -> set_element tracker, index, val), 1
         return
 
       ###
@@ -273,13 +275,15 @@ ksc.factory 'ksc.ArrayTracker', [
       {ArrayTracker._sort}
 
       @param [ArrayTracker] tracker
+      @param [string] set_type (optional) Process name (e.g. 'reload') or new
+        elements if not provided.
 
       @return [void]
       ###
-      @process: (tracker) ->
+      @process: (tracker, set_type) ->
         for value, index in tracker.list
           ArrayTracker.getterify tracker, index
-          ArrayTracker.setElement tracker, index, value
+          set_element tracker, index, value, set_type
         return
 
       ###
@@ -299,7 +303,7 @@ ksc.factory 'ksc.ArrayTracker', [
           orig_len  = list.length
           res       = list[index]
           for i in [index + 1 ... orig_len] by 1
-            ArrayTracker.setElement tracker, i - 1, store[i], 1
+            set_element tracker, i - 1, store[i], 'move'
           if del = tracker.del
             deletable = store[orig_len - 1]
           delete store[orig_len - 1]
@@ -315,12 +319,11 @@ ksc.factory 'ksc.ArrayTracker', [
       @param [ArrayTracker] tracker
       @param [number] index
       @param [mixed] value
-      @param [boolean] moving Indicates if element was moved around (e.g. value
-        reflects previously processed stored value, not new incoming value)
+      @param [string] set_type undefined='external' or 'move' or 'reload'
 
       @return [void]
       ###
-      @setElement: (tracker, index, value, moving) ->
+      @setElement: (tracker, index, value, set_type) ->
         # console.log '@set:', index, tracker.store[index], '->', value
         work = ->
           if arguments.length
@@ -331,7 +334,7 @@ ksc.factory 'ksc.ArrayTracker', [
           true
 
         if tracker.set
-          tracker.set index, value, work, !!moving
+          tracker.set index, value, work, set_type or 'external'
         else
           work()
         return
@@ -442,7 +445,7 @@ ksc.factory 'ksc.ArrayTracker', [
         res = list[index ... index + how_many]
 
         move = (i) ->
-          ArrayTracker.setElement tracker, i - how_many + items_len, store[i], 1
+          set_element tracker, i - how_many + items_len, store[i], 'move'
 
         if how_many > items_len # cut_count >= 1
           for i in [index + how_many ... orig_len] by 1
@@ -456,7 +459,7 @@ ksc.factory 'ksc.ArrayTracker', [
         if items_len
           for i in [how_many ... items_len] by 1
             ArrayTracker.getterify tracker, i + orig_len
-          ArrayTracker.add tracker, items, index, false
+          ArrayTracker.add tracker, items, index, 0
 
         res
 
@@ -483,7 +486,7 @@ ksc.factory 'ksc.ArrayTracker', [
         tracker = @
         ArrayTracker.plainify tracker
         res = Array::sort.call tracker.list, fn
-        ArrayTracker.process tracker
+        ArrayTracker.process tracker, 'reload'
         res
 
       ###
@@ -508,6 +511,12 @@ ksc.factory 'ksc.ArrayTracker', [
         tracker = @
         ArrayTracker.plainify tracker
         res = Array::reverse.call tracker.list
-        ArrayTracker.process tracker
+        ArrayTracker.process tracker, 'reload'
         res
+
+
+    set_element = ArrayTracker.setElement
+
+
+    ArrayTracker
 ]

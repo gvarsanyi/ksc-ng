@@ -186,7 +186,9 @@ describe 'app.service', ->
         arr.push 4, 5, 6, 7, 8, 9, 10
 
         expect(arr.splice 1, 2, 12).toEqual [-2, -3]
+        expect(arr[0]).toBe -1
         expect(arr[1]).toBe -12
+        expect(arr[2]).toBe -4
         expect(arr.length).toBe 9
         expect(arr[8]).toBe -10
 
@@ -237,46 +239,86 @@ describe 'app.service', ->
           'yo'
         expect(arr[1]).toBe 'yo'
 
-      it 'set', ->
-        tracker.set = (index, value, worker_fn) ->
-          expect(index).toBe 1
-          expect(value).toBe 'yo'
-          worker_fn '10'
-        expect(arr[1] = 'yo').toBe 'yo'
-        expect(arr[1]).toBe -10
+      describe 'set', ->
+        it 'using callback argument', ->
+          tracker.set = (index, value, worker_fn, setter_type) ->
+            expect(index).toBe 1
+            expect(value).toBe 'yo'
+            expect(setter_type).toBe 'external'
+            worker_fn '10'
+          expect(arr[1] = 'yo').toBe 'yo'
+          expect(arr[1]).toBe -10
 
-        tracker.set = (index, value, worker_fn) ->
-          expect(index).toBe 2
-          expect(value).toBe 'yo'
-          worker_fn()
-        expect(arr[2] = 'yo').toBe 'yo'
-        expect(arr[2]).toBeNaN()
+        it 'not using callback argument', ->
+          tracker.set = (index, value, worker_fn) ->
+            expect(index).toBe 2
+            expect(value).toBe 'yo'
+            worker_fn()
+          expect(arr[2] = 'yo').toBe 'yo'
+          expect(arr[2]).toBeNaN()
 
-        tracker.set = null
-        arr.push 30, 31, 32, 33, 34
+          tracker.set = null
 
-        count = 0
-        last_index = last_value = null
-        tracker.set = (index, value, worker_fn) ->
-          count += 1
-          last_index = index
-          last_value = value
-          worker_fn()
+        it 'setter_type accuracy and expected event counts', ->
+          arr.push 30, 31, 32, 33, 34
 
-        arr.push 99
-        expect(last_index).toBe 8
-        expect(last_value).toBe 99
-        expect(count).toBe 1
+          count = last_index = last_value = type_count = null
+          reset_count = ->
+            count = 0
+            last_index = last_value = null
+            type_count = {external: 0, move: 0, reload: 0}
 
-        arr.unshift 98
-        expect(last_index).toBe 0
-        expect(last_value).toBe 98
-        expect(count).toBe 11
+          tracker.set = (index, value, worker_fn, setter_type) ->
+            count += 1
+            last_index = index
+            last_value = value
+            type_count[setter_type] += 1
+            worker_fn()
 
-        arr.splice 2, 3, 97, 96
-        expect(last_index).toBe 3
-        expect(last_value).toBe 96
-        expect(count).toBe 18
+          reset_count()
+          arr.push 99
+          expect(last_index).toBe 8
+          expect(last_value).toBe 99
+          expect(count).toBe 1
+          expect(type_count.external).toBe 1
+          expect(type_count.move).toBe 0
+          expect(type_count.reload).toBe 0
+
+          reset_count()
+          arr.unshift 98
+          expect(last_index).toBe 0
+          expect(last_value).toBe 98
+          expect(count).toBe 10
+          expect(type_count.external).toBe 1
+          expect(type_count.move).toBe 9
+          expect(type_count.reload).toBe 0
+
+          reset_count()
+          arr.splice 2, 3, 97, 96
+          expect(last_index).toBe 3
+          expect(last_value).toBe 96
+          expect(count).toBe 7
+          expect(type_count.external).toBe 2
+          expect(type_count.move).toBe 5
+          expect(type_count.reload).toBe 0
+
+          reset_count()
+          arr.sort()
+          expect(last_index).toBe 8
+          expect(last_value).toBe 99
+          expect(count).toBe 9
+          expect(type_count.external).toBe 0
+          expect(type_count.move).toBe 0
+          expect(type_count.reload).toBe 9
+
+          reset_count()
+          arr.reverse()
+          expect(last_index).toBe 8
+          expect(last_value).toBe '1'
+          expect(count).toBe 9
+          expect(type_count.external).toBe 0
+          expect(type_count.move).toBe 0
+          expect(type_count.reload).toBe 9
 
       it 'del', ->
         arr.push 4, 5, 6, 7, 8, 9, 10
