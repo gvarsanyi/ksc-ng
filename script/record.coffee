@@ -229,7 +229,7 @@ ksc.factory 'ksc.Record', [
         if contract = @[_OPTIONS][CONTRACT]
           contract._match (if @[_ARRAY] then 'all' else key), value
         else
-          if key.substr(0, 1) is '_'
+          if typeof key is 'string' and key.substr(0, 1) is '_'
             error.Key {key, description: 'can not start with "_"'}
           if typeof value is 'function'
             error.Type {value, description: 'can not be function'}
@@ -238,16 +238,19 @@ ksc.factory 'ksc.Record', [
         contract = record[_OPTIONS][CONTRACT]
 
         if is_object value
-          if value instanceof Record
+          if value._clone? # instanceof Record or processed Array
             value = value._clone 1
 
           class_ref = record[_OPTIONS].subtreeClass or Record
 
-          if key_contract = contract?[key]
-            if opt = key_contract.array
-              subopts = contract: all: opt
-            if opt = key_contract[CONTRACT]
-              subopts = contract: opt
+          if contract
+            if key_contract = contract[key]
+              if key_contract.array
+                subopts = contract: all: key_contract.array
+              else
+                subopts = contract: key_contract[CONTRACT]
+            else if record[_ARRAY] and contract.all
+              subopts = contract: contract.all.contract
           value = new class_ref value, subopts, record, key
 
         value
@@ -288,15 +291,27 @@ ksc.factory 'ksc.Record', [
 
         Record.initIdProperty record, data
 
+        replacing = true
+
         if is_array data
-#           unless arr = record[_ARRAY]
-#             define_value record, _ARRAY, arr = []
-#             new ArrayTracker arr, record[_SAVED]
-#           else
-#             util.empty arr
-#           arr.push data...
+          flat = (value for value in data)
+
+          unless arr = record[_ARRAY]
+            define_value record, _ARRAY, arr = []
+            new ArrayTracker arr,
+              store: record[_SAVED]
+              get: (index) ->
+                record._getProperty index
+              set: (index, value) ->
+                record._setProperty index, value, replacing
+            changed = true
+          else if arr.length
+            util.empty arr
+            changed = true
+          if arr.push flat...
+            changed = true
         else
-#           delete record[_ARRAY]
+          delete record[_ARRAY]
 
           flat = {}
           for key, value of data
@@ -310,16 +325,18 @@ ksc.factory 'ksc.Record', [
             do (key) ->
               util.defineGetSet record, key, (-> record._getProperty key),
                                 ((value) -> record._setProperty key, value), 1
-            if record._setProperty key, value, 1
+            if record._setProperty key, value, replacing
               changed = true
 
-          for key of record[_SAVED] when not has_own flat, key
-            delete record[key]
-            delete record[_SAVED][key]
+        for key of record[_SAVED] when not has_own flat, key
+          delete record[key]
+          delete record[_SAVED][key]
+          changed = true
 
         if changed and events and emit_event
           Record.emitUpdate record, 'replace'
 
+        replacing = false
         changed or false
 
 

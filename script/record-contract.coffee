@@ -73,7 +73,7 @@ ksc.factory 'ksc.RecordContract', [
               error.Value
                 key:         desc_key
                 contract:    desc
-                description: 'array, default and contract are mutally exclusive'
+                description: 'array, default, contract are mutually exclusive'
 
           if not (arr = desc.array) and desc.type is 'array'
             error.Type

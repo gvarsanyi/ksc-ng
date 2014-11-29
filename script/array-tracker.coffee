@@ -167,7 +167,7 @@ ksc.factory 'ksc.ArrayTracker', [
             define_value list, key, (args...) ->
               ArrayTracker['_' + key].apply tracker, args
 
-        ArrayTracker.process tracker
+        process tracker
 
       ###
       Detach tracker from array, revert to plain values and restore original
@@ -177,7 +177,7 @@ ksc.factory 'ksc.ArrayTracker', [
       ###
       unload: ->
         {list, store} = tracker = @
-        ArrayTracker.plainify tracker
+        plainify tracker
 
         for key, inf of tracker.origFn
           if inf.n
@@ -217,9 +217,9 @@ ksc.factory 'ksc.ArrayTracker', [
             set_element tracker, i + items_len, store[i], 'move'
 
         for value, i in items
+          set_element tracker, i + index, value
           if move_to_right
             ArrayTracker.getterify tracker, i + orig_len
-          set_element tracker, i + index, value
 
         list.length
 
@@ -241,7 +241,7 @@ ksc.factory 'ksc.ArrayTracker', [
 
       ###
       Helper function that turns an element into getter/setter. Used by
-      {ArrayTracker.add}, {ArrayTracker.process} and {ArrayTracker._splice}
+      {ArrayTracker.add}, {process} and {ArrayTracker._splice}
 
       @param [ArrayTracker] tracker
       @param [number] index
@@ -484,9 +484,9 @@ ksc.factory 'ksc.ArrayTracker', [
       ###
       @_sort: (fn) ->
         tracker = @
-        ArrayTracker.plainify tracker
+        plainify tracker
         res = Array::sort.call tracker.list, fn
-        ArrayTracker.process tracker, 'reload'
+        process tracker, 'reload'
         res
 
       ###
@@ -509,12 +509,14 @@ ksc.factory 'ksc.ArrayTracker', [
       ###
       @_reverse: ->
         tracker = @
-        ArrayTracker.plainify tracker
+        plainify tracker
         res = Array::reverse.call tracker.list
-        ArrayTracker.process tracker, 'reload'
+        process tracker, 'reload'
         res
 
 
+    plainify    = ArrayTracker.plainify
+    process     = ArrayTracker.process
     set_element = ArrayTracker.setElement
 
 
