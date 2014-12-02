@@ -259,6 +259,9 @@ ksc.factory 'ksc.Record', [
         value = @[_SAVED][key]
         value?[_ARRAY] or value
 
+      _delete: (keys...) ->
+        error.Permission {keys, description: 'Read-only Record'}
+
       _setProperty: (key, value, initial) ->
         record = @
         saved  = record[_SAVED]
@@ -304,6 +307,9 @@ ksc.factory 'ksc.Record', [
                 record._getProperty index
               set: (index, value) ->
                 record._setProperty index, value, replacing
+              del: (index, value) ->
+                record._delete index
+                false
             changed = true
           else if arr.length
             util.empty arr

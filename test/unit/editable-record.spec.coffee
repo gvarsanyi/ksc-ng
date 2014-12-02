@@ -115,6 +115,31 @@ describe 'app.factory', ->
         record.id = 2
         expect(-> record._delete 'id').toThrow()
 
+      it 'Handles arrays', ->
+        r = null
+        arr = [1, 2]
+        expect(-> r = new EditableRecord {id: 1, a: arr}).not.toThrow()
+
+        expect(Array.isArray r.a).toBe true
+        expect(r.a).not.toBe arr
+        expect(r.a.length).toBe 2
+        expect(r.a[0]).toBe 1
+
+        r.a.push 3
+        expect(r.a[2]).toBe 3
+        expect(r.a.length).toBe 3
+
+        pre_r_a = r.a
+        r.a = [11, 12, 13, 14]
+        expect(r.a).toEqual [11, 12, 13, 14]
+        expect(r.a).toBe pre_r_a
+
+        r.a = null
+        expect(r.a).toBe null
+
+        r.a = [11, 12, 13]
+        expect(r.a).toEqual [11, 12, 13]
+
       it 'Throws error if key is invalid', ->
         record = new EditableRecord {id: 1, a: 1},
           contract:

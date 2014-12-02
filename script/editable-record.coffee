@@ -216,8 +216,7 @@ ksc.factory 'ksc.EditableRecord', [
         record   = @
         saved    = record[_SAVED]
         edited   = record[_EDITED]
-        options  = record[_OPTIONS]
-        contract = options.contract
+        contract = record[_OPTIONS].contract
 
         record._valueCheck key, value
 
@@ -237,18 +236,33 @@ ksc.factory 'ksc.EditableRecord', [
 
           res = value
           if is_object value
+            if is_array value
+              res = saved[key]
+              if arr = saved[key][_ARRAY]
+                for i in [0 ... arr.length - value.length] by 1
+                  arr.pop()
+                for i in [0 ... arr.length] by 1
+                  arr[i] = value[i]
+                arr.push arr.splice(arr.length, value.length)...
+              else
+                for k of saved[key] # delete properties not in the value
+                  if is_enumerable(saved[key], k) and not has_own value, k
+                    saved[key]._delete k
             if is_object saved[key]
               res = saved[key]
 
               for k of res # delete properties not in the value
                 if is_enumerable(res, k) and not has_own value, k
                   res._delete k
-            else
-              subopts = {}
-              if contract
-                subopts.contract = contract[key].contract
-
-              res = new EditableRecord {}, subopts, record, key
+#               if res[_ARRAY]
+#                 if is_array value
+#                 else
+#               else
+#                 if is_array value
+#                 else
+#                   for k of res # delete properties not in the value
+#                     if is_enumerable(res, k) and not has_own value, k
+#                       res._delete k
             for k, v of value
               res[k] = v
 
