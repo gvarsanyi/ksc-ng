@@ -306,9 +306,9 @@ ksc.factory 'ksc.ArrayTracker', [
             set_element tracker, i - 1, store[i], 'move'
           if del = tracker.del
             deletable = store[orig_len - 1]
-          delete store[orig_len - 1]
           list.length = orig_len - 1
-          del? orig_len - 1, deletable
+          if del?(orig_len - 1, deletable) isnt false
+            delete store[orig_len - 1]
           res
 
       ###
