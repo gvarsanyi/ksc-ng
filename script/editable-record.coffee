@@ -207,7 +207,7 @@ ksc.factory 'ksc.EditableRecord', [
         else
           value = record[_SAVED][key]
 
-        value?[_ARRAY] or value
+        Record.arrayFilter value
 
       _setProperty: (key, value, initial) ->
         if initial

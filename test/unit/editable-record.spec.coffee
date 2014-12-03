@@ -115,30 +115,81 @@ describe 'app.factory', ->
         record.id = 2
         expect(-> record._delete 'id').toThrow()
 
-      it 'Handles arrays', ->
-        r = null
-        arr = [1, 2]
-        expect(-> r = new EditableRecord {id: 1, a: arr}).not.toThrow()
+      describe 'Arrays', ->
+        arr = r = null
+        beforeEach ->
+          arr = [1, 2]
+          r = new EditableRecord {id: 1, a: arr}
 
-        expect(Array.isArray r.a).toBe true
-        expect(r.a).not.toBe arr
-        expect(r.a.length).toBe 2
-        expect(r.a[0]).toBe 1
+        it 'Construction', ->
+          expect(Array.isArray r.a).toBe true
+          expect(r.a).not.toBe arr
+          expect(r.a.length).toBe 2
+          expect(r.a[0]).toBe 1
+          expect(r.a._record instanceof EditableRecord).toBe true
 
-        r.a.push 3
-        expect(r.a[2]).toBe 3
-        expect(r.a.length).toBe 3
+        it '.push()', ->
+          r.a.push 3
+          expect(r.a[2]).toBe 3
+          expect(r.a.length).toBe 3
 
-        pre_r_a = r.a
-        r.a = [11, 12, 13, 14]
-        expect(r.a).toEqual [11, 12, 13, 14]
-        expect(r.a).toBe pre_r_a
+        describe 'Replacing cases', ->
 
-        r.a = null
-        expect(r.a).toBe null
+          it 'Arrray -> Array (keeps reference)', ->
+            pre_r_a = r.a
+            r.a = [11, 12, 13, 14]
+            expect(r.a).toBe pre_r_a
+            expect(r.a).toEqual [11, 12, 13, 14]
+            expect(r._changedKeys.a).toBe true
+            expect(r._changes).toBe 1
+            expect(r.a._changedKeys[0]).toBe true
+            expect(r.a._changedKeys[1]).toBe true
+            expect(r.a._changedKeys[2]).toBe true
+            expect(r.a._changedKeys[3]).toBe true
+            expect(r.a._changes).toBe 4
 
-        r.a = [11, 12, 13]
-        expect(r.a).toEqual [11, 12, 13]
+          it 'Arrray -> Object', ->
+            pre_r_a = r.a._record
+            r.a = {a: 1, b: 2, 0: 99}
+            expect(r.a).toEqual {a: 1, b: 2, 0: 99}
+            expect(r.a).toBe pre_r_a
+            expect(r._changedKeys.a).toBe true
+            expect(r._changes).toBe 1
+            expect(r.a._changedKeys.a).toBe true
+            expect(r.a._changedKeys.b).toBe true
+            expect(r.a._changedKeys[0]).toBe true
+            expect(r.a._changedKeys[1]).toBe true
+            expect(r.a._changes).toBe 4
+
+          it 'Object -> Array (keeps reference)', ->
+            r = new EditableRecord {id: 1, a: {a: 'z', 1: 999}}
+            pre_r_a = r.a
+            r.a = [1, 2, 3]
+            expect(r.a).toEqual [1, 2, 3]
+            expect(r.a._record).toBe pre_r_a
+            expect(r._changedKeys.a).toBe true
+            expect(r._changes).toBe 1
+            expect(r.a._changedKeys.a).toBe true
+            expect(r.a._changedKeys[0]).toBe true
+            expect(r.a._changedKeys[1]).toBe true
+            expect(r.a._changedKeys[2]).toBe true
+            expect(r.a._changes).toBe 4
+
+          it 'Arrray -> null', ->
+            pre_r_a = r.a
+            r.a = null
+            expect(r.a).toBe null
+            expect(r._saved.a._array).toBe pre_r_a
+            expect(r._changedKeys.a).toBe true
+            expect(r._changes).toBe 1
+
+          it 'null -> Array', ->
+            r = new EditableRecord {id: 1, a: null}
+            r.a = [11, 12, 13]
+            expect(r.a).toEqual [11, 12, 13]
+            expect(r._saved.a).toBe null
+            expect(r._changedKeys.a).toBe true
+            expect(r._changes).toBe 1
 
       it 'Throws error if key is invalid', ->
         record = new EditableRecord {id: 1, a: 1},

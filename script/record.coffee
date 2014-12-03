@@ -256,8 +256,7 @@ ksc.factory 'ksc.Record', [
         value
 
       _getProperty: (key) ->
-        value = @[_SAVED][key]
-        value?[_ARRAY] or value
+        Record.arrayFilter @[_SAVED][key]
 
       _delete: (keys...) ->
         error.Permission {keys, description: 'Read-only Record'}
@@ -345,6 +344,26 @@ ksc.factory 'ksc.Record', [
         replacing = false
         changed or false
 
+      @arrayFilter: (record) ->
+        unless record?[_ARRAY]
+          return record
+
+        arr    = record[_ARRAY]
+        object = record
+        marked = {}
+        while object and object.constructor isnt Object
+          for key in Object.getOwnPropertyNames object
+            if key.substr(0, 1) is '_' and not has_own marked, key
+              marked[key] = Object.getOwnPropertyDescriptor object, key
+          object = Object.getPrototypeOf object
+        for own key of arr
+          if key.substr(0, 1) is '_' and not has_own marked, key
+            delete arr[key]
+        for key, desc of marked
+          Object.defineProperty arr, key, desc
+        define_value arr, '_record', record
+
+        arr
 
       ###
       Event emission - with handling complexity around subobjects

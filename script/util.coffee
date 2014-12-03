@@ -135,6 +135,11 @@ ksc.service 'ksc.util', [
         unless is_object comparable1, comparable2
           return comparable1 is comparable2
 
+        if comparable1._array
+          comparable1 = comparable1._array
+        if comparable2._array
+          comparable2 = comparable2._array
+
         for key, v1 of comparable1
           unless Util.identical(v1, comparable2[key]) and
           has_own comparable2, key
