@@ -230,35 +230,45 @@ ksc.factory 'ksc.EditableRecord', [
 
         if util.identical saved[key], value
           delete edited[key]
-          changed = true
+          changed = 1
         else unless util.identical edited[key], value
           contract?._match key, value
 
           res = value
 
+          delete_unmatched_keys = ->
+            for k of res # delete properties not in the value
+              if is_enumerable(res, k) and not has_own value, k
+                res._delete k
+            return
+
           if arr = value?[_ARRAY]
-            if saved_arr = saved[key]?[_ARRAY]
+            if is_object saved[key]
               res = saved[key]
-              for i in [arr.length ... saved_arr.length] by 1
-                saved_arr.pop()
-              for item, i in arr[0 ... saved_arr.length]
-                saved_arr[i] = item
-              saved_arr.push arr[saved_arr.length ...]...
+              if saved_arr = res[_ARRAY]
+                for i in [arr.length ... saved_arr.length] by 1
+                  saved_arr.pop()
+                for item, i in arr[0 ... saved_arr.length]
+                  saved_arr[i] = item
+                saved_arr.push arr[saved_arr.length ...]...
+              else
+                delete_unmatched_keys()
+                Record.arrayify res
+                res[_ARRAY].push arr...
           else if is_object value
             if is_object saved[key]
               res = saved[key]
-              for k of res # delete properties not in the value
-                if is_enumerable(res, k) and not has_own value, k
-                  res._delete k
-
-            for k, v of value
-              res[k] = v
+              if res[_ARRAY]
+                Record.dearrayify res
+              delete_unmatched_keys()
+              for k, v of value
+                res[k] = v
 
           edited[key] = res
-          changed = true
+          changed = 1
         else if record[_DELETED_KEYS][key]
           delete record[_DELETED_KEYS][key]
-          changed = true
+          changed = 1
 
         if edited[key] is saved[key]
           delete edited[key]
@@ -283,7 +293,7 @@ ksc.factory 'ksc.EditableRecord', [
 
           Record.emitUpdate record, 'set', {key}
 
-        changed
+        !!changed
 
       _replace: (data) ->
         record = @

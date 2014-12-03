@@ -151,7 +151,7 @@ describe 'app.factory', ->
           it 'Arrray -> Object', ->
             pre_r_a = r.a._record
             r.a = {a: 1, b: 2, 0: 99}
-            expect(r.a).toEqual {a: 1, b: 2, 0: 99}
+            expect(r.a).toEqual new EditableRecord {a: 1, b: 2, 0: 99}
             expect(r.a).toBe pre_r_a
             expect(r._changedKeys.a).toBe true
             expect(r._changes).toBe 1

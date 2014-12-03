@@ -277,6 +277,30 @@ ksc.factory 'ksc.Record', [
 
         true
 
+      @dearrayify: (record) ->
+        delete record[_ARRAY]
+
+      @getterify: (record, index) ->
+        unless has_own record, index
+          util.defineGetSet record, index, (-> record._getProperty index),
+                            ((value) -> record._setProperty index, value), 1
+
+      @arrayify: (record) ->
+        unless arr = record[_ARRAY]
+          define_value record, _ARRAY, arr = []
+          new ArrayTracker arr,
+            store: record[_SAVED]
+            get: (index) ->
+              record._getProperty index
+            set: (index, value) ->
+              record._setProperty index, value
+              Record.getterify record, index
+            del: (index, value) ->
+              record._delete index
+              false
+          return true
+        false
+
       _replace: (data, emit_event=true) ->
         record = @
         events = record[_EVENTS]
@@ -298,25 +322,23 @@ ksc.factory 'ksc.Record', [
         if is_array data
           flat = (value for value in data)
 
-          unless arr = record[_ARRAY]
-            define_value record, _ARRAY, arr = []
-            new ArrayTracker arr,
-              store: record[_SAVED]
-              get: (index) ->
-                record._getProperty index
-              set: (index, value) ->
-                record._setProperty index, value, replacing
-              del: (index, value) ->
-                record._delete index
-                false
-            changed = true
-          else if arr.length
+          if Record.arrayify record
+            changed = 1
+            arr = record[_ARRAY]
+          else if (arr = record[_ARRAY]).length
             util.empty arr
-            changed = true
+            changed = 1
+
+          # setter should be init-sensitive unless it's toggled by
+          # EditableRecord in run-time
+          arr._tracker.set = (index, value) ->
+            record._setProperty index, value, replacing
+            Record.getterify record, index
+
           if arr.push flat...
-            changed = true
+            changed = 1
         else
-          delete record[_ARRAY]
+          Record.dearrayify record
 
           flat = {}
           for key, value of data
@@ -327,28 +349,25 @@ ksc.factory 'ksc.Record', [
               flat[key] = contract._default key
 
           for key, value of flat
-            do (key) ->
-              util.defineGetSet record, key, (-> record._getProperty key),
-                                ((value) -> record._setProperty key, value), 1
+            Record.getterify record, key
             if record._setProperty key, value, replacing
-              changed = true
+              changed = 1
 
         for key of record[_SAVED] when not has_own flat, key
           delete record[key]
           delete record[_SAVED][key]
-          changed = true
+          changed = 1
 
         if changed and events and emit_event
           Record.emitUpdate record, 'replace'
 
         replacing = false
-        changed or false
+        !!changed
 
       @arrayFilter: (record) ->
-        unless record?[_ARRAY]
+        unless arr = record?[_ARRAY]
           return record
 
-        arr    = record[_ARRAY]
         object = record
         marked = {}
         while object and object.constructor isnt Object
