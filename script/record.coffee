@@ -295,7 +295,7 @@ ksc.factory 'ksc.Record', [
             set: (index, value) ->
               record._setProperty index, value
               Record.getterify record, index
-            del: (index, value) ->
+            del: (index) ->
               record._delete index
               false
           return true
