@@ -40,6 +40,15 @@ describe 'app.service', ->
       expect(Array.isArray arr).toBe true
       expect(Array.isArray store).toBe false
 
+    it 'Retains store values', ->
+      store = {a: 1, b: 2, 0: 99, 1: 1000}
+      arr = [1]
+      tracker = new ArrayTracker arr, {store}
+      expect(arr).toEqual [1]
+      expect(store).toEqual {a: 1, b: 2, 0: 1, 1: 1000}
+      arr.push 2, 3
+      expect(store).toEqual {a: 1, b: 2, 0: 1, 1: 2, 2: 3}
+
     it 'Creates store object if not provided', ->
       tracker = new ArrayTracker [1]
       expect(tracker.list[0]).toBe 1
@@ -78,7 +87,7 @@ describe 'app.service', ->
       obj_setter = typeof Object.getOwnPropertyDescriptor(arr, 0).set
       expect(obj_setter).toBe 'function'
 
-    it 'Methods .unload() and restore original functions/properties', ->
+    it 'Method .unload() restores original functions/properties', ->
       arr = [1, 2, 3]
       pop = arr.pop
       tracker = new ArrayTracker arr
@@ -105,6 +114,15 @@ describe 'app.service', ->
       expect(arr.pop).toBe pop
       expect(arr.push).toBe 1
       expect(arr.shift).toBeUndefined()
+
+    it 'Method .unload(true) keeps store object values', ->
+      arr = [1, 2, 3]
+      tracker = new ArrayTracker arr, store: store = {}
+      expect(arr._tracker).toBe tracker
+      expect(store[0]).toBe 1
+      tracker.unload true
+      expect(arr._tracker).toBeUndefined()
+      expect(store[0]).toBe 1
 
     it 'Update element', ->
       expect(arr[1] = 50).toBe 50
@@ -240,7 +258,7 @@ describe 'app.service', ->
         expect(arr[1]).toBe 'yo'
 
       describe 'set', ->
-        it 'using callback argument', ->
+        it 'Using callback argument', ->
           tracker.set = (index, value, worker_fn, setter_type) ->
             expect(index).toBe 1
             expect(value).toBe 'yo'
@@ -249,7 +267,7 @@ describe 'app.service', ->
           expect(arr[1] = 'yo').toBe 'yo'
           expect(arr[1]).toBe -10
 
-        it 'not using callback argument', ->
+        it 'Not using callback argument', ->
           tracker.set = (index, value, worker_fn) ->
             expect(index).toBe 2
             expect(value).toBe 'yo'
@@ -259,104 +277,116 @@ describe 'app.service', ->
 
           tracker.set = null
 
-        it 'setter_type accuracy and expected event counts', ->
-          arr.push 30, 31, 32, 33, 34
-
+        describe 'setter_type accuracy and expected event counts', ->
           count = last_index = last_value = type_count = null
-          reset_count = ->
+          beforeEach ->
+            arr.push 30, 31, 32, 33, 34
+
             count = 0
             last_index = last_value = null
             type_count = {external: 0, move: 0, reload: 0}
 
-          tracker.set = (index, value, worker_fn, setter_type) ->
+            tracker.set = (index, value, worker_fn, setter_type) ->
+              count += 1
+              last_index = index
+              last_value = value
+              type_count[setter_type] += 1
+              worker_fn()
+
+          it 'With .push()', ->
+            arr.push 99
+            expect(last_index).toBe 8
+            expect(last_value).toBe 99
+            expect(count).toBe 1
+            expect(type_count.external).toBe 1
+            expect(type_count.move).toBe 0
+            expect(type_count.reload).toBe 0
+
+          it 'With .unshift()', ->
+            arr.unshift 98
+            expect(last_index).toBe 0
+            expect(last_value).toBe 98
+            expect(count).toBe 9
+            expect(type_count.external).toBe 1
+            expect(type_count.move).toBe 8
+            expect(type_count.reload).toBe 0
+
+          it 'With .splice()', ->
+            arr.splice 2, 3, 97, 96
+            expect(last_index).toBe 3
+            expect(last_value).toBe 96
+            expect(count).toBe 5
+            expect(type_count.external).toBe 2
+            expect(type_count.move).toBe 3
+            expect(type_count.reload).toBe 0
+
+          it 'With .sort()', ->
+            arr.sort()
+            expect(last_index).toBe 7
+            expect(last_value).toBe '34'
+            expect(count).toBe 8
+            expect(type_count.external).toBe 0
+            expect(type_count.move).toBe 0
+            expect(type_count.reload).toBe 8
+
+          it 'With .reverse()', ->
+            arr.reverse()
+            expect(last_index).toBe 7
+            expect(last_value).toBe '1'
+            expect(count).toBe 8
+            expect(type_count.external).toBe 0
+            expect(type_count.move).toBe 0
+            expect(type_count.reload).toBe 8
+
+      describe 'del', ->
+
+        count = last_index = last_value = null
+        beforeEach ->
+          arr.push 4, 5, 6, 7, 8, 9, 10
+          count = 0
+          last_index = last_value = null
+          tracker.del = (index, value) ->
             count += 1
             last_index = index
             last_value = value
-            type_count[setter_type] += 1
-            worker_fn()
 
-          reset_count()
-          arr.push 99
-          expect(last_index).toBe 8
-          expect(last_value).toBe 99
+        it 'Basic scenario', ->
+          expect(arr.pop()).toBe -10
+          expect(store[9]).toBeUndefined()
+          expect(last_index).toBe 9
+          expect(last_value).toBe '10'
           expect(count).toBe 1
-          expect(type_count.external).toBe 1
-          expect(type_count.move).toBe 0
-          expect(type_count.reload).toBe 0
 
-          reset_count()
-          arr.unshift 98
-          expect(last_index).toBe 0
-          expect(last_value).toBe 98
-          expect(count).toBe 10
-          expect(type_count.external).toBe 1
-          expect(type_count.move).toBe 9
-          expect(type_count.reload).toBe 0
+        it 'Always deletes the last', ->
+          expect(arr.shift()).toBe -1
+          expect(last_index).toBe 9
+          expect(last_value).toBe '10'
+          expect(count).toBe 1
 
-          reset_count()
-          arr.splice 2, 3, 97, 96
-          expect(last_index).toBe 3
-          expect(last_value).toBe 96
-          expect(count).toBe 7
-          expect(type_count.external).toBe 2
-          expect(type_count.move).toBe 5
-          expect(type_count.reload).toBe 0
+        it 'Should not delete any (inserted.length == cut_count)', ->
+          arr.splice 2, 2, 97, 96
+          expect(last_index).toBe null
+          expect(last_value).toBe null
+          expect(count).toBe 0
 
-          reset_count()
-          arr.sort()
+        it 'Deletes only 1 (del_count = cut_count - inserted.length)', ->
+          arr.splice 2, 2, 96
+          expect(last_index).toBe 9
+          expect(last_value).toBe '10'
+          expect(count).toBe 1
+
+        it 'Deletes many', ->
+          arr.splice 1, 2
           expect(last_index).toBe 8
-          expect(last_value).toBe 99
-          expect(count).toBe 9
-          expect(type_count.external).toBe 0
-          expect(type_count.move).toBe 0
-          expect(type_count.reload).toBe 9
+          expect(last_value).toBe '9'
+          expect(count).toBe 2
 
-          reset_count()
-          arr.reverse()
-          expect(last_index).toBe 8
-          expect(last_value).toBe '1'
-          expect(count).toBe 9
-          expect(type_count.external).toBe 0
-          expect(type_count.move).toBe 0
-          expect(type_count.reload).toBe 9
+        it 'Does not delete from store if del function returns false', ->
+          tracker.del = (index, value) ->
+            false # should prevent updating store
 
-      it 'del', ->
-        arr.push 4, 5, 6, 7, 8, 9, 10
-        count = 0
-        last_index = last_value = null
-        tracker.del = (index, value) ->
-          count += 1
-          last_index = index
-          last_value = value
-
-        expect(arr.pop()).toBe -10
-        expect(last_index).toBe 9
-        expect(last_value).toBe '10'
-        expect(count).toBe 1
-
-        # always deletes the last
-        expect(arr.shift()).toBe -1
-        expect(last_index).toBe 8
-        expect(last_value).toBe '9'
-        expect(count).toBe 2
-
-        # should not delete any (inserted.length == cut_count)
-        arr.splice 2, 2, 97, 96
-        expect(last_index).toBe 8
-        expect(last_value).toBe '9'
-        expect(count).toBe 2
-
-        # deletes only 1 (del_count = cut_count - inserted.length)
-        arr.splice 2, 2, 96
-        expect(last_index).toBe 7
-        expect(last_value).toBe '9'
-        expect(count).toBe 3
-
-        # deletes many
-        arr.splice 1, 2
-        expect(last_index).toBe 5
-        expect(last_value).toBe '8'
-        expect(count).toBe 5 # bumped by 2
+          expect(arr.pop()).toBe -10
+          expect(store[9]).toBe '10'
 
 
     describe 'Exception handling', ->

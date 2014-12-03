@@ -58,7 +58,9 @@ ksc.factory 'ksc.ArrayTracker', [
         @param [number] index of deleted element in array
         @param [mixed] stored value of the element
 
-        @return [mixed] whetever you define. Return value will not be used
+        @return [false|mixed] If false is returned, store[index] will not be
+          deleted by ArrayTracker so you can keep it or deal with it any other
+          way. Any other return value will be disregarded.
       ###
 
       ###
@@ -173,9 +175,11 @@ ksc.factory 'ksc.ArrayTracker', [
       Detach tracker from array, revert to plain values and restore original
       methods for pop, shift, push, unshift, splice, reverse, sort.
 
+      @param [boolean] keep_store_values Truish value prevents emptying store
+
       @return [void]
       ###
-      unload: ->
+      unload: (keep_store_values)->
         {list, store} = tracker = @
         plainify tracker
 
@@ -188,7 +192,9 @@ ksc.factory 'ksc.ArrayTracker', [
         delete tracker.list._tracker
         delete tracker.list
 
-        util.empty store
+        unless keep_store_values
+          util.empty store
+
         return
 
 

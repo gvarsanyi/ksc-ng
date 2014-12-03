@@ -235,34 +235,22 @@ ksc.factory 'ksc.EditableRecord', [
           contract?._match key, value
 
           res = value
-          if is_object value
-            if is_array value
+
+          if arr = value?[_ARRAY]
+            if saved_arr = saved[key]?[_ARRAY]
               res = saved[key]
-              if arr = saved[key][_ARRAY]
-                for i in [0 ... arr.length - value.length] by 1
-                  arr.pop()
-                for i in [0 ... arr.length] by 1
-                  arr[i] = value[i]
-                arr.push arr.splice(arr.length, value.length)...
-              else
-                for k of saved[key] # delete properties not in the value
-                  if is_enumerable(saved[key], k) and not has_own value, k
-                    saved[key]._delete k
+              for i in [arr.length ... saved_arr.length] by 1
+                saved_arr.pop()
+              for item, i in arr[0 ... saved_arr.length]
+                saved_arr[i] = item
+              saved_arr.push arr[saved_arr.length ...]...
+          else if is_object value
             if is_object saved[key]
               res = saved[key]
-
               for k of res # delete properties not in the value
                 if is_enumerable(res, k) and not has_own value, k
                   res._delete k
-#               if res[_ARRAY]
-#                 if is_array value
-#                 else
-#               else
-#                 if is_array value
-#                 else
-#                   for k of res # delete properties not in the value
-#                     if is_enumerable(res, k) and not has_own value, k
-#                       res._delete k
+
             for k, v of value
               res[k] = v
 
