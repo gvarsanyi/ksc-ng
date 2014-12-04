@@ -145,6 +145,9 @@ describe 'app.factory', ->
       expect(record.b).toBeUndefined()
       expect(record.hasOwnProperty '$$hashKey').toBe true
       expect(record.propertyIsEnumerable '$$hashKey').toBe false
+      try
+        record.$$hashKey = 'abc'
+      expect(record.$$hashKey).toBe 'abc'
 
       record = new Record {$$hashKey: 'x'}, contract:
         a: type: 'number'
