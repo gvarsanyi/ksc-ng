@@ -83,9 +83,20 @@ describe 'app.factory', ->
 
     describe 'Edge cases', ->
 
+      it 'Mutually exclusive keys: array, contract, default', ->
+        contract = a: {contract: {x: type: 'string'}, default: null}
+        expect(-> new Record {}, {contract}).toThrow()
+
+        contract = a: {array: {type: 'string'}, default: null}
+        expect(-> new Record {}, {contract}).toThrow()
+
+        contract = a: {array: {type: 'string'}, contract: {x: type: 'number'}}
+        expect(-> new Record {}, {contract}).toThrow()
+
       it 'Contract a proper description', ->
         expect(-> new Record {}, contract: true).toThrow()
         expect(-> new Record {}, contract: a: {type: 'object'}).toThrow()
+        expect(-> new Record {}, contract: a: array: 1).toThrow()
         expect(-> new Record {}, contract: a: {type: 'x'}).toThrow()
 
         contract =
@@ -97,6 +108,12 @@ describe 'app.factory', ->
         contract =
             a:
               contract: x: type: 'string'
+              type: 'number'
+        expect(-> new Record {}, {contract}).toThrow()
+
+        contract =
+            a:
+              array: type: 'string'
               type: 'number'
         expect(-> new Record {}, {contract}).toThrow()
 
@@ -120,3 +137,19 @@ describe 'app.factory', ->
       it 'Method ._match() with invalid value', ->
         record = new Record {}, contract: a: type: 'number'
         expect(-> record._options.contract._match 'a', 'x').toThrow()
+
+    it 'Not extensible ($$hashKey added)', ->
+      record = new Record {}, contract: a: type: 'number'
+      try
+        record.b = 1
+      expect(record.b).toBeUndefined()
+      expect(record.hasOwnProperty '$$hashKey').toBe true
+      expect(record.propertyIsEnumerable '$$hashKey').toBe false
+
+      record = new Record {$$hashKey: 'x'}, contract:
+        a: type: 'number'
+        $$hashKey: type: 'string'
+      try
+        record.b = 1
+      expect(record.b).toBeUndefined()
+      expect(record.propertyIsEnumerable '$$hashKey').toBe true

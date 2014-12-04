@@ -75,34 +75,37 @@ ksc.factory 'ksc.RecordContract', [
                 contract:    desc
                 description: 'array, default, contract are mutually exclusive'
 
-          if not (arr = desc.array) and desc.type is 'array'
-            error.Type
-              array:       desc.array
-              description: 'array description object is required'
-          if arr
-            if has_own(desc, 'type') and desc.type isnt 'array'
-              error.Type {type, array: desc.array, requiredType: 'array'}
-            delete desc.type
+          typ = desc.type
 
-          if desc.type is 'object' and not is_object desc.contract
-            error.Type
-              contract:    desc.contract
-              description: 'contract description object is required'
-          if desc.contract
-            if has_own(desc, 'type') and desc.type isnt 'object'
-              error.Type {type, contract: desc.contract, requiredType: 'object'}
+          if ((arr = desc.array) or typ is 'array') and not is_object arr
+            error.Type {array: arr, description: 'array description required'}
+          if arr = desc.array
+            if has_own(desc, 'type') and typ isnt 'array'
+              error.Type {type, array: arr, requiredType: 'array'}
             delete desc.type
+            typ = null
+
+          if ((subcontract = desc.contract) or typ is 'object') and
+          not is_object subcontract
+            error.Type
+              contract:    subcontract
+              description: 'contract description required'
+          if subcontract
+            if has_own(desc, 'type') and typ isnt 'object'
+              error.Type {type, contract: subcontract, requiredType: 'object'}
+            delete desc.type
+            typ = null
 
           unless arr # array has no subcontract and is a type
-            if desc.contract
-              desc.contract = new RecordContract desc.contract
+            if subcontract
+              desc.contract = new RecordContract subcontract
             else
               if has_own(desc, 'default') and not has_own(desc, 'type') and
               RecordContract.typeDefaults[typeof desc.default]?
-                desc.type = typeof desc.default
-              unless RecordContract.typeDefaults[desc.type]?
+                desc.type = typ = typeof desc.default
+              unless RecordContract.typeDefaults[typ]?
                 error.Type
-                  type:     desc.type
+                  type:     typ
                   required: 'array, boolean, number, object, string'
 
           @_match key, @_default key # checks default value
