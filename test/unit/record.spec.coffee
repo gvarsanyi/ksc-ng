@@ -239,3 +239,10 @@ describe 'app.factory', ->
 
       expect(distributed.node).toBe record
       expect(distributed.action).toBe 'replace'
+
+    it 'Method ._delete() throws error (read-only)', ->
+      record = new Record {a: 1}
+      expect(-> record._delete('a')).toThrow()
+      expect(-> record._delete('b')).toThrow()
+      expect(-> record._delete('c', 'd')).toThrow()
+      expect(-> record._delete()).toThrow()

@@ -249,7 +249,7 @@ ksc.factory 'ksc.Record', [
                 subopts = contract: all: key_contract.array
               else
                 subopts = contract: key_contract[CONTRACT]
-            else if record[_ARRAY] and contract.all
+            else # if record[_ARRAY] and contract.all
               subopts = contract: contract.all.contract
           value = new class_ref value, subopts, record, key
 
@@ -325,20 +325,27 @@ ksc.factory 'ksc.Record', [
         if is_array data
           flat = (value for value in data)
 
+          console.log '----------', value, flat, data
           if Record.arrayify record
             changed = 1
             arr = record[_ARRAY]
-          else if (arr = record[_ARRAY]).length
-            util.empty arr
-            changed = 1
+          else
+            console.log 'e', record[_ARRAY]
+            if (arr = record[_ARRAY]).length
+              console.log 'e2', record[_ARRAY]
+              util.empty arr
+              console.log ' -', record[_ARRAY]
+              changed = 1
 
           # setter should be init-sensitive unless it's toggled by
           # EditableRecord in run-time
           arr._tracker.set = (index, value) ->
             record._setProperty index, value, replacing
 
-          if arr.push flat...
+          console.log 'a:', arr
+          if flat.length and arr.push.apply arr, flat
             changed = 1
+          console.log ' -', arr
         else
           Record.dearrayify record
 

@@ -329,6 +329,13 @@ describe 'app.factory', ->
         found_keys += 1
       expect(found_keys).toBe 0
 
+    it 'Array & ._replace()', ->
+      record = new EditableRecord [1, 2, 3]
+      expect(record._replace [4, 5]).toBe true
+      expect(record._array).toEqual [4, 5]
+      expect(record._replace []).toBe true
+      expect(record._array).toEqual []
+
     it 'Will not replace if not needed', ->
       record = new EditableRecord {a: 1}
       expect(record._replace {a: 1}).toBe false
