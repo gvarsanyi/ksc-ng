@@ -59,10 +59,11 @@ describe 'app.factory', ->
       record = new EditableRecord example
       record.c = {x: 3, y: 2, z: 1}
       expect(record._changes).toBe 1
-      expect(record.c._changes).toBe 1
+      expect(record.c._changes).toBe 2
 
       record.c = {x: 3, y: 2}
       expect(record._changes).toBe 1
+
       expect(record.c._changes).toBe 1
 
       record.c = cc = {x: 3, y: 4}

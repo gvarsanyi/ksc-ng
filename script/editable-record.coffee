@@ -176,6 +176,13 @@ ksc.factory 'ksc.EditableRecord', [
               error.Key {key, description: 'can not be changed'}
 
             delete record[key]
+
+            if record[_EDITED][key]
+              delete record[_EDITED][key]
+              define_value record, _CHANGES, record[_CHANGES] - 1
+              delete record[_CHANGED_KEYS][key]
+            # else it was an ungetterified property
+
             changed.push key
 
         if changed.length
@@ -262,7 +269,7 @@ ksc.factory 'ksc.EditableRecord', [
                 Record.dearrayify res
               delete_unmatched_keys()
               for k, v of value
-                res[k] = v
+                res._setProperty k, v
 
           edited[key] = res
           changed = 1
@@ -283,6 +290,8 @@ ksc.factory 'ksc.EditableRecord', [
         else if was_changed
           define_value record, _CHANGES, record[_CHANGES] - 1
           delete record[_CHANGED_KEYS][key]
+
+        Record.getterify record, key
 
         if changed
           if record[_PARENT_KEY]

@@ -274,6 +274,7 @@ ksc.factory 'ksc.Record', [
           return false
 
         define_value saved, key, Record.valueWrap(record, key, value), 0, 1
+        Record.getterify record, key
 
         true
 
@@ -294,7 +295,6 @@ ksc.factory 'ksc.Record', [
               record._getProperty index
             set: (index, value) ->
               record._setProperty index, value
-              Record.getterify record, index
             del: (index) ->
               record._delete index
               false
@@ -333,7 +333,6 @@ ksc.factory 'ksc.Record', [
           # EditableRecord in run-time
           arr._tracker.set = (index, value) ->
             record._setProperty index, value, replacing
-            Record.getterify record, index
 
           if arr.push flat...
             changed = 1

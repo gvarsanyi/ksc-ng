@@ -175,6 +175,9 @@ ksc.factory 'ksc.RecordContract', [
       ###
       @finalizeRecord: (record) ->
         if record._options.contract and Object.isExtensible record
+          # workaround for angular object tracker attachment problem
+          unless has_own record, '$$hashKey'
+            util.defineValue record, '$$hashKey'
           Object.preventExtensions record
         return
 
