@@ -290,19 +290,16 @@ ksc.factory 'ksc.Record', [
                             ((value) -> record._setProperty index, value), 1
 
       @arrayify: (record) ->
-        unless arr = record[_ARRAY]
-          define_value record, _ARRAY, arr = []
-          new ArrayTracker arr,
-            store: record[_SAVED]
-            get: (index) ->
-              record._getProperty index
-            set: (index, value) ->
-              record._setProperty index, value
-            del: (index) ->
-              record._delete index
-              false
-          return true
-        false
+        define_value record, _ARRAY, arr = []
+        new ArrayTracker arr,
+          store: record[_SAVED]
+          get: (index) ->
+            record._getProperty index
+          set: (index, value) ->
+            record._setProperty index, value
+          del: (index) ->
+            record._delete index
+            false
 
       _replace: (data, emit_event=true) ->
         record = @
@@ -325,27 +322,17 @@ ksc.factory 'ksc.Record', [
         if is_array data
           flat = (value for value in data)
 
-          console.log '----------', value, flat, data
-          if Record.arrayify record
-            changed = 1
-            arr = record[_ARRAY]
-          else
-            console.log 'e', record[_ARRAY]
-            if (arr = record[_ARRAY]).length
-              console.log 'e2', record[_ARRAY]
-              util.empty arr
-              console.log ' -', record[_ARRAY]
-              changed = 1
+          Record.arrayify record
+          changed = 1
+          arr = record[_ARRAY]
 
           # setter should be init-sensitive unless it's toggled by
           # EditableRecord in run-time
           arr._tracker.set = (index, value) ->
             record._setProperty index, value, replacing
 
-          console.log 'a:', arr
           if flat.length and arr.push.apply arr, flat
             changed = 1
-          console.log ' -', arr
         else
           Record.dearrayify record
 
@@ -381,11 +368,13 @@ ksc.factory 'ksc.Record', [
         marked = {}
         while object and object.constructor isnt Object
           for key in Object.getOwnPropertyNames object
-            if key.substr(0, 1) is '_' and not has_own marked, key
+            if key isnt _ARRAY and key.substr(0, 1) is '_' and
+            not has_own marked, key
               marked[key] = Object.getOwnPropertyDescriptor object, key
           object = Object.getPrototypeOf object
         for own key of arr
-          if key.substr(0, 1) is '_' and not has_own marked, key
+          if key isnt '_record' and key.substr(0, 1) is '_' and
+          not has_own marked, key
             delete arr[key]
         for key, desc of marked
           Object.defineProperty arr, key, desc

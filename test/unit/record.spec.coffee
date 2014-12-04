@@ -35,6 +35,14 @@ describe 'app.factory', ->
 
       expect(-> r.a = [11, 12, 13, 14]).toThrow()
 
+    it 'Returned native array object carries record properies', ->
+      r = new Record a: [1, 2]
+      expect(r.a._record instanceof Record).toBe true
+      expect(r.a._delete).toBe r._delete
+      expect(r.a._getProperty).toBe r._getProperty
+      r.a._record._eee = 3423
+      expect(r.a._eee).toBe 3423
+
     it 'Method ._clone()', ->
 #       example = {id: 1, x: 2, y: {a: 3}, z: [0, 1, 2]}
       example = {id: 1, x: 2, y: {a: 3}}
