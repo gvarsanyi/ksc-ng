@@ -117,7 +117,7 @@ ksc.factory 'ksc.Record', [
 
           if parent_key?
             unless util.isKeyConform parent_key
-              error.Type
+              error.ArgumentType
                 parent_key: parent_key
                 argument:   4
                 required:   'key conform value'
@@ -256,6 +256,9 @@ ksc.factory 'ksc.Record', [
         value
 
       _getProperty: (key) ->
+        unless util.isKeyConform key
+          error.ArgumentType {key, argument: 1, required: 'key conform value'}
+
         Record.arrayFilter @[_SAVED][key]
 
       _delete: (keys...) ->

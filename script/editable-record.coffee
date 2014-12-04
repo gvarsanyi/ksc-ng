@@ -205,16 +205,16 @@ ksc.factory 'ksc.EditableRecord', [
       @return [boolean] indicates change in data
       ###
       _getProperty: (key) ->
+        value = super
+
         record = @
 
-        if record[_DELETED_KEYS]?[key]
+        if record[_DELETED_KEYS][key]
           return
         else if has_own record[_EDITED], key
-          value = record[_EDITED][key]
-        else
-          value = record[_SAVED][key]
+          return Record.arrayFilter record[_EDITED][key]
 
-        Record.arrayFilter value
+        value
 
       _setProperty: (key, value, initial) ->
         if initial
@@ -273,7 +273,8 @@ ksc.factory 'ksc.EditableRecord', [
 
           edited[key] = res
           changed = 1
-        else if record[_DELETED_KEYS][key]
+
+        if record[_DELETED_KEYS][key]
           delete record[_DELETED_KEYS][key]
           changed = 1
 

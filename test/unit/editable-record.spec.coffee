@@ -78,6 +78,27 @@ describe 'app.factory', ->
       expect(record.a.b._changes).toBe 1
       expect(record.a.b.c._changes).toBe 2
 
+    describe '._getProperty()', ->
+
+      it 'Basic scenario', ->
+        record = new EditableRecord {a: 1, b: [1, 2, 3]}
+        expect(record._getProperty 'a').toBe 1
+
+      it 'Returns native array for array types', ->
+        record = new EditableRecord {a: 1, b: [1, 2, 3]}
+        expect(record._getProperty 'b').toEqual [1, 2, 3]
+        expect(Array.isArray record._getProperty 'b').toBe true
+
+      it 'Returns undefined for deleted keys', ->
+        record = new EditableRecord {a: 1, b: [1, 2, 3]}
+        record._delete 'b'
+        expect(record._getProperty 'b').toBeUndefined()
+
+      it 'Requires key', ->
+        record = new EditableRecord {a: 1, b: [1, 2, 3]}
+        record._delete 'b'
+        expect(-> record._getProperty()).toThrow()
+
     describe 'Method ._delete()', ->
 
       it 'Basic scenarios', ->
@@ -111,6 +132,33 @@ describe 'app.factory', ->
         # special properties can't be deleted
         expect(-> record._delete '_changes').toThrow()
 
+      it 'init -> delete -> set to original -> delete -> modify', ->
+        record = new EditableRecord {id: 1, x: 2}
+        expect(record.x).toBe 2
+        expect(record._changes).toBe 0
+        expect(record._changedKeys).toEqual {}
+        expect(record._deletedKeys).toEqual {}
+
+        record._delete 'x'
+        expect(record.x).toBeUndefined()
+        expect(record._changes).toBe 1
+        expect(record._changedKeys).toEqual {x: true}
+        expect(record._deletedKeys).toEqual {x: true}
+
+        record._setProperty 'x', 2
+        expect(record.x).toBe 2
+        expect(record._changes).toBe 0
+        expect(record._changedKeys).toEqual {}
+        expect(record._deletedKeys).toEqual {}
+
+        record._delete 'x'
+
+        record._setProperty 'x', 3
+        expect(record.x).toBe 3
+        expect(record._changes).toBe 1
+        expect(record._changedKeys).toEqual {x: true}
+        expect(record._deletedKeys).toEqual {}
+
       it 'Forbidden when contracted', ->
         record = new EditableRecord {id: 1}, contract: id: type: 'number'
         record.id = 2
@@ -136,7 +184,7 @@ describe 'app.factory', ->
 
         describe 'Replacing cases', ->
 
-          it 'Arrray -> Array (keeps reference)', ->
+          it 'Array -> Array (keeps reference)', ->
             pre_r_a = r.a
             r.a = [11, 12, 13, 14]
             expect(r.a).toBe pre_r_a
@@ -149,7 +197,25 @@ describe 'app.factory', ->
             expect(r.a._changedKeys[3]).toBe true
             expect(r.a._changes).toBe 4
 
-          it 'Arrray -> Object', ->
+          it 'Array -> equally long Array', ->
+            pre_r_a = r.a
+            r.a = [11, 12]
+            expect(r.a).toBe pre_r_a
+            expect(r.a).toEqual [11, 12]
+
+          it 'Array -> shorter Array', ->
+            pre_r_a = r.a
+            r.a = [11]
+            expect(r.a).toBe pre_r_a
+            expect(r.a).toEqual [11]
+
+          it 'Array -> empty Array', ->
+            pre_r_a = r.a
+            r.a = []
+            expect(r.a).toBe pre_r_a
+            expect(r.a).toEqual []
+
+          it 'Array -> Object (keeps reference @ ._record)', ->
             pre_r_a = r.a._record
             r.a = {a: 1, b: 2, 0: 99}
             expect(r.a).toEqual new EditableRecord {a: 1, b: 2, 0: 99}
@@ -162,7 +228,7 @@ describe 'app.factory', ->
             expect(r.a._changedKeys[1]).toBe true
             expect(r.a._changes).toBe 4
 
-          it 'Object -> Array (keeps reference)', ->
+          it 'Object -> Array (keeps reference @ ._record)', ->
             r = new EditableRecord {id: 1, a: {a: 'z', 1: 999}}
             pre_r_a = r.a
             r.a = [1, 2, 3]
