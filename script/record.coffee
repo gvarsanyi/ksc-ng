@@ -165,6 +165,9 @@ ksc.factory 'ksc.Record', [
 
         new record.constructor clone
 
+      _delete: (keys...) ->
+        error.Permission {keys, description: 'Read-only Record'}
+
       ###
       Get the entity of the object, e.g. a vanilla Object with the data set
       This method should be overridden by any extending classes that have their
@@ -177,6 +180,12 @@ ksc.factory 'ksc.Record', [
       ###
       _entity: ->
         @_clone 1
+
+      _getProperty: (key) ->
+        unless util.isKeyConform key
+          error.ArgumentType {key, argument: 1, required: 'key conform value'}
+
+        Record.arrayFilter @[_SAVED][key]
 
       ###
       (Re)define the initial data set
@@ -198,109 +207,6 @@ ksc.factory 'ksc.Record', [
 
       @return [boolean] indicates change in data
       ###
-      @initIdProperty: (record, data) ->
-        options  = record[_OPTIONS]
-        contract = options[CONTRACT]
-
-        unless options[ID_PROPERTY]? # assign first as ID
-          for key of data
-            options[ID_PROPERTY] = key
-            break
-
-        id_property_contract_check = (key) ->
-          if contract
-            unless contract[key]?
-              error.ContractBreak {key, contract, mismatch: 'idProperty'}
-            unless contract[key].type in ['string', 'number']
-              error.ContractBreak {key, contract, required: 'string or number'}
-
-        if record[_EVENTS] # a top-level node of record (create _id on top only)
-          if id_property = options[ID_PROPERTY]
-            if is_array id_property
-              for part in id_property
-                id_property_contract_check part
-                data[part] ?= null
-            else
-              id_property_contract_check id_property
-              data[id_property] ?= null
-
-
-      _valueCheck: (key, value) ->
-        if contract = @[_OPTIONS][CONTRACT]
-          contract._match (if @[_ARRAY] then 'all' else key), value
-        else
-          if typeof key is 'string' and key.substr(0, 1) is '_'
-            error.Key {key, description: 'can not start with "_"'}
-          if typeof value is 'function'
-            error.Type {value, description: 'can not be function'}
-
-      @valueWrap: (record, key, value) ->
-        contract = record[_OPTIONS][CONTRACT]
-
-        if is_object value
-          if value._clone? # instanceof Record or processed Array
-            value = value._clone 1
-
-          class_ref = record[_OPTIONS].subtreeClass or Record
-
-          if contract
-            if key_contract = contract[key]
-              if key_contract.array
-                subopts = contract: all: key_contract.array
-              else
-                subopts = contract: key_contract[CONTRACT]
-            else # if record[_ARRAY] and contract.all
-              subopts = contract: contract.all.contract
-          value = new class_ref value, subopts, record, key
-
-        value
-
-      _getProperty: (key) ->
-        unless util.isKeyConform key
-          error.ArgumentType {key, argument: 1, required: 'key conform value'}
-
-        Record.arrayFilter @[_SAVED][key]
-
-      _delete: (keys...) ->
-        error.Permission {keys, description: 'Read-only Record'}
-
-      _setProperty: (key, value, initial) ->
-        record = @
-        saved  = record[_SAVED]
-
-        unless initial
-          error.Permission {key, value, description: 'Read-only Record'}
-
-        record._valueCheck key, value
-
-        if has_own(saved, key) and util.identical value, record[key]
-          return false
-
-        define_value saved, key, Record.valueWrap(record, key, value), 0, 1
-        Record.getterify record, key
-
-        true
-
-      @dearrayify: (record) ->
-        delete record[_ARRAY]
-
-      @getterify: (record, index) ->
-        unless has_own record, index
-          util.defineGetSet record, index, (-> record._getProperty index),
-                            ((value) -> record._setProperty index, value), 1
-
-      @arrayify: (record) ->
-        define_value record, _ARRAY, arr = []
-        new ArrayTracker arr,
-          store: record[_SAVED]
-          get: (index) ->
-            record._getProperty index
-          set: (index, value) ->
-            record._setProperty index, value
-          del: (index) ->
-            record._delete index
-            false
-
       _replace: (data, emit_event=true) ->
         record = @
         events = record[_EVENTS]
@@ -360,6 +266,24 @@ ksc.factory 'ksc.Record', [
         replacing = false
         !!changed
 
+      _setProperty: (key, value, initial) ->
+        record = @
+        saved  = record[_SAVED]
+
+        unless initial
+          error.Permission {key, value, description: 'Read-only Record'}
+
+        Record.valueCheck record, key, value
+
+        if has_own(saved, key) and util.identical value, record[key]
+          return false
+
+        define_value saved, key, Record.valueWrap(record, key, value), 0, 1
+        Record.getterify record, key
+
+        true
+
+
       @arrayFilter: (record) ->
         unless arr = record?[_ARRAY]
           return record
@@ -381,6 +305,21 @@ ksc.factory 'ksc.Record', [
         define_value arr, '_record', record
 
         arr
+
+      @arrayify: (record) ->
+        define_value record, _ARRAY, arr = []
+        new ArrayTracker arr,
+          store: record[_SAVED]
+          get: (index) ->
+            record._getProperty index
+          set: (index, value) ->
+            record._setProperty index, value
+          del: (index) ->
+            record._delete index
+            false
+
+      @dearrayify: (record) ->
+        delete record[_ARRAY]
 
       ###
       Event emission - with handling complexity around subobjects
@@ -417,6 +356,37 @@ ksc.factory 'ksc.Record', [
         events.emit 'update', info
 
         return
+
+      @getterify: (record, index) ->
+        unless has_own record, index
+          util.defineGetSet record, index, (-> record._getProperty index),
+                            ((value) -> record._setProperty index, value), 1
+
+      @initIdProperty: (record, data) ->
+        options  = record[_OPTIONS]
+        contract = options[CONTRACT]
+
+        unless options[ID_PROPERTY]? # assign first as ID
+          for key of data
+            options[ID_PROPERTY] = key
+            break
+
+        id_property_contract_check = (key) ->
+          if contract
+            unless contract[key]?
+              error.ContractBreak {key, contract, mismatch: 'idProperty'}
+            unless contract[key].type in ['string', 'number']
+              error.ContractBreak {key, contract, required: 'string or number'}
+
+        if record[_EVENTS] # a top-level node of record (create _id on top only)
+          if id_property = options[ID_PROPERTY]
+            if is_array id_property
+              for part in id_property
+                id_property_contract_check part
+                data[part] ?= null
+            else
+              id_property_contract_check id_property
+              data[id_property] ?= null
 
       ###
       Define _id for the record
@@ -459,4 +429,35 @@ ksc.factory 'ksc.Record', [
             define_value record, _ID, if value? then value else null
 
         return
+
+      @valueCheck: (record, key, value) ->
+        if contract = record[_OPTIONS][CONTRACT]
+          contract._match (if record[_ARRAY] then 'all' else key), value
+        else
+          if typeof key is 'string' and key.substr(0, 1) is '_'
+            error.Key {key, description: 'can not start with "_"'}
+          if typeof value is 'function'
+            error.Type {value, description: 'can not be function'}
+        return
+
+      @valueWrap: (record, key, value) ->
+        contract = record[_OPTIONS][CONTRACT]
+
+        if is_object value
+          if value._clone? # instanceof Record or processed Array
+            value = value._clone 1
+
+          class_ref = record[_OPTIONS].subtreeClass or Record
+
+          if contract
+            if key_contract = contract[key]
+              if key_contract.array
+                subopts = contract: all: key_contract.array
+              else
+                subopts = contract: key_contract[CONTRACT]
+            else # if record[_ARRAY] and contract.all
+              subopts = contract: contract.all.contract
+          value = new class_ref value, subopts, record, key
+
+        value
 ]

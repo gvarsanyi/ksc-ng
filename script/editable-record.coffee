@@ -190,6 +190,18 @@ ksc.factory 'ksc.EditableRecord', [
 
         !!changed.length
 
+      _getProperty: (key) ->
+        value = super
+
+        record = @
+
+        if record[_DELETED_KEYS][key]
+          return
+        else if has_own record[_EDITED], key
+          return Record.arrayFilter record[_EDITED][key]
+
+        value
+
       ###
       (Re)define the initial data set (and drop changes)
 
@@ -204,17 +216,61 @@ ksc.factory 'ksc.EditableRecord', [
 
       @return [boolean] indicates change in data
       ###
-      _getProperty: (key) ->
-        value = super
-
+      _replace: (data) ->
         record = @
 
-        if record[_DELETED_KEYS][key]
-          return
-        else if has_own record[_EDITED], key
-          return Record.arrayFilter record[_EDITED][key]
+        if events = record[_EVENTS]
+          events.halt()
 
-        value
+        try
+          dropped = record._revert 0
+          changed = super data, 0
+        finally
+          if events
+            events.unhalt()
+
+        if events and (dropped or changed)
+          Record.emitUpdate record, 'replace'
+
+        dropped or changed
+
+      ###
+      Return to saved state
+
+      Drops deletions, edited and added properties (if any)
+
+      @param [boolean] emit_event if replace should trigger event emission
+        (defaults to true)
+
+      @event 'update' sends out message on changes:
+        events.emit 'update', {node: record, action: 'revert'}
+
+      @return [boolean] indicates change in data
+      ###
+      _revert: (emit_event=true) ->
+        changed = false
+
+        record = @
+        for key of record[_DELETED_KEYS]
+          delete record[_DELETED_KEYS][key]
+          delete record[_CHANGED_KEYS][key]
+          changed = true
+
+        for key of record[_EDITED]
+          delete record[_EDITED][key]
+          delete record[_CHANGED_KEYS][key]
+          changed = true
+
+        for key of record when not has_own record[_SAVED], key
+          delete record[key]
+          changed = true
+
+        if changed
+          define_value record, _CHANGES, 0
+          if emit_event
+            Record.emitUpdate record, 'revert'
+
+        changed
 
       _setProperty: (key, value, initial) ->
         if initial
@@ -225,7 +281,7 @@ ksc.factory 'ksc.EditableRecord', [
         edited   = record[_EDITED]
         contract = record[_OPTIONS].contract
 
-        record._valueCheck key, value
+        Record.valueCheck record, key, value
 
         # idProperty values must be string, number or null
         if (id_property = record[_OPTIONS].idProperty) is key or
@@ -305,61 +361,6 @@ ksc.factory 'ksc.EditableRecord', [
 
         !!changed
 
-      _replace: (data) ->
-        record = @
-
-        if events = record[_EVENTS]
-          events.halt()
-
-        try
-          dropped = record._revert 0
-          changed = super data, 0
-        finally
-          if events
-            events.unhalt()
-
-        if events and (dropped or changed)
-          Record.emitUpdate record, 'replace'
-
-        dropped or changed
-
-      ###
-      Return to saved state
-
-      Drops deletions, edited and added properties (if any)
-
-      @param [boolean] emit_event if replace should trigger event emission
-        (defaults to true)
-
-      @event 'update' sends out message on changes:
-        events.emit 'update', {node: record, action: 'revert'}
-
-      @return [boolean] indicates change in data
-      ###
-      _revert: (emit_event=true) ->
-        changed = false
-
-        record = @
-        for key of record[_DELETED_KEYS]
-          delete record[_DELETED_KEYS][key]
-          delete record[_CHANGED_KEYS][key]
-          changed = true
-
-        for key of record[_EDITED]
-          delete record[_EDITED][key]
-          delete record[_CHANGED_KEYS][key]
-          changed = true
-
-        for key of record when not has_own record[_SAVED], key
-          delete record[key]
-          changed = true
-
-        if changed
-          define_value record, _CHANGES, 0
-          if emit_event
-            Record.emitUpdate record, 'revert'
-
-        changed
 
       ###
       Event handler for child-object data change events
