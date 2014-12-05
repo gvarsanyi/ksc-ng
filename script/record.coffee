@@ -372,7 +372,7 @@ ksc.factory 'ksc.Record', [
             not has_own marked, key
               marked[key] = Object.getOwnPropertyDescriptor object, key
           object = Object.getPrototypeOf object
-        for own key of arr
+        for key of arr
           if key isnt '_record' and key.substr(0, 1) is '_' and
           not has_own marked, key
             delete arr[key]

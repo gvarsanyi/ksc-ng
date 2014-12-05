@@ -85,7 +85,7 @@ ksc.service 'ksc.util', [
           if Array.isArray obj
             unless fn = obj.pop
               fn = Array::pop
-            for i in [0 ... obj.length]
+            for i in [0 ... obj.length] by 1
               fn.call obj
           else
             for own key of obj
