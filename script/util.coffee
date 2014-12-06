@@ -34,7 +34,7 @@ ksc.service 'ksc.util', [
       @defineGetSet: (object, key, getter, setter, enumerable) ->
         if typeof setter isnt 'function'
           enumerable = setter
-          setter     = ->
+          setter     = undefined
 
         define_property object, key,
           configurable: true
@@ -83,7 +83,10 @@ ksc.service 'ksc.util', [
             required:  'All arguments must be objects'
         for obj in objects
           if Array.isArray obj
-            while Array::pop.call(obj) then
+            unless fn = obj.pop
+              fn = Array::pop
+            for i in [0 ... obj.length] by 1
+              fn.call obj
           else
             for own key of obj
               delete obj[key]
@@ -132,6 +135,11 @@ ksc.service 'ksc.util', [
         unless is_object comparable1, comparable2
           return comparable1 is comparable2
 
+        if comparable1._array
+          comparable1 = comparable1._array
+        if comparable2._array
+          comparable2 = comparable2._array
+
         for key, v1 of comparable1
           unless Util.identical(v1, comparable2[key]) and
           has_own comparable2, key
@@ -158,12 +166,31 @@ ksc.service 'ksc.util', [
       either a non-empty string or a number (not NaN)
 
       @param [any type] key name/id
+      @param [boolean|string] error_trigger Throwing an error (optionally with
+        error message string)
+      @param [number] argument_n (optional) Triggers ArgumentTypeError and adds
+        argument number to error message object
+
+      @throw [KeyError] If not key conform and error throwing was requested
+      @throw [ArgumentTypeError] If not key conform and error throwing was
+        requested AND argument number was provided
 
       @return [boolean] matches key requirements
       ###
-      @isKeyConform: (key) ->
-        !!(typeof key is 'string' and key) or
+      @isKeyConform: (key, error_trigger, argument_n) ->
+        unless (typeof key is 'string' and key) or
         (typeof key is 'number' and not isNaN key)
+          if error_trigger
+            unless typeof error_trigger is 'string'
+              error_trigger = 'Key conform value'
+            err = {key, description: error_trigger}
+            if argument_n
+              err.argument = argument_n
+              error.ArgumentType err
+            else
+              error.Key err
+          return false
+        true
 
       ###
       Checks if refence is or references are all of function type
@@ -255,8 +282,7 @@ ksc.service 'ksc.util', [
         uid_store = (Util._uidStore ?= {named: {}})
 
         if name?
-          unless Util.isKeyConform name
-            error.Key {name, requirement: 'Key type name'}
+          Util.isKeyConform name, 1
 
           target = uid_store.named
         else
@@ -267,8 +293,9 @@ ksc.service 'ksc.util', [
 
 
     # resolved names for minification and name resolution performance
-    has_own   = Util.hasOwn
-    is_object = Util.isObject
+    define_value = Util.defineValue
+    has_own      = Util.hasOwn
+    is_object    = Util.isObject
 
     Util
 ]

@@ -20,7 +20,37 @@ describe 'app.factory', ->
     it 'Options argument must be null/undefined/Object', ->
       expect(-> new Record {a: 1}, 'fds').toThrow()
 
+    it 'Handles real arrays', ->
+      r = null
+      arr = [1, 2]
+      expect(-> r = new Record a: arr).not.toThrow()
+
+      expect(Array.isArray r.a).toBe true
+      expect(r.a).not.toBe arr
+      expect(r.a.length).toBe 2
+      expect(r.a[0]).toBe 1
+
+      expect(-> r.a.push 3).toThrow()
+      expect(r.a[2]).toBeUndefined()
+
+      expect(-> r.a = [11, 12, 13, 14]).toThrow()
+
+    it 'Returned native array object carries record properies', ->
+      r = new Record a: [1, 2]
+      expect(r.a._record instanceof Record).toBe true
+      expect(r.a._delete).toBe r._delete
+      expect(r.a._getProperty).toBe r._getProperty
+
+      r.a._record._eee = 3423
+      expect(r.a._eee).toBe 3423
+      expect(r.a.hasOwnProperty '_eee').toBe true
+
+      delete r.a._record._eee
+      expect(r.a._eee).toBeUndefined()
+      expect(r.a.hasOwnProperty '_eee').toBe false
+
     it 'Method ._clone()', ->
+#       example = {id: 1, x: 2, y: {a: 3}, z: [0, 1, 2]}
       example = {id: 1, x: 2, y: {a: 3}}
       record = new Record example
 
@@ -104,15 +134,6 @@ describe 'app.factory', ->
           x:  {type: 'boolean'}
 
         expect(-> new Record {}, {contract, idProperty: ['id', 'x']}).toThrow()
-
-    it 'Method ._replace(false) - will not emit if emission turned off', ->
-      record = new Record {a: 1}
-      distributed = null
-      record._events.on 'update', (update) ->
-        distributed = update
-      record._replace {b: 2}, false
-
-      expect(distributed).toBe null
 
     it 'Data separation', ->
       example_sub = {a: 3}
@@ -232,3 +253,10 @@ describe 'app.factory', ->
 
       expect(distributed.node).toBe record
       expect(distributed.action).toBe 'replace'
+
+    it 'Method ._delete() throws error (read-only)', ->
+      record = new Record {a: 1}
+      expect(-> record._delete('a')).toThrow()
+      expect(-> record._delete('b')).toThrow()
+      expect(-> record._delete('c', 'd')).toThrow()
+      expect(-> record._delete()).toThrow()

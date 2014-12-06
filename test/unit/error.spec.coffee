@@ -55,8 +55,8 @@ describe 'app.service', ->
 
       it 'with no message', ->
         for name, error_ref of error
-          expected = name + 'Error: '
+          expected = name + 'Error'
           try
             error_ref()
           catch err
-            expect(String err).toBe expected
+            expect(String(err).substr 0, expected.length).toBe expected

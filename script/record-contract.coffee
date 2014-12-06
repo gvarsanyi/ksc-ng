@@ -3,6 +3,8 @@ ksc.factory 'ksc.RecordContract', [
   'ksc.error', 'ksc.util',
   (error, util) ->
 
+    NULLABLE = 'nullable'
+
     has_own   = util.hasOwn
     is_object = util.isObject
 
@@ -59,36 +61,52 @@ ksc.factory 'ksc.RecordContract', [
 
           @[key] = desc
 
-          if desc.nullable
-            desc.nullable = true
+          if desc[NULLABLE]
+            desc[NULLABLE] = true
           else
-            delete desc.nullable
+            delete desc[NULLABLE]
 
-          if desc.type is 'object' and not is_object desc.contract
-            error.Type
-              contract:    desc.contract
-              description: 'contract description object is required'
-
-          if desc.contract
-            if has_own(desc, 'type') and desc.type isnt 'object'
-              error.Type {contract: desc.contract, required: 'object'}
-
-            if has_own desc, 'default'
+          exclusive_count = 0
+          for desc_key in ['array', 'contract', 'default'] when desc[desc_key]
+            exclusive_count += 1
+            if exclusive_count > 1
               error.Value
-                default:     desc.default
-                contract:    desc.contract
-                description: 'subcontract can not have default value'
+                key:         desc_key
+                contract:    desc
+                description: 'array, default, contract are mutually exclusive'
 
+          typ = desc.type
+
+          if ((arr = desc.array) or typ is 'array') and not is_object arr
+            error.Type {array: arr, description: 'array description required'}
+          if arr = desc.array
+            if has_own(desc, 'type') and typ isnt 'array'
+              error.Type {type, array: arr, requiredType: 'array'}
             delete desc.type
-            desc.contract = new RecordContract desc.contract
-          else
-            if has_own(desc, 'default') and not has_own(desc, 'type') and
-            RecordContract.typeDefaults[typeof desc.default]?
-              desc.type = typeof desc.default
-            unless RecordContract.typeDefaults[desc.type]?
-              error.Type
-                type:     desc.type
-                required: 'boolean, number, object, string'
+            typ = null
+
+          if ((subcontract = desc.contract) or typ is 'object') and
+          not is_object subcontract
+            error.Type
+              contract:    subcontract
+              description: 'contract description required'
+          if subcontract
+            if has_own(desc, 'type') and typ isnt 'object'
+              error.Type {type, contract: subcontract, requiredType: 'object'}
+            delete desc.type
+            typ = null
+
+          unless arr # array has no subcontract and is a type
+            if subcontract
+              desc.contract = new RecordContract subcontract
+            else
+              if has_own(desc, 'default') and not has_own(desc, 'type') and
+              RecordContract.typeDefaults[typeof desc.default]?
+                desc.type = typ = typeof desc.default
+              unless RecordContract.typeDefaults[typ]?
+                error.Type
+                  type:     typ
+                  required: 'array, boolean, number, object, string'
 
           @_match key, @_default key # checks default value
 
@@ -112,8 +130,10 @@ ksc.factory 'ksc.RecordContract', [
 
         if has_own desc, 'default'
           return desc.default
-        if desc.nullable
+        if desc[NULLABLE]
           return null
+        if desc.array
+          return []
         if desc.contract
           value = {}
           for own key of desc.contract
@@ -137,11 +157,12 @@ ksc.factory 'ksc.RecordContract', [
       _match: (key, value) ->
         desc = @[key]
 
-        if desc?
-          if (desc.contract and is_object value) or typeof value is desc.type
-            return true
-          if value is null and desc.nullable
-            return true
+        if desc? and (
+          (desc.array and Array.isArray value) or
+          ((desc.contract and is_object value) or typeof value is desc.type) or
+          (value is null and desc[NULLABLE])
+        )
+          return true
         error.ContractBreak {key, value, contract: desc}
 
 
@@ -157,6 +178,9 @@ ksc.factory 'ksc.RecordContract', [
       ###
       @finalizeRecord: (record) ->
         if record._options.contract and Object.isExtensible record
+          # workaround for angular object tracker attachment problem
+          unless has_own record, '$$hashKey'
+            util.defineValue record, '$$hashKey', undefined, 1
           Object.preventExtensions record
         return
 

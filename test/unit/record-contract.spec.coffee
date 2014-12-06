@@ -35,6 +35,38 @@ describe 'app.factory', ->
       expect(record.b.x).toBe false
       expect(record.b.y).toBe null
 
+    it 'Read-only array contracts', ->
+      record = new Record {id: 1, c: [{}, {x: true, y: true}]},
+        contract:
+          id: {default: 1}
+          a:
+            array:
+              type: 'number'
+              nullable: true
+          b:
+            nullable: true
+            array:
+              type: 'boolean'
+          c:
+            nullable: true
+            array:
+              contract:
+                x: {type: 'boolean'}
+                y: {type: 'boolean', nullable: true}
+
+      expect(Array.isArray record.a).toBe true
+      expect(record.b).toBe null
+      expected = JSON.stringify [{x: false, y: null}, {x: true, y: true}]
+      expect(JSON.stringify record.c).toBe expected
+
+      expect(-> record.a.push 'a').toThrow()
+      expect(record.a.length).toBe 0
+
+      expect(-> record.a.push 1).toThrow()
+      expect(record.a.length).toBe 0
+
+      expect(-> record.a = null).toThrow() # read only
+
     it 'Method .finalizeRecord()', ->
       record = new Record {}, contract: a: type: 'number'
       RecordContract.finalizeRecord record
@@ -51,9 +83,20 @@ describe 'app.factory', ->
 
     describe 'Edge cases', ->
 
+      it 'Mutually exclusive keys: array, contract, default', ->
+        contract = a: {contract: {x: type: 'string'}, default: null}
+        expect(-> new Record {}, {contract}).toThrow()
+
+        contract = a: {array: {type: 'string'}, default: null}
+        expect(-> new Record {}, {contract}).toThrow()
+
+        contract = a: {array: {type: 'string'}, contract: {x: type: 'number'}}
+        expect(-> new Record {}, {contract}).toThrow()
+
       it 'Contract a proper description', ->
         expect(-> new Record {}, contract: true).toThrow()
         expect(-> new Record {}, contract: a: {type: 'object'}).toThrow()
+        expect(-> new Record {}, contract: a: array: 1).toThrow()
         expect(-> new Record {}, contract: a: {type: 'x'}).toThrow()
 
         contract =
@@ -65,6 +108,12 @@ describe 'app.factory', ->
         contract =
             a:
               contract: x: type: 'string'
+              type: 'number'
+        expect(-> new Record {}, {contract}).toThrow()
+
+        contract =
+            a:
+              array: type: 'string'
               type: 'number'
         expect(-> new Record {}, {contract}).toThrow()
 
@@ -88,3 +137,22 @@ describe 'app.factory', ->
       it 'Method ._match() with invalid value', ->
         record = new Record {}, contract: a: type: 'number'
         expect(-> record._options.contract._match 'a', 'x').toThrow()
+
+    it 'Not extensible ($$hashKey added)', ->
+      record = new Record {}, contract: a: type: 'number'
+      try
+        record.b = 1
+      expect(record.b).toBeUndefined()
+      expect(record.hasOwnProperty '$$hashKey').toBe true
+      expect(record.propertyIsEnumerable '$$hashKey').toBe false
+      try
+        record.$$hashKey = 'abc'
+      expect(record.$$hashKey).toBe 'abc'
+
+      record = new Record {$$hashKey: 'x'}, contract:
+        a: type: 'number'
+        $$hashKey: type: 'string'
+      try
+        record.b = 1
+      expect(record.b).toBeUndefined()
+      expect(record.propertyIsEnumerable '$$hashKey').toBe true

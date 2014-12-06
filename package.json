@@ -1,6 +1,6 @@
 {
   "name": "ksc-ng",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Angular component for lists, records and REST bindings",
   "directories": {
     "doc": "doc",
@@ -23,10 +23,13 @@
     "codo": "2.0.9",
     "coffee-script": "1.8.0",
     "coffeelint": "1.6.1",
-    "karma": "0.12.24",
+    "karma": "0.12.28",
+    "karma-chrome-launcher": "^0.1.5",
     "karma-coffee-preprocessor": "0.2.1",
     "karma-coverage": "0.2.6",
-    "karma-jasmine": "0.1.5",
+    "karma-firefox-launcher": "^0.1.3",
+    "karma-ie-launcher": "^0.1.5",
+    "karma-jasmine": "0.3.1",
     "karma-junit-reporter": "0.2.2",
     "karma-phantomjs-launcher": "0.1.4",
     "karma-script-launcher": "0.1.0",

@@ -3,18 +3,20 @@ ksc.factory 'ksc.EditableRecord', [
   'ksc.Record', 'ksc.error', 'ksc.util',
   (Record, error, util) ->
 
-    CHANGES      = '_changes'
-    CHANGED_KEYS = '_changedKeys'
-    DELETED_KEYS = '_deletedKeys'
-    EDITED       = '_edited'
-    EVENTS       = '_events'
-    OPTIONS      = '_options'
-    PARENT       = '_parent'
-    PARENT_KEY   = '_parentKey'
-    SAVED        = '_saved'
+    _ARRAY        = '_array'
+    _CHANGES      = '_changes'
+    _CHANGED_KEYS = '_changedKeys'
+    _DELETED_KEYS = '_deletedKeys'
+    _EDITED       = '_edited'
+    _EVENTS       = '_events'
+    _OPTIONS      = '_options'
+    _PARENT       = '_parent'
+    _PARENT_KEY   = '_parentKey'
+    _SAVED        = '_saved'
 
     define_value  = util.defineValue
     has_own       = util.hasOwn
+    is_array      = Array.isArray
     is_enumerable = util.isEnumerable
     is_object     = util.isObject
 
@@ -74,6 +76,15 @@ ksc.factory 'ksc.EditableRecord', [
         unless is_object options
           error.ArgumentType {options, argument: 2, required: 'object'}
         options.subtreeClass = EditableRecord
+
+        record = @
+
+        define_value record, _EDITED, {}
+        define_value record, _CHANGES, 0
+        define_value record, _CHANGED_KEYS, {}
+        define_value record, _DELETED_KEYS, {}
+        define_value record, _SAVED, {}
+
         super data, options, parent, parent_key
 
       ###
@@ -89,24 +100,23 @@ ksc.factory 'ksc.EditableRecord', [
 
         if return_plain_object
           clone = {}
-          source = if saved_only then record[SAVED] else record
+          source = if saved_only then record[_SAVED] else record
           for key, value of source
             if value instanceof Record
               value = value._clone true, saved_only
             clone[key] = value
           return clone
 
-        clone = new (record.constructor) record[SAVED]
+        clone = new (record.constructor) record[_SAVED]
         unless saved_only
           for key of record
-            if record[CHANGED_KEYS][key] or not has_own record[SAVED], key
+            if record[_CHANGED_KEYS][key] or not has_own record[_SAVED], key
               value = record[key]
               if is_object value
                 value = value._clone true
               clone[key] = value
-          if deleted_keys = record[DELETED_KEYS]
-            for key of record[DELETED_KEYS]
-              clone._delete key
+          for key of record[_DELETED_KEYS]
+            clone._delete key
         clone
 
       ###
@@ -133,30 +143,29 @@ ksc.factory 'ksc.EditableRecord', [
         changed = []
 
         for key, i in keys
-          unless util.isKeyConform key
-            error.Key {key, argument: i, required: 'key conform value'}
+          util.isKeyConform key, 1, i
 
-          if not i and contract = record[OPTIONS].contract
+          if not i and contract = record[_OPTIONS].contract
             error.ContractBreak {key, value, contract: contract[key]}
 
           # prevent idProperty key from deleted
-          if (id_property = record[OPTIONS].idProperty) is key or
-          (id_property instanceof Array and key in id_property)
+          if (id_property = record[_OPTIONS].idProperty) is key or
+          (is_array(id_property) and key in id_property)
             error.Permission
               key:         key
               description: '._options.idProperty keys can not be deleted'
 
-          if has_own record[SAVED], key
-            if record[DELETED_KEYS][key]
+          if has_own record[_SAVED], key
+            if record[_DELETED_KEYS][key]
               continue
 
-            record[DELETED_KEYS][key] = true
+            record[_DELETED_KEYS][key] = true
 
-            unless record[CHANGED_KEYS][key]
-              define_value record, CHANGES, record[CHANGES] + 1
-              define_value record[CHANGED_KEYS], key, true, 0, 1
+            unless record[_CHANGED_KEYS][key]
+              define_value record, _CHANGES, record[_CHANGES] + 1
+              define_value record[_CHANGED_KEYS], key, true, 0, 1
 
-            delete record[EDITED][key]
+            delete record[_EDITED][key]
 
             Object.defineProperty record, key, enumerable: false
             changed.push key
@@ -166,12 +175,50 @@ ksc.factory 'ksc.EditableRecord', [
               error.Key {key, description: 'can not be changed'}
 
             delete record[key]
+
+            if record[_EDITED][key]
+              delete record[_EDITED][key]
+              define_value record, _CHANGES, record[_CHANGES] - 1
+              delete record[_CHANGED_KEYS][key]
+            # else it was an ungetterified property
+
             changed.push key
 
         if changed.length
           Record.emitUpdate record, 'delete', {keys: changed}
 
         !!changed.length
+
+      ###
+      Getter function that reads a property of the object. Gets the edited state
+      from {EditableRecord#._edited} if any, or falls back to the saved state
+      stored at {Record#._saved}.
+
+      Returns undefined to properties that are marked as deleted (e.g. were
+      deleted by {EditableRecord#_delete} method.
+
+      If found value is an array, it will return a native Array with the values
+      instead of the Record instance. Original Record object is available on the
+      array's ._record property. See {Record.arrayFilter}.
+
+      @param [number|string] key Property name
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+
+      @return [mixed] value for key
+      ###
+      _getProperty: (key) ->
+        value = super
+
+        record = @
+
+        if record[_DELETED_KEYS][key]
+          return
+        else if has_own record[_EDITED], key
+          return Record.arrayFilter record[_EDITED][key]
+
+        value
 
       ###
       (Re)define the initial data set (and drop changes)
@@ -190,31 +237,17 @@ ksc.factory 'ksc.EditableRecord', [
       _replace: (data) ->
         record = @
 
-        if events = record[EVENTS]
+        if events = record[_EVENTS]
           events.halt()
 
         try
-          dropped = record._revert false
-
-          if changed = super data, false
-            contract = record[OPTIONS].contract
-
-            define_value record, EDITED, {}
-            define_value record, CHANGES, 0
-            define_value record, CHANGED_KEYS, {}
-            define_value record, DELETED_KEYS, if contract then null else {}
-            define_value record, SAVED, {}
-
-            for key, value of record
-              define_value record[SAVED], key, value, 0, 1
-              EditableRecord.setProperty record, key
-
-            Object.freeze record[SAVED]
+          dropped = record._revert 0
+          changed = super data, 0
         finally
           if events
             events.unhalt()
 
-        if dropped or changed
+        if events and (dropped or changed)
           Record.emitUpdate record, 'replace'
 
         dropped or changed
@@ -236,110 +269,143 @@ ksc.factory 'ksc.EditableRecord', [
         changed = false
 
         record = @
-        for key of record[DELETED_KEYS]
-          delete record[DELETED_KEYS][key]
-          delete record[CHANGED_KEYS][key]
+        for key of record[_DELETED_KEYS]
+          delete record[_DELETED_KEYS][key]
+          delete record[_CHANGED_KEYS][key]
           changed = true
 
-        for key of record[EDITED]
-          delete record[EDITED][key]
-          delete record[CHANGED_KEYS][key]
+        for key of record[_EDITED]
+          delete record[_EDITED][key]
+          delete record[_CHANGED_KEYS][key]
           changed = true
 
-        for key of record when not has_own record[SAVED], key
+        for key of record when not has_own record[_SAVED], key
           delete record[key]
           changed = true
 
-        if changed and emit_event
-          define_value record, CHANGES, 0
-          Record.emitUpdate record, 'revert'
+        if changed
+          define_value record, _CHANGES, 0
+          if emit_event
+            Record.emitUpdate record, 'revert'
 
         changed
 
       ###
-      Define getter/setter property on record based on {Record#_saved} and
-      {EditableRecord#_edited} and {EditableRecord#_deleted}
+      Setter function that writes a property of the object.
+      On initialization time (e.g. when called from {Record#_replace} it saves
+      values to {Record#._saved}, later it will save to {EditableRecord#_edited}
+      or remove property from {EditableRecord#_edited} if reverting to original
+      (saved) state.
+      Also removes deleted status when setting a property previously marked as
+      deleted (by {EditableRecord#_delete} method).
 
-      @param [object] record reference to object
-      @param [string|number] key on record (and ._saved map)
+      If there is a contract for the record it will use {Record.valueCheck} to
+      match against it.
+      Also will not allow function values nor property names starting with '_'.
 
-      @return [undefined]
+      @param [number|string] key Property name
+      @param [mixed] value Data to store
+      @param [boolean] initial Indicates initiation time (optional)
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      @throw [ContractBreakError] Value does not match contract for key
+      @throw [ValueError] When trying to pass a function as value
+
+      @event 'update' sends out message on changes:
+        events.emit {node: record, action: 'set', {key: key}}
+
+      @return [boolean] indication of value change
       ###
-      @setProperty: (record, key) ->
-        saved    = record[SAVED]
-        edited   = record[EDITED]
-        options  = record[OPTIONS]
-        contract = options.contract
+      _setProperty: (key, value, initial) ->
+        if initial
+          return super
 
-        getter = ->
-          if not contract and record[DELETED_KEYS][key]
+        record   = @
+        saved    = record[_SAVED]
+        edited   = record[_EDITED]
+        contract = record[_OPTIONS].contract
+
+        Record.valueCheck record, key, value
+
+        # idProperty values must be string, number or null
+        if (id_property = record[_OPTIONS].idProperty) is key or
+        (is_array(id_property) and key in id_property)
+          unless value is null or typeof value in ['string', 'number']
+            error.Value {value, required: 'string or number or null'}
+
+        value = Record.valueWrap record, key, value
+
+        if util.identical saved[key], value
+          delete edited[key]
+          changed = 1
+        else unless util.identical edited[key], value
+          contract?._match key, value
+
+          res = value
+
+          delete_unmatched_keys = ->
+            for k of res # delete properties not in the value
+              if is_enumerable(res, k) and not has_own value, k
+                res._delete k
             return
-          if has_own edited, key
-            return edited[key]
-          saved[key]
 
-        setter = (update) ->
-          if typeof update is 'function'
-            error.Type {update, description: 'must not be function'}
-
-          # idProperty values must be string, number or null
-          if (id_property = record[OPTIONS].idProperty) is key or
-          (id_property instanceof Array and key in id_property)
-            unless update is null or typeof update in ['string', 'number']
-              error.Value {update, required: 'string or number or null'}
-
-          if util.identical saved[key], update
-            delete edited[key]
-            changed = true
-          else unless util.identical edited[key], update
-            contract?._match key, update
-
-            res = update
-            if is_object update
-              if is_object saved[key]
-                res = saved[key]
-
-                for k of res # delete properties not in the update
-                  if is_enumerable(res, k) and not has_own update, k
-                    res._delete k
+          if arr = value?[_ARRAY]
+            if is_object saved[key]
+              res = saved[key]
+              if saved_arr = res[_ARRAY]
+                for i in [arr.length ... saved_arr.length] by 1
+                  saved_arr.pop()
+                for item, i in arr[0 ... saved_arr.length]
+                  saved_arr[i] = item
+                saved_arr.push arr[saved_arr.length ...]...
               else
-                subopts = {}
-                if contract
-                  subopts.contract = contract[key].contract
+                delete_unmatched_keys()
+                Record.arrayify res
+                res[_ARRAY].push arr...
+          else if is_object value
+            if is_object saved[key]
+              res = saved[key]
+              if res[_ARRAY]
+                Record.dearrayify res
+              delete_unmatched_keys()
+              for k, v of value
+                res._setProperty k, v
 
-                res = new EditableRecord {}, subopts, record, key
-              for k, v of update
-                res[k] = v
+          edited[key] = res
+          changed = 1
 
-            edited[key] = res
-            changed = true
+        if record[_DELETED_KEYS][key]
+          delete record[_DELETED_KEYS][key]
+          changed = 1
 
-          if edited[key] is saved[key]
-            delete edited[key]
+        if edited[key] is saved[key]
+          delete edited[key]
 
-          was_changed = record[CHANGED_KEYS][key]
+        was_changed = record[_CHANGED_KEYS][key]
 
-          if (is_object(saved[key]) and saved[key]._changes) or
-          (has_own(edited, key) and not util.identical saved[key], edited[key])
-            unless was_changed
-              define_value record, CHANGES, record[CHANGES] + 1
-              define_value record[CHANGED_KEYS], key, true, 0, 1
-          else if was_changed
-            define_value record, CHANGES, record[CHANGES] - 1
-            delete record[CHANGED_KEYS][key]
+        if (is_object(saved[key]) and saved[key]._changes) or
+        (has_own(edited, key) and not util.identical saved[key], edited[key])
+          unless was_changed
+            define_value record, _CHANGES, record[_CHANGES] + 1
+            define_value record[_CHANGED_KEYS], key, true, 0, 1
+        else if was_changed
+          define_value record, _CHANGES, record[_CHANGES] - 1
+          delete record[_CHANGED_KEYS][key]
 
-          if changed
-            if record[PARENT_KEY]
-              EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
-                                        record[CHANGES]
+        Record.getterify record, key
 
-            Object.defineProperty record, key, enumerable: true
+        if changed
+          if record[_PARENT_KEY]
+            EditableRecord.subChanges record[_PARENT], record[_PARENT_KEY],
+                                      record[_CHANGES]
 
-            Record.emitUpdate record, 'set', {key}
+          Object.defineProperty record, key, enumerable: true
 
-        # not enumerable if value is undefined
-        util.defineGetSet record, key, getter, setter, 1
-        return
+          Record.emitUpdate record, 'set', {key}
+
+        !!changed
+
 
       ###
       Event handler for child-object data change events
@@ -353,18 +419,18 @@ ksc.factory 'ksc.EditableRecord', [
       @return [undefined]
       ###
       @subChanges: (record, key, n) ->
-        if record[CHANGED_KEYS][key]
+        if record[_CHANGED_KEYS][key]
           unless n
-            define_value record, CHANGES, record[CHANGES] - 1
-            delete record[CHANGED_KEYS][key]
+            define_value record, _CHANGES, record[_CHANGES] - 1
+            delete record[_CHANGED_KEYS][key]
             changed = true
         else if n
-          define_value record, CHANGES, record[CHANGES] + 1
-          define_value record[CHANGED_KEYS], key, true, 0, 1
+          define_value record, _CHANGES, record[_CHANGES] + 1
+          define_value record[_CHANGED_KEYS], key, true, 0, 1
           changed = true
 
-        if changed and record[PARENT_KEY]
-          EditableRecord.subChanges record[PARENT], record[PARENT_KEY],
-                                    record[CHANGES]
+        if changed and record[_PARENT_KEY]
+          EditableRecord.subChanges record[_PARENT], record[_PARENT_KEY],
+                                    record[_CHANGES]
         return
 ]
