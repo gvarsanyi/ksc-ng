@@ -9,8 +9,8 @@ ksc.factory 'ksc.Mixin', [
           properties.unshift explicit
           explicit = true
 
-      for property in properties when not util.isKeyConform property
-        error.Key {property, required: 'key conform value'}
+      for property in properties
+        util.isKeyConform property, 1
 
       next explicit, properties
 

@@ -16,10 +16,11 @@ ksc.factory 'ksc.Record', [
     CONTRACT    = 'contract'
     ID_PROPERTY = 'idProperty'
 
-    define_value = util.defineValue
-    has_own      = util.hasOwn
-    is_array     = Array.isArray
-    is_object    = util.isObject
+    define_value   = util.defineValue
+    has_own        = util.hasOwn
+    is_array       = Array.isArray
+    is_key_conform = util.isKeyConform
+    is_object      = util.isObject
 
     object_required = (name, value, arg) ->
       unless is_object value
@@ -116,11 +117,7 @@ ksc.factory 'ksc.Record', [
           define_value record, _PARENT, parent
 
           if parent_key?
-            unless util.isKeyConform parent_key
-              error.ArgumentType
-                parent_key: parent_key
-                argument:   4
-                required:   'key conform value'
+            is_key_conform parent_key, 1, 4
             define_value record, _PARENT_KEY, parent_key
             delete record[_ID]
             delete record[_PSEUDO]
@@ -165,7 +162,15 @@ ksc.factory 'ksc.Record', [
 
         new record.constructor clone
 
-      _delete: (keys...) ->
+      ###
+      Placeholder method, throws error on read-only Record. See
+      {EditableRecord#_delete} for read/write implementation.
+
+      @throw [PermissionError] Tried to delete on a read-only record
+
+      @return [boolean] Never happens, always throws error
+      ###
+      _delete: ->
         error.Permission {keys, description: 'Read-only Record'}
 
       ###
@@ -181,10 +186,23 @@ ksc.factory 'ksc.Record', [
       _entity: ->
         @_clone 1
 
-      _getProperty: (key) ->
-        unless util.isKeyConform key
-          error.ArgumentType {key, argument: 1, required: 'key conform value'}
+      ###
+      Getter function that reads a property of the object. Gets the saved state
+      from {Record#._saved} (there is no other state for a read-only Record).
 
+      If value is an array, it will return a native Array with the values
+      instead of the Record instance. Original Record object is available on the
+      array's ._record property. See {Record.arrayFilter}.
+
+      @param [number|string] key Property name
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+
+      @return [mixed] value for key
+      ###
+      _getProperty: (key) ->
+        is_key_conform key, 1, 1
         Record.arrayFilter @[_SAVED][key]
 
       ###
@@ -266,6 +284,25 @@ ksc.factory 'ksc.Record', [
         replacing = false
         !!changed
 
+      ###
+      Setter function that writes a property of the object.
+      On initialization time (e.g. when called from {Record#_replace} it saves
+      values to {Record#._saved} or throws error later when trying to (re)write
+      a property on read-only Record.
+
+      If there is a contract for the record it will use {Record.valueCheck} to
+      match against it.
+      Also will not allow function values nor property names starting with '_'.
+
+      @param [number|string] key Property name
+      @param [mixed] value Data to store
+      @param [boolean] initial Indicates initiation time (optional)
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+
+      @return [mixed] value for key
+      ###
       _setProperty: (key, value, initial) ->
         record = @
         saved  = record[_SAVED]
@@ -417,7 +454,7 @@ ksc.factory 'ksc.Record', [
           if is_array id_property
             composite = []
             for part, i in id_property
-              if util.isKeyConform record[part]
+              if is_key_conform record[part]
                 composite.push record[part]
               else unless i # if first part is unset, fall back to null
                 break

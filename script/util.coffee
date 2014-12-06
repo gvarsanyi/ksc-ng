@@ -166,12 +166,31 @@ ksc.service 'ksc.util', [
       either a non-empty string or a number (not NaN)
 
       @param [any type] key name/id
+      @param [boolean|string] error_trigger Throwing an error (optionally with
+        error message string)
+      @param [number] argument_n (optional) Triggers ArgumentTypeError and adds
+        argument number to error message object
+
+      @throw [KeyError] If not key conform and error throwing was requested
+      @throw [ArgumentTypeError] If not key conform and error throwing was
+        requested AND argument number was provided
 
       @return [boolean] matches key requirements
       ###
-      @isKeyConform: (key) ->
-        !!(typeof key is 'string' and key) or
+      @isKeyConform: (key, error_trigger, argument_n) ->
+        unless (typeof key is 'string' and key) or
         (typeof key is 'number' and not isNaN key)
+          if error_trigger
+            unless typeof error_trigger is 'string'
+              error_trigger = 'Key conform value'
+            err = {key, description: error_trigger}
+            if argument_n
+              err.argument = argument_n
+              error.ArgumentType err
+            else
+              error.Key err
+          return false
+        true
 
       ###
       Checks if refence is or references are all of function type
@@ -263,8 +282,7 @@ ksc.service 'ksc.util', [
         uid_store = (Util._uidStore ?= {named: {}})
 
         if name?
-          unless Util.isKeyConform name
-            error.Key {name, requirement: 'Key type name'}
+          Util.isKeyConform name, 1
 
           target = uid_store.named
         else

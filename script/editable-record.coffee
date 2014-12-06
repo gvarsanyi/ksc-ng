@@ -190,6 +190,25 @@ ksc.factory 'ksc.EditableRecord', [
 
         !!changed.length
 
+      ###
+      Getter function that reads a property of the object. Gets the edited state
+      from {EditableRecord#._edited} if any, or falls back to the saved state
+      stored at {Record#._saved}.
+
+      Returns undefined to properties that are marked as deleted (e.g. were
+      deleted by {EditableRecord#_delete} method.
+
+      If found value is an array, it will return a native Array with the values
+      instead of the Record instance. Original Record object is available on the
+      array's ._record property. See {Record.arrayFilter}.
+
+      @param [number|string] key Property name
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+
+      @return [mixed] value for key
+      ###
       _getProperty: (key) ->
         value = super
 
