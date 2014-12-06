@@ -300,8 +300,9 @@ ksc.factory 'ksc.Record', [
 
       @throw [ArgumentTypeError] Key is missing or is not key conform (string or
         number)
+      @throw [ValueError] When trying to pass a function as value
 
-      @return [mixed] value for key
+      @return [boolean] indication of value change
       ###
       _setProperty: (key, value, initial) ->
         record = @
@@ -468,11 +469,15 @@ ksc.factory 'ksc.Record', [
         return
 
       @valueCheck: (record, key, value) ->
+        is_key_conform key, 1, 1
         if contract = record[_OPTIONS][CONTRACT]
           contract._match (if record[_ARRAY] then 'all' else key), value
         else
           if typeof key is 'string' and key.substr(0, 1) is '_'
-            error.Key {key, description: 'can not start with "_"'}
+            error.ArgumentType
+              key:         key
+              argument:    1
+              description: 'can not start with "_"'
           if typeof value is 'function'
             error.Type {value, description: 'can not be function'}
         return

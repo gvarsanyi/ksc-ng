@@ -143,8 +143,7 @@ ksc.factory 'ksc.EditableRecord', [
         changed = []
 
         for key, i in keys
-          unless util.isKeyConform key
-            error.Key {key, argument: i, required: 'key conform value'}
+          util.isKeyConform key, 1, i
 
           if not i and contract = record[_OPTIONS].contract
             error.ContractBreak {key, value, contract: contract[key]}
@@ -291,6 +290,32 @@ ksc.factory 'ksc.EditableRecord', [
 
         changed
 
+      ###
+      Setter function that writes a property of the object.
+      On initialization time (e.g. when called from {Record#_replace} it saves
+      values to {Record#._saved}, later it will save to {EditableRecord#_edited}
+      or remove property from {EditableRecord#_edited} if reverting to original
+      (saved) state.
+      Also removes deleted status when setting a property previously marked as
+      deleted (by {EditableRecord#_delete} method).
+
+      If there is a contract for the record it will use {Record.valueCheck} to
+      match against it.
+      Also will not allow function values nor property names starting with '_'.
+
+      @param [number|string] key Property name
+      @param [mixed] value Data to store
+      @param [boolean] initial Indicates initiation time (optional)
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      @throw [ValueError] When trying to pass a function as value
+
+      @event 'update' sends out message on changes:
+        events.emit {node: record, action: 'set', {key: key}}
+
+      @return [boolean] indication of value change
+      ###
       _setProperty: (key, value, initial) ->
         if initial
           return super
