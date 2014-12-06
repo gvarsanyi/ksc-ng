@@ -20,23 +20,123 @@ ksc = angular.module('ksc', []);
 
 ksc.factory('ksc.ArrayTracker', [
   'ksc.error', 'ksc.util', function(error, util) {
-    var ArrayTracker, define_get_set, define_value, has_own;
+    var ArrayTracker, define_get_set, define_value, has_own, is_array, is_object, plainify, process, set_element;
     define_get_set = util.defineGetSet;
     define_value = util.defineValue;
     has_own = util.hasOwn;
-    return ArrayTracker = (function() {
-      ArrayTracker.prototype.get = void 0;
+    is_array = Array.isArray;
+    is_object = util.isObject;
 
+    /*
+    Almost proper getter/setter support for native JavaScript Arrays.
+    
+    Pass a vanilla Array to constructor and it will:
+    - attach itself to the array as ._tracker
+    - replace all elements with getters and setters while move actual values to
+      a store object
+    - replace methods that change contents: pop, shift, push, unshift, splice,
+      sort, reverse
+    - provide event handlers allowing extra logic in element get, set, delete
+    
+    @example
+         * Stringify output but store original value
+        arr = [1, 2, 3]
+        new ArrayTracker arr,
+          get: (index, value) ->
+            return String value
+        console.log arr # ["1", "2", "3"]
+    
+         * >=1 number only array
+        arr = [1, 2, 3]
+        new ArrayTracker arr,
+          set: (index, value, next) ->
+            unless value >= 1
+              throw new Error 'Values must be numbers >= 1'
+            next()
+        arr.push 4    # OK
+        arr.push true # Error!
+    
+    @note Adding element to a new position can not be tracked.
+    @example
+        arr = [1, 2, 3]
+        new ArrayTracker arr
+        arr.push 4 # proper way of adding an element
+        arr[4] = 5 # will just store plain value, not a getter/setter
+    
+    @author Greg Varsanyi
+     */
+    ArrayTracker = (function() {
+
+      /*
+      @method #del(index, value)
+        Indicates that element was deleted from a certain index (always the end
+        of the array)
+      
+        @param [number] index of deleted element in array
+        @param [mixed] stored value of the element
+      
+        @return [false|mixed] If false is returned, store[index] will not be
+          deleted by ArrayTracker so you can keep it or deal with it any other
+          way. Any other return value will be disregarded.
+       */
+
+      /*
+      @method #get(index, value)
+        Inject getter logic for array elements (see first example in class def)
+      
+        @note It is also used for reading values when temporarly turning values
+          into plain values (e.g. for using native sort() ot reverse() methods)
+      
+        @param [number] index of element in array
+        @param [mixed] value stored for the element
+      
+        @return [mixed] this will be used as element value in the array
+       */
+
+      /*
+      @method #set(index, value, next, set_type)
+        Inject setter logic or set to/leave as null for default behavior
+        (elements stored as-is). See second example in class def.
+      
+        @note It is also used for re-setting values after temporarly turning
+          values into plain values (e.g. for using native sort() ot reverse()
+          methods)
+      
+        @param [number] index of element in array
+        @param [mixed] value to be set
+        @param [function] next call when your biz logic is ready. Takes 0 or 1
+          argument. If argument is provided that will be stored as value.
+        @param [string] set_type Any of the following values:
+          - 'external': coming from oustide by updating an element or adding new
+          - 'move': previously processed element moved to new index (after pop,
+            unshift or splice)
+          - 'reload': after temporarly reloading array with processed values,
+            values receive updated indexes (sort and reverse)
+      
+        @return [mixed] whetever you define. Return value will not be used
+       */
       ArrayTracker.prototype.list = void 0;
 
-      ArrayTracker.prototype.set = void 0;
+      ArrayTracker.prototype.origFn = void 0;
 
       ArrayTracker.prototype.store = void 0;
 
-      function ArrayTracker(list, store, setter, getter) {
-        var fn, fnize, index, key, tracker, value, _i, _len;
-        if (store == null) {
-          store = {};
+
+      /*
+      Create the ArrayTracker instance and attach it to the provided array
+      
+      @throw [ArgumentTypeError] list, options type mismatch
+      @throw [ValueError] if array is already tracked
+      
+      @param [array] Array to track
+      @param [object] options (optional) you may add handler functions and/or
+        a store object here: del, get, set and sotre will be picked up.
+       */
+
+      function ArrayTracker(list, options) {
+        var fn, fnize, functions, key, orig_fn, store, tracker, _fn, _fn1, _i, _len, _ref;
+        if (options == null) {
+          options = {};
         }
         if (has_own(list, '_tracker')) {
           error.Value({
@@ -44,13 +144,22 @@ ksc.factory('ksc.ArrayTracker', [
             description: 'List is already tracked'
           });
         }
-        if (!Array.isArray(list)) {
-          error.Type({
+        if (!is_array(list)) {
+          error.ArgumentType({
+            argument: 1,
             list: list,
             description: 'Must be an array'
           });
         }
-        if (typeof store !== 'object') {
+        if (!is_object(options)) {
+          error.ArgumentType({
+            argument: 2,
+            options: options,
+            description: 'Must be an object'
+          });
+        }
+        store = has_own(options, 'store') ? options.store : {};
+        if (!is_object(store)) {
           error.Type({
             store: store,
             description: 'Must be an object'
@@ -60,6 +169,7 @@ ksc.factory('ksc.ArrayTracker', [
         define_value(list, '_tracker', tracker);
         define_value(tracker, 'list', list, 0, 1);
         define_value(tracker, 'store', store, 0, 1);
+        define_value(tracker, 'origFn', orig_fn = {});
         fnize = function(fn) {
           if (fn != null) {
             if (typeof fn !== 'function') {
@@ -73,53 +183,250 @@ ksc.factory('ksc.ArrayTracker', [
           }
           return fn;
         };
-        getter = fnize(getter);
-        setter = fnize(setter);
-        define_get_set(tracker, 'get', (function() {
-          return getter;
-        }), (function(fn) {
-          return getter = fnize(fn);
-        }), 1);
-        define_get_set(tracker, 'set', (function() {
-          return setter;
-        }), (function(fn) {
-          return setter = fnize(fn);
-        }), 1);
+        functions = {};
+        _ref = ['del', 'get', 'set'];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          key = _ref[_i];
+          functions[key] = options[key] || null;
+        }
+        _fn = function(key) {
+          return define_get_set(tracker, key, (function() {
+            return functions[key] || null;
+          }), (function(fn) {
+            return functions[key] = fnize(fn);
+          }), 1);
+        };
+        for (key in functions) {
+          fn = functions[key];
+          functions[key] = fnize(fn);
+          _fn(key);
+        }
+        _fn1 = function(key) {
+          return define_value(list, key, function() {
+            var args;
+            args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            return ArrayTracker['_' + key].apply(tracker, args);
+          });
+        };
         for (key in ArrayTracker) {
           fn = ArrayTracker[key];
-          if (key.substr(0, 1) === '_') {
-            (function(key) {
-              return define_value(list, key.substr(1), function() {
-                var args;
-                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                return ArrayTracker[key].apply(tracker, args);
-              });
-            })(key);
+          if (!(key.substr(0, 1) === '_')) {
+            continue;
           }
+          key = key.substr(1);
+          orig_fn[key] = has_own(list, key) ? {
+            v: list[key]
+          } : {
+            n: 1
+          };
+          _fn1(key);
         }
-        for (index = _i = 0, _len = list.length; _i < _len; index = ++_i) {
-          value = list[index];
-          ArrayTracker.getterify(tracker, index);
-          ArrayTracker.set(tracker, index, value);
-        }
+        process(tracker);
       }
 
-      ArrayTracker.getterify = function(tracker, index) {
-        return define_get_set(tracker.list, index, (function() {
-          return ArrayTracker.get(tracker, index);
-        }), (function(value) {
-          return ArrayTracker.set(tracker, index, value);
-        }), 1);
+
+      /*
+      Detach tracker from array, revert to plain values and restore original
+      methods for pop, shift, push, unshift, splice, reverse, sort.
+      
+      @param [boolean] keep_store_values Truish value prevents emptying store
+      
+      @return [void]
+       */
+
+      ArrayTracker.prototype.unload = function(keep_store_values) {
+        var inf, key, list, store, tracker, _ref, _ref1;
+        _ref = tracker = this, list = _ref.list, store = _ref.store;
+        plainify(tracker);
+        _ref1 = tracker.origFn;
+        for (key in _ref1) {
+          inf = _ref1[key];
+          if (inf.n) {
+            delete list[key];
+          } else {
+            define_value(list, key, inf.v);
+          }
+        }
+        delete tracker.list._tracker;
+        delete tracker.list;
+        if (!keep_store_values) {
+          util.empty(store);
+        }
       };
 
-      ArrayTracker.get = function(tracker, index) {
+
+      /*
+      Helper function that inserts elements to a given index while pushing
+      existing elements to the right (if needed). Used by {ArrayTracker._push},
+      {ArrayTracker._unshift} and {ArrayTracker._splice}
+      
+      @param [ArrayTracker] tracker
+      @param [array] items Values to be inserted
+      @param [number] index Insertation point
+      @param [boolean] move_to_right Whether to push elements to the right.
+        {ArrayTracker._splice} has its own logic to do that, hence the need for
+        this flag
+      
+      @return [number] new length of the array
+       */
+
+      ArrayTracker.add = function(tracker, items, index, move_to_right) {
+        var i, items_len, list, orig_len, store, value, _i, _j, _len, _ref;
+        if (move_to_right == null) {
+          move_to_right = true;
+        }
+        list = tracker.list, store = tracker.store;
+        items_len = items.length;
+        orig_len = list.length;
+        if (move_to_right && orig_len > index) {
+          for (i = _i = _ref = orig_len - 1; _i >= index; i = _i += -1) {
+            set_element(tracker, i + items_len, store[i], 'move');
+          }
+        }
+        for (i = _j = 0, _len = items.length; _j < _len; i = ++_j) {
+          value = items[i];
+          set_element(tracker, i + index, value);
+          if (move_to_right) {
+            ArrayTracker.getterify(tracker, i + orig_len);
+          }
+        }
+        return list.length;
+      };
+
+
+      /*
+      Helper function that is used by element getters and element reading
+      functions to return stored value or - if defined - trigger user-defined
+      {ArrayTracker#get} function
+      
+      @param [ArrayTracker] tracker
+      @param [number] index
+      
+      @return [mixed] value
+       */
+
+      ArrayTracker.getElement = function(tracker, index) {
         if (tracker.get) {
           return tracker.get(index, tracker.store[index]);
         }
         return tracker.store[index];
       };
 
-      ArrayTracker.set = function(tracker, index, value) {
+
+      /*
+      Helper function that turns an element into getter/setter. Used by
+      {ArrayTracker.add}, {process} and {ArrayTracker._splice}
+      
+      @param [ArrayTracker] tracker
+      @param [number] index
+      
+      @return [void]
+       */
+
+      ArrayTracker.getterify = function(tracker, index) {
+        define_get_set(tracker.list, index, (function() {
+          return ArrayTracker.getElement(tracker, index);
+        }), (function(val) {
+          return set_element(tracker, index, val);
+        }), 1);
+      };
+
+
+      /*
+      Helper function that updates array with plain values. Used by
+      {ArrayTracker#unload}, {ArrayTracker._reverse} and {ArrayTracker._sort}
+      
+      @param [ArrayTracker] tracker
+      
+      @return [void]
+       */
+
+      ArrayTracker.plainify = function(tracker) {
+        var copy, i, list, store;
+        list = tracker.list, store = tracker.store;
+        copy = (function() {
+          var _i, _ref, _results;
+          _results = [];
+          for (i = _i = 0, _ref = list.length; _i < _ref; i = _i += 1) {
+            _results.push(store[i]);
+          }
+          return _results;
+        })();
+        list.length = 0;
+        Array.prototype.push.apply(list, copy);
+      };
+
+
+      /*
+      Helper function that turns plain values into getters/setters and stores
+      values. Used by {ArrayTracker#constructor}, {ArrayTracker._reverse} and
+      {ArrayTracker._sort}
+      
+      @param [ArrayTracker] tracker
+      @param [string] set_type (optional) Process name (e.g. 'reload') or new
+        elements if not provided.
+      
+      @return [void]
+       */
+
+      ArrayTracker.process = function(tracker, set_type) {
+        var index, value, _i, _len, _ref;
+        _ref = tracker.list;
+        for (index = _i = 0, _len = _ref.length; _i < _len; index = ++_i) {
+          value = _ref[index];
+          ArrayTracker.getterify(tracker, index);
+          set_element(tracker, index, value, set_type);
+        }
+      };
+
+
+      /*
+      Helper function that removes an element from index while pushing
+      existing elements to the left (if needed). Used by {ArrayTracker._pop},
+      {ArrayTracker._shift} and {ArrayTracker._splice}
+      
+      @param [ArrayTracker] tracker
+      @param [number] index Insertation point
+      
+      @return [mixed] stored value of the removed element (or void if nothing
+        was removed e.g. when array is empty.
+       */
+
+      ArrayTracker.rm = function(tracker, index) {
+        var del, deletable, i, list, orig_len, res, store, _i, _ref;
+        list = tracker.list, store = tracker.store;
+        if (list.length) {
+          orig_len = list.length;
+          res = list[index];
+          for (i = _i = _ref = index + 1; _i < orig_len; i = _i += 1) {
+            set_element(tracker, i - 1, store[i], 'move');
+          }
+          if (del = tracker.del) {
+            deletable = store[orig_len - 1];
+          }
+          list.length = orig_len - 1;
+          if ((typeof del === "function" ? del(orig_len - 1, deletable) : void 0) !== false) {
+            delete store[orig_len - 1];
+          }
+          return res;
+        }
+      };
+
+
+      /*
+      Helper function that is used by element setters and functions that
+      store values. If provided, it triggers a user defined {ArrayTracker#set}
+      method. Otherwise it will store value as-is.
+      
+      @param [ArrayTracker] tracker
+      @param [number] index
+      @param [mixed] value
+      @param [string] set_type undefined='external' or 'move' or 'reload'
+      
+      @return [void]
+       */
+
+      ArrayTracker.setElement = function(tracker, index, value, set_type) {
         var work;
         work = function() {
           if (arguments.length) {
@@ -132,53 +439,64 @@ ksc.factory('ksc.ArrayTracker', [
           return true;
         };
         if (tracker.set) {
-          return tracker.set(index, value, work);
+          tracker.set(index, value, work, set_type || 'external');
         } else {
-          return work();
+          work();
         }
       };
 
-      ArrayTracker.add = function(tracker, items, index) {
-        var i, item, items_len, list, orig_len, store, _i, _j, _len, _ref;
-        list = tracker.list, store = tracker.store;
-        items_len = items.length;
-        orig_len = list.length;
-        for (i = _i = _ref = orig_len - 1; _i >= index; i = _i += -1) {
-          store[i + items_len] = store[i];
-        }
-        for (i = _j = 0, _len = items.length; _j < _len; i = ++_j) {
-          item = items[i];
-          list[i + orig_len] = null;
-          ArrayTracker.getterify(tracker, i + orig_len);
-          ArrayTracker.set(tracker, i + index, item);
-        }
-        return list.length;
-      };
+
+      /*
+      Override function that replaces original .pop() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::pop()
+      
+      Removes and returns the last element of the array.
+      
+      If defined on tracker, the following handlers will be triggered:
+        - {ArrayTracker#get}(index, value) for the popped (last) element
+        - {ArrayTracker#del}(index, value) for the last element
+      
+      @return [mixed] popped value or undefined if the array was empty
+       */
 
       ArrayTracker._pop = function() {
-        var index, list, res, store;
-        list = this.list, store = this.store;
-        if ((index = list.length - 1) > -1) {
-          res = list[index];
-          list.length = index;
-          delete store[index];
-          return res;
-        }
+        return ArrayTracker.rm(this, this.list.length - 1);
       };
 
+
+      /*
+      Override function that replaces original .shift() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::shift()
+      
+      Removes and returns the first element of the array.
+      
+      If defined on tracker, the following handlers will be triggered:
+        - {ArrayTracker#get}(index, value) for the shifted (first) element
+        - {ArrayTracker#set}(index, value, next_fn, true) for all remaining
+          elements as the move left
+        - {ArrayTracker#del}(index, value) for the last element
+      
+      @return [mixed] popped value or undefined if the array was empty
+       */
+
       ArrayTracker._shift = function() {
-        var i, index, list, res, store, _i;
-        list = this.list, store = this.store;
-        if ((index = list.length - 1) > -1) {
-          res = list[0];
-          for (i = _i = 1; _i <= index; i = _i += 1) {
-            store[i - 1] = store[i];
-          }
-          list.length = index;
-          delete store[index];
-          return res;
-        }
+        return ArrayTracker.rm(this, 0);
       };
+
+
+      /*
+      Override function that replaces original .push() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::push()
+      
+      Appends element(s) to the end of the array.
+      
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#set}(index, value, next_fn, false) for all new elements
+      
+      @param [mixed] items... Elements to add
+      
+      @return [number] the new length of the array
+       */
 
       ArrayTracker._push = function() {
         var items;
@@ -186,17 +504,58 @@ ksc.factory('ksc.ArrayTracker', [
         return ArrayTracker.add(this, items, this.list.length);
       };
 
+
+      /*
+      Override function that replaces original .unshift() method of the tracked
+      array. From the user's standpoint, it behaves exactly like
+      Array::unshift()
+      
+      Prepends array with the provided element(s).
+      
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#set}(index, value, next_fn, false) for all new elements
+        - {ArrayTracker#set}(index, value, next_fn, true) for all previously
+          existing elements pushed to the right
+      
+      @param [mixed] items... Elements to add
+      
+      @return [number] the new length of the array
+       */
+
       ArrayTracker._unshift = function() {
         var items;
         items = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
         return ArrayTracker.add(this, items, 0);
       };
 
+
+      /*
+      Override function that replaces original .splice() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::splice()
+      
+      Cuts a part out of the array and/or inserts element(s) starting at a
+      provided index.
+      
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#get}(index, value) for the cut elements
+        - {ArrayTracker#del}(index, value) for the cut elements
+        - {ArrayTracker#set}(index, value, next_fn, false) for all new elements
+        - {ArrayTracker#set}(index, value, next_fn, true) for all previously
+          existing elements pushed to either left (if how_many > n new items) or
+          right (if how_many < n new items)
+      
+      @param [number] index Index to start cutting/inserting at
+      @param [number] how_many Number of elements to cut
+      @param [mixed] items... Elements to add
+      
+      @return [array] a list of cut elements
+       */
+
       ArrayTracker._splice = function() {
-        var how_many, i, index, items, list, orig_len, res, store, _i, _j, _ref;
+        var how_many, i, index, items, items_len, list, move, orig_len, res, store, tracker, _i, _j, _k, _l, _ref, _ref1, _ref2, _ref3, _ref4;
         index = arguments[0], how_many = arguments[1], items = 3 <= arguments.length ? __slice.call(arguments, 2) : [];
-        list = this.list, store = this.store;
-        res = [];
+        _ref = tracker = this, list = _ref.list, store = _ref.store;
+        items_len = items.length;
         orig_len = list.length;
         index = parseInt(index, 10) || 0;
         if (index < 0) {
@@ -206,52 +565,101 @@ ksc.factory('ksc.ArrayTracker', [
         }
         how_many = parseInt(how_many, 10) || 0;
         how_many = Math.max(0, Math.min(how_many, orig_len - index));
-        if (how_many) {
-          for (i = _i = index, _ref = index + how_many; _i < _ref; i = _i += 1) {
-            res.push(list[i]);
-            delete store[orig_len + i - index];
+        res = list.slice(index, index + how_many);
+        move = function(i) {
+          return set_element(tracker, i - how_many + items_len, store[i], 'move');
+        };
+        if (how_many > items_len) {
+          for (i = _i = _ref1 = index + how_many; _i < orig_len; i = _i += 1) {
+            move(i);
           }
-          for (i = _j = index; _j < orig_len; i = _j += 1) {
-            store[i] = store[i + how_many];
+          for (i = _j = 0, _ref2 = how_many - items_len; _j < _ref2; i = _j += 1) {
+            ArrayTracker.rm(tracker, orig_len - i - 1);
           }
-          list.length = orig_len - how_many;
+        } else if (how_many < items_len) {
+          for (i = _k = _ref3 = orig_len - 1, _ref4 = index + how_many; _k >= _ref4; i = _k += -1) {
+            move(i);
+          }
         }
-        if (items.length) {
-          ArrayTracker.add(this, items, index);
+        if (items_len) {
+          for (i = _l = how_many; _l < items_len; i = _l += 1) {
+            ArrayTracker.getterify(tracker, i + orig_len);
+          }
+          ArrayTracker.add(tracker, items, index, 0);
         }
         return res;
       };
 
-      ArrayTracker._sort = function() {
-        var args, copy, i, index, list, res, store, tracker, value, _i, _len, _ref;
-        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        _ref = tracker = this, list = _ref.list, store = _ref.store;
-        copy = (function() {
-          var _i, _ref1, _results;
-          _results = [];
-          for (i = _i = 0, _ref1 = list.length; _i < _ref1; i = _i += 1) {
-            _results.push(store[i]);
-          }
-          return _results;
-        })();
-        list.length = 0;
-        Array.prototype.push.apply(list, copy);
-        res = Array.prototype.sort.apply(list, args);
-        for (index = _i = 0, _len = list.length; _i < _len; index = ++_i) {
-          value = list[index];
-          ArrayTracker.getterify(tracker, index);
-          ArrayTracker.set(tracker, index, value);
-        }
+
+      /*
+      Override function that replaces original .sort() method of the tracked
+      array. From the user's standpoint, it behaves exactly like Array::sort()
+      
+      Sorts the array based on default sort or provided sort function.
+      
+      Will turn the array into a plain-values array based on stored values and
+      {ArrayTracker#get} if defined.
+      After sorting, will turn it back to a getter/setter array saving new
+      values back to store and using {ArrayTracker#set} if defined.
+      
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#get}(index, value) for all elements
+        - {ArrayTracker#set}(index, value, next_fn, false) for all elements
+      
+      @param [function] fn (optional) sort function that returns <0, 0 or >0
+      
+      @return [array] returns the tracked array itself
+       */
+
+      ArrayTracker._sort = function(fn) {
+        var res, tracker;
+        tracker = this;
+        plainify(tracker);
+        res = Array.prototype.sort.call(tracker.list, fn);
+        process(tracker, 'reload');
+        return res;
+      };
+
+
+      /*
+      Override function that replaces original .reverse() method of the tracked
+      array. From the user's standpoint, it behaves exactly like
+      Array::reverse()
+      
+      Reverses array elements.
+      
+      Will turn the array into a plain-values array based on stored values and
+      {ArrayTracker#get} if defined.
+      After sorting, will turn it back to a getter/setter array saving new
+      values back to store and using {ArrayTracker#set} if defined.
+      
+      If defined on tracker, the following handler will be triggered:
+        - {ArrayTracker#get}(index, value) for all elements
+        - {ArrayTracker#set}(index, value, next_fn, false) for all elements
+      
+      @return [array] returns the tracked array itself
+       */
+
+      ArrayTracker._reverse = function() {
+        var res, tracker;
+        tracker = this;
+        plainify(tracker);
+        res = Array.prototype.reverse.call(tracker.list);
+        process(tracker, 'reload');
         return res;
       };
 
       return ArrayTracker;
 
     })();
+    plainify = ArrayTracker.plainify;
+    process = ArrayTracker.process;
+    set_element = ArrayTracker.setElement;
+    return ArrayTracker;
   }
 ]);
 ksc.service('ksc.batchLoaderRegistry', [
-  'ksc.error', 'ksc.util', function(error, util) {
+  'ksc.error', function(error) {
 
     /*
     A registry service for {BatchLoader} instances and interface for $http.get
@@ -305,14 +713,14 @@ ksc.service('ksc.batchLoaderRegistry', [
 
       BatchLoaderRegistry.prototype.register = function(loader) {
         var endpoint;
-        if (!(typeof (endpoint = loader != null ? loader.endpoint : void 0) === 'string' && util.isKeyConform(endpoint))) {
-          error.Key({
+        if (!(typeof (endpoint = loader != null ? loader.endpoint : void 0) === 'string' && endpoint)) {
+          error.Value({
             endpoint: endpoint,
             required: 'url'
           });
         }
         if (this.map[endpoint]) {
-          error.Key({
+          error.Value({
             endpoint: endpoint,
             description: 'already registered'
           });
@@ -548,18 +956,20 @@ ksc.factory('ksc.BatchLoader', [
 
 ksc.factory('ksc.EditableRecord', [
   'ksc.Record', 'ksc.error', 'ksc.util', function(Record, error, util) {
-    var CHANGED_KEYS, CHANGES, DELETED_KEYS, EDITED, EVENTS, EditableRecord, OPTIONS, PARENT, PARENT_KEY, SAVED, define_value, has_own, is_enumerable, is_object;
-    CHANGES = '_changes';
-    CHANGED_KEYS = '_changedKeys';
-    DELETED_KEYS = '_deletedKeys';
-    EDITED = '_edited';
-    EVENTS = '_events';
-    OPTIONS = '_options';
-    PARENT = '_parent';
-    PARENT_KEY = '_parentKey';
-    SAVED = '_saved';
+    var EditableRecord, define_value, has_own, is_array, is_enumerable, is_object, _ARRAY, _CHANGED_KEYS, _CHANGES, _DELETED_KEYS, _EDITED, _EVENTS, _OPTIONS, _PARENT, _PARENT_KEY, _SAVED;
+    _ARRAY = '_array';
+    _CHANGES = '_changes';
+    _CHANGED_KEYS = '_changedKeys';
+    _DELETED_KEYS = '_deletedKeys';
+    _EDITED = '_edited';
+    _EVENTS = '_events';
+    _OPTIONS = '_options';
+    _PARENT = '_parent';
+    _PARENT_KEY = '_parentKey';
+    _SAVED = '_saved';
     define_value = util.defineValue;
     has_own = util.hasOwn;
+    is_array = Array.isArray;
     is_enumerable = util.isEnumerable;
     is_object = util.isObject;
 
@@ -614,6 +1024,7 @@ ksc.factory('ksc.EditableRecord', [
        */
 
       function EditableRecord(data, options, parent, parent_key) {
+        var record;
         if (data == null) {
           data = {};
         }
@@ -628,6 +1039,12 @@ ksc.factory('ksc.EditableRecord', [
           });
         }
         options.subtreeClass = EditableRecord;
+        record = this;
+        define_value(record, _EDITED, {});
+        define_value(record, _CHANGES, 0);
+        define_value(record, _CHANGED_KEYS, {});
+        define_value(record, _DELETED_KEYS, {});
+        define_value(record, _SAVED, {});
         EditableRecord.__super__.constructor.call(this, data, options, parent, parent_key);
       }
 
@@ -642,7 +1059,7 @@ ksc.factory('ksc.EditableRecord', [
        */
 
       EditableRecord.prototype._clone = function(return_plain_object, saved_only) {
-        var clone, deleted_keys, key, record, source, value;
+        var clone, key, record, source, value;
         if (return_plain_object == null) {
           return_plain_object = false;
         }
@@ -652,7 +1069,7 @@ ksc.factory('ksc.EditableRecord', [
         record = this;
         if (return_plain_object) {
           clone = {};
-          source = saved_only ? record[SAVED] : record;
+          source = saved_only ? record[_SAVED] : record;
           for (key in source) {
             value = source[key];
             if (value instanceof Record) {
@@ -662,10 +1079,10 @@ ksc.factory('ksc.EditableRecord', [
           }
           return clone;
         }
-        clone = new record.constructor(record[SAVED]);
+        clone = new record.constructor(record[_SAVED]);
         if (!saved_only) {
           for (key in record) {
-            if (record[CHANGED_KEYS][key] || !has_own(record[SAVED], key)) {
+            if (record[_CHANGED_KEYS][key] || !has_own(record[_SAVED], key)) {
               value = record[key];
               if (is_object(value)) {
                 value = value._clone(true);
@@ -673,10 +1090,8 @@ ksc.factory('ksc.EditableRecord', [
               clone[key] = value;
             }
           }
-          if (deleted_keys = record[DELETED_KEYS]) {
-            for (key in record[DELETED_KEYS]) {
-              clone._delete(key);
-            }
+          for (key in record[_DELETED_KEYS]) {
+            clone._delete(key);
           }
         }
         return clone;
@@ -712,36 +1127,30 @@ ksc.factory('ksc.EditableRecord', [
         changed = [];
         for (i = _i = 0, _len = keys.length; _i < _len; i = ++_i) {
           key = keys[i];
-          if (!util.isKeyConform(key)) {
-            error.Key({
-              key: key,
-              argument: i,
-              required: 'key conform value'
-            });
-          }
-          if (!i && (contract = record[OPTIONS].contract)) {
+          util.isKeyConform(key, 1, i);
+          if (!i && (contract = record[_OPTIONS].contract)) {
             error.ContractBreak({
               key: key,
               value: value,
               contract: contract[key]
             });
           }
-          if ((id_property = record[OPTIONS].idProperty) === key || (id_property instanceof Array && __indexOf.call(id_property, key) >= 0)) {
+          if ((id_property = record[_OPTIONS].idProperty) === key || (is_array(id_property) && __indexOf.call(id_property, key) >= 0)) {
             error.Permission({
               key: key,
               description: '._options.idProperty keys can not be deleted'
             });
           }
-          if (has_own(record[SAVED], key)) {
-            if (record[DELETED_KEYS][key]) {
+          if (has_own(record[_SAVED], key)) {
+            if (record[_DELETED_KEYS][key]) {
               continue;
             }
-            record[DELETED_KEYS][key] = true;
-            if (!record[CHANGED_KEYS][key]) {
-              define_value(record, CHANGES, record[CHANGES] + 1);
-              define_value(record[CHANGED_KEYS], key, true, 0, 1);
+            record[_DELETED_KEYS][key] = true;
+            if (!record[_CHANGED_KEYS][key]) {
+              define_value(record, _CHANGES, record[_CHANGES] + 1);
+              define_value(record[_CHANGED_KEYS], key, true, 0, 1);
             }
-            delete record[EDITED][key];
+            delete record[_EDITED][key];
             Object.defineProperty(record, key, {
               enumerable: false
             });
@@ -754,6 +1163,11 @@ ksc.factory('ksc.EditableRecord', [
               });
             }
             delete record[key];
+            if (record[_EDITED][key]) {
+              delete record[_EDITED][key];
+              define_value(record, _CHANGES, record[_CHANGES] - 1);
+              delete record[_CHANGED_KEYS][key];
+            }
             changed.push(key);
           }
         }
@@ -763,6 +1177,39 @@ ksc.factory('ksc.EditableRecord', [
           });
         }
         return !!changed.length;
+      };
+
+
+      /*
+      Getter function that reads a property of the object. Gets the edited state
+      from {EditableRecord#._edited} if any, or falls back to the saved state
+      stored at {Record#._saved}.
+      
+      Returns undefined to properties that are marked as deleted (e.g. were
+      deleted by {EditableRecord#_delete} method.
+      
+      If found value is an array, it will return a native Array with the values
+      instead of the Record instance. Original Record object is available on the
+      array's ._record property. See {Record.arrayFilter}.
+      
+      @param [number|string] key Property name
+      
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      
+      @return [mixed] value for key
+       */
+
+      EditableRecord.prototype._getProperty = function(key) {
+        var record, value;
+        value = EditableRecord.__super__._getProperty.apply(this, arguments);
+        record = this;
+        if (record[_DELETED_KEYS][key]) {
+          return;
+        } else if (has_own(record[_EDITED], key)) {
+          return Record.arrayFilter(record[_EDITED][key]);
+        }
+        return value;
       };
 
 
@@ -784,13 +1231,21 @@ ksc.factory('ksc.EditableRecord', [
       EditableRecord.prototype._replace = function(data) {
         var changed, dropped, events, record;
         record = this;
-        if (events = record[EVENTS]) {
+        if (events = record[_EVENTS]) {
           events.halt();
         }
         try {
-          dropped = record._revert(false);
-          return changed = EditableRecord.__super__._replace.call(this, data, false);
-        } catch (_error) {}
+          dropped = record._revert(0);
+          changed = EditableRecord.__super__._replace.call(this, data, 0);
+        } finally {
+          if (events) {
+            events.unhalt();
+          }
+        }
+        if (events && (dropped || changed)) {
+          Record.emitUpdate(record, 'replace');
+        }
+        return dropped || changed;
       };
 
 
@@ -815,129 +1270,161 @@ ksc.factory('ksc.EditableRecord', [
         }
         changed = false;
         record = this;
-        for (key in record[DELETED_KEYS]) {
-          delete record[DELETED_KEYS][key];
-          delete record[CHANGED_KEYS][key];
+        for (key in record[_DELETED_KEYS]) {
+          delete record[_DELETED_KEYS][key];
+          delete record[_CHANGED_KEYS][key];
           changed = true;
         }
-        for (key in record[EDITED]) {
-          delete record[EDITED][key];
-          delete record[CHANGED_KEYS][key];
+        for (key in record[_EDITED]) {
+          delete record[_EDITED][key];
+          delete record[_CHANGED_KEYS][key];
           changed = true;
         }
         for (key in record) {
-          if (!(!has_own(record[SAVED], key))) {
+          if (!(!has_own(record[_SAVED], key))) {
             continue;
           }
           delete record[key];
           changed = true;
         }
-        if (changed && emit_event) {
-          define_value(record, CHANGES, 0);
-          Record.emitUpdate(record, 'revert');
+        if (changed) {
+          define_value(record, _CHANGES, 0);
+          if (emit_event) {
+            Record.emitUpdate(record, 'revert');
+          }
         }
         return changed;
       };
 
 
       /*
-      Define getter/setter property on record based on {Record#_saved} and
-      {EditableRecord#_edited} and {EditableRecord#_deleted}
+      Setter function that writes a property of the object.
+      On initialization time (e.g. when called from {Record#_replace} it saves
+      values to {Record#._saved}, later it will save to {EditableRecord#_edited}
+      or remove property from {EditableRecord#_edited} if reverting to original
+      (saved) state.
+      Also removes deleted status when setting a property previously marked as
+      deleted (by {EditableRecord#_delete} method).
       
-      @param [object] record reference to object
-      @param [string|number] key on record (and ._saved map)
+      If there is a contract for the record it will use {Record.valueCheck} to
+      match against it.
+      Also will not allow function values nor property names starting with '_'.
       
-      @return [undefined]
+      @param [number|string] key Property name
+      @param [mixed] value Data to store
+      @param [boolean] initial Indicates initiation time (optional)
+      
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      @throw [ContractBreakError] Value does not match contract for key
+      @throw [ValueError] When trying to pass a function as value
+      
+      @event 'update' sends out message on changes:
+        events.emit {node: record, action: 'set', {key: key}}
+      
+      @return [boolean] indication of value change
        */
 
-      EditableRecord.setProperty = function(record, key) {
-        var contract, edited, getter, options, saved, setter;
-        saved = record[SAVED];
-        edited = record[EDITED];
-        options = record[OPTIONS];
-        contract = options.contract;
-        getter = function() {
-          if (!contract && record[DELETED_KEYS][key]) {
-            return;
-          }
-          if (has_own(edited, key)) {
-            return edited[key];
-          }
-          return saved[key];
-        };
-        setter = function(update) {
-          var changed, id_property, k, res, subopts, v, was_changed, _ref;
-          if (typeof update === 'function') {
-            error.Type({
-              update: update,
-              description: 'must not be function'
+      EditableRecord.prototype._setProperty = function(key, value, initial) {
+        var arr, changed, contract, delete_unmatched_keys, edited, i, id_property, item, k, record, res, saved, saved_arr, v, was_changed, _i, _j, _len, _ref, _ref1, _ref2, _ref3, _ref4;
+        if (initial) {
+          return EditableRecord.__super__._setProperty.apply(this, arguments);
+        }
+        record = this;
+        saved = record[_SAVED];
+        edited = record[_EDITED];
+        contract = record[_OPTIONS].contract;
+        Record.valueCheck(record, key, value);
+        if ((id_property = record[_OPTIONS].idProperty) === key || (is_array(id_property) && __indexOf.call(id_property, key) >= 0)) {
+          if (!(value === null || ((_ref = typeof value) === 'string' || _ref === 'number'))) {
+            error.Value({
+              value: value,
+              required: 'string or number or null'
             });
           }
-          if ((id_property = record[OPTIONS].idProperty) === key || (id_property instanceof Array && __indexOf.call(id_property, key) >= 0)) {
-            if (!(update === null || ((_ref = typeof update) === 'string' || _ref === 'number'))) {
-              error.Value({
-                update: update,
-                required: 'string or number or null'
-              });
-            }
+        }
+        value = Record.valueWrap(record, key, value);
+        if (util.identical(saved[key], value)) {
+          delete edited[key];
+          changed = 1;
+        } else if (!util.identical(edited[key], value)) {
+          if (contract != null) {
+            contract._match(key, value);
           }
-          if (util.identical(saved[key], update)) {
-            delete edited[key];
-            changed = true;
-          } else if (!util.identical(edited[key], update)) {
-            if (contract != null) {
-              contract._match(key, update);
+          res = value;
+          delete_unmatched_keys = function() {
+            var k;
+            for (k in res) {
+              if (is_enumerable(res, k) && !has_own(value, k)) {
+                res._delete(k);
+              }
             }
-            res = update;
-            if (is_object(update)) {
-              if (is_object(saved[key])) {
-                res = saved[key];
-                for (k in res) {
-                  if (is_enumerable(res, k) && !has_own(update, k)) {
-                    res._delete(k);
-                  }
+          };
+          if (arr = value != null ? value[_ARRAY] : void 0) {
+            if (is_object(saved[key])) {
+              res = saved[key];
+              if (saved_arr = res[_ARRAY]) {
+                for (i = _i = _ref1 = arr.length, _ref2 = saved_arr.length; _i < _ref2; i = _i += 1) {
+                  saved_arr.pop();
                 }
+                _ref3 = arr.slice(0, saved_arr.length);
+                for (i = _j = 0, _len = _ref3.length; _j < _len; i = ++_j) {
+                  item = _ref3[i];
+                  saved_arr[i] = item;
+                }
+                saved_arr.push.apply(saved_arr, arr.slice(saved_arr.length));
               } else {
-                subopts = {};
-                if (contract) {
-                  subopts.contract = contract[key].contract;
-                }
-                res = new EditableRecord({}, subopts, record, key);
-              }
-              for (k in update) {
-                v = update[k];
-                res[k] = v;
+                delete_unmatched_keys();
+                Record.arrayify(res);
+                (_ref4 = res[_ARRAY]).push.apply(_ref4, arr);
               }
             }
-            edited[key] = res;
-            changed = true;
-          }
-          if (edited[key] === saved[key]) {
-            delete edited[key];
-          }
-          was_changed = record[CHANGED_KEYS][key];
-          if ((is_object(saved[key]) && saved[key]._changes) || (has_own(edited, key) && !util.identical(saved[key], edited[key]))) {
-            if (!was_changed) {
-              define_value(record, CHANGES, record[CHANGES] + 1);
-              define_value(record[CHANGED_KEYS], key, true, 0, 1);
+          } else if (is_object(value)) {
+            if (is_object(saved[key])) {
+              res = saved[key];
+              if (res[_ARRAY]) {
+                Record.dearrayify(res);
+              }
+              delete_unmatched_keys();
+              for (k in value) {
+                v = value[k];
+                res._setProperty(k, v);
+              }
             }
-          } else if (was_changed) {
-            define_value(record, CHANGES, record[CHANGES] - 1);
-            delete record[CHANGED_KEYS][key];
           }
-          if (changed) {
-            if (record[PARENT_KEY]) {
-              EditableRecord.subChanges(record[PARENT], record[PARENT_KEY], record[CHANGES]);
-            }
-            Object.defineProperty(record, key, {
-              enumerable: true
-            });
-            return Record.emitUpdate(record, 'set', {
-              key: key
-            });
+          edited[key] = res;
+          changed = 1;
+        }
+        if (record[_DELETED_KEYS][key]) {
+          delete record[_DELETED_KEYS][key];
+          changed = 1;
+        }
+        if (edited[key] === saved[key]) {
+          delete edited[key];
+        }
+        was_changed = record[_CHANGED_KEYS][key];
+        if ((is_object(saved[key]) && saved[key]._changes) || (has_own(edited, key) && !util.identical(saved[key], edited[key]))) {
+          if (!was_changed) {
+            define_value(record, _CHANGES, record[_CHANGES] + 1);
+            define_value(record[_CHANGED_KEYS], key, true, 0, 1);
           }
-        };
-        util.defineGetSet(record, key, getter, setter, 1);
+        } else if (was_changed) {
+          define_value(record, _CHANGES, record[_CHANGES] - 1);
+          delete record[_CHANGED_KEYS][key];
+        }
+        Record.getterify(record, key);
+        if (changed) {
+          if (record[_PARENT_KEY]) {
+            EditableRecord.subChanges(record[_PARENT], record[_PARENT_KEY], record[_CHANGES]);
+          }
+          Object.defineProperty(record, key, {
+            enumerable: true
+          });
+          Record.emitUpdate(record, 'set', {
+            key: key
+          });
+        }
+        return !!changed;
       };
 
 
@@ -955,19 +1442,19 @@ ksc.factory('ksc.EditableRecord', [
 
       EditableRecord.subChanges = function(record, key, n) {
         var changed;
-        if (record[CHANGED_KEYS][key]) {
+        if (record[_CHANGED_KEYS][key]) {
           if (!n) {
-            define_value(record, CHANGES, record[CHANGES] - 1);
-            delete record[CHANGED_KEYS][key];
+            define_value(record, _CHANGES, record[_CHANGES] - 1);
+            delete record[_CHANGED_KEYS][key];
             changed = true;
           }
         } else if (n) {
-          define_value(record, CHANGES, record[CHANGES] + 1);
-          define_value(record[CHANGED_KEYS], key, true, 0, 1);
+          define_value(record, _CHANGES, record[_CHANGES] + 1);
+          define_value(record[_CHANGED_KEYS], key, true, 0, 1);
           changed = true;
         }
-        if (changed && record[PARENT_KEY]) {
-          EditableRecord.subChanges(record[PARENT], record[PARENT_KEY], record[CHANGES]);
+        if (changed && record[_PARENT_KEY]) {
+          EditableRecord.subChanges(record[_PARENT], record[_PARENT_KEY], record[_CHANGES]);
         }
       };
 
@@ -3991,12 +4478,7 @@ ksc.factory('ksc.Mixin', [
       }
       for (_i = 0, _len = properties.length; _i < _len; _i++) {
         property = properties[_i];
-        if (!util.isKeyConform(property)) {
-          error.Key({
-            property: property,
-            required: 'key conform value'
-          });
-        }
+        util.isKeyConform(property, 1);
       }
       return next(explicit, properties);
     };
@@ -4171,7 +4653,7 @@ ksc.factory('ksc.RecordContract', [
       @param [object] contract description object
        */
       function RecordContract(contract) {
-        var arr, desc, desc_key, exclusive_count, key, _i, _len, _ref;
+        var arr, desc, desc_key, exclusive_count, key, subcontract, typ, _i, _len, _ref;
         if (contract === null || contract instanceof RecordContract) {
           return contract;
         }
@@ -4207,52 +4689,55 @@ ksc.factory('ksc.RecordContract', [
               error.Value({
                 key: desc_key,
                 contract: desc,
-                description: 'array, default and contract are mutally exclusive'
+                description: 'array, default, contract are mutually exclusive'
               });
             }
           }
-          if (!(arr = desc.array) && desc.type === 'array') {
+          typ = desc.type;
+          if (((arr = desc.array) || typ === 'array') && !is_object(arr)) {
             error.Type({
-              array: desc.array,
-              description: 'array description object is required'
+              array: arr,
+              description: 'array description required'
             });
           }
-          if (arr) {
-            if (has_own(desc, 'type') && desc.type !== 'array') {
+          if (arr = desc.array) {
+            if (has_own(desc, 'type') && typ !== 'array') {
               error.Type({
                 type: type,
-                array: desc.array,
+                array: arr,
                 requiredType: 'array'
               });
             }
             delete desc.type;
+            typ = null;
           }
-          if (desc.type === 'object' && !is_object(desc.contract)) {
+          if (((subcontract = desc.contract) || typ === 'object') && !is_object(subcontract)) {
             error.Type({
-              contract: desc.contract,
-              description: 'contract description object is required'
+              contract: subcontract,
+              description: 'contract description required'
             });
           }
-          if (desc.contract) {
-            if (has_own(desc, 'type') && desc.type !== 'object') {
+          if (subcontract) {
+            if (has_own(desc, 'type') && typ !== 'object') {
               error.Type({
                 type: type,
-                contract: desc.contract,
+                contract: subcontract,
                 requiredType: 'object'
               });
             }
             delete desc.type;
+            typ = null;
           }
           if (!arr) {
-            if (desc.contract) {
-              desc.contract = new RecordContract(desc.contract);
+            if (subcontract) {
+              desc.contract = new RecordContract(subcontract);
             } else {
               if (has_own(desc, 'default') && !has_own(desc, 'type') && (RecordContract.typeDefaults[typeof desc["default"]] != null)) {
-                desc.type = typeof desc["default"];
+                desc.type = typ = typeof desc["default"];
               }
-              if (RecordContract.typeDefaults[desc.type] == null) {
+              if (RecordContract.typeDefaults[typ] == null) {
                 error.Type({
-                  type: desc.type,
+                  type: typ,
                   required: 'array, boolean, number, object, string'
                 });
               }
@@ -4347,6 +4832,9 @@ ksc.factory('ksc.RecordContract', [
 
       RecordContract.finalizeRecord = function(record) {
         if (record._options.contract && Object.isExtensible(record)) {
+          if (!has_own(record, '$$hashKey')) {
+            util.defineValue(record, '$$hashKey', void 0, 1);
+          }
           Object.preventExtensions(record);
         }
       };
@@ -4362,13 +4850,10 @@ ksc.factory('ksc.RecordContract', [
     })();
   }
 ]);
-
 ksc.factory('ksc.Record', [
   'ksc.ArrayTracker', 'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(ArrayTracker, EventEmitter, RecordContract, error, util) {
-    var ARRAY, CONTRACT, ID_PROPERTY, Record, define_value, has_own, is_array, is_object, object_required, _ARRAY, _DELETED_KEYS, _EDITED, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PSEUDO, _SAVED;
+    var CONTRACT, ID_PROPERTY, Record, define_value, has_own, is_array, is_key_conform, is_object, object_required, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PSEUDO, _SAVED;
     _ARRAY = '_array';
-    _DELETED_KEYS = '_deletedKeys';
-    _EDITED = '_edited';
     _EVENTS = '_events';
     _ID = '_id';
     _OPTIONS = '_options';
@@ -4376,12 +4861,12 @@ ksc.factory('ksc.Record', [
     _PARENT_KEY = '_parentKey';
     _PSEUDO = '_pseudo';
     _SAVED = '_saved';
-    ARRAY = 'array';
     CONTRACT = 'contract';
     ID_PROPERTY = 'idProperty';
     define_value = util.defineValue;
     has_own = util.hasOwn;
     is_array = Array.isArray;
+    is_key_conform = util.isKeyConform;
     is_object = util.isObject;
     object_required = function(name, value, arg) {
       var inf;
@@ -4479,13 +4964,7 @@ ksc.factory('ksc.Record', [
           object_required('options', parent, 3);
           define_value(record, _PARENT, parent);
           if (parent_key != null) {
-            if (!util.isKeyConform(parent_key)) {
-              error.Type({
-                parent_key: parent_key,
-                argument: 4,
-                required: 'key conform value'
-              });
-            }
+            is_key_conform(parent_key, 1, 4);
             define_value(record, _PARENT_KEY, parent_key);
             delete record[_ID];
             delete record[_PSEUDO];
@@ -4551,6 +5030,23 @@ ksc.factory('ksc.Record', [
 
 
       /*
+      Placeholder method, throws error on read-only Record. See
+      {EditableRecord#_delete} for read/write implementation.
+      
+      @throw [PermissionError] Tried to delete on a read-only record
+      
+      @return [boolean] Never happens, always throws error
+       */
+
+      Record.prototype._delete = function() {
+        return error.Permission({
+          keys: keys,
+          description: 'Read-only Record'
+        });
+      };
+
+
+      /*
       Get the entity of the object, e.g. a vanilla Object with the data set
       This method should be overridden by any extending classes that have their
       own idea about the entity (e.g. it does not match the data set)
@@ -4563,6 +5059,28 @@ ksc.factory('ksc.Record', [
 
       Record.prototype._entity = function() {
         return this._clone(1);
+      };
+
+
+      /*
+      Getter function that reads a property of the object. Gets the saved state
+      from {Record#._saved} (there is no other state for a read-only Record).
+      
+      If value is an array, it will return a native Array with the values
+      instead of the Record instance. Original Record object is available on the
+      array's ._record property. See {Record.arrayFilter}.
+      
+      @param [number|string] key Property name
+      
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      
+      @return [mixed] value for key
+       */
+
+      Record.prototype._getProperty = function(key) {
+        is_key_conform(key, 1, 1);
+        return Record.arrayFilter(this[_SAVED][key]);
       };
 
 
@@ -4587,154 +5105,42 @@ ksc.factory('ksc.Record', [
       @return [boolean] indicates change in data
        */
 
-      Record.initIdProperty = function(record, data) {
-        var contract, id_property, id_property_contract_check, key, options, part, _i, _len, _results;
-        options = record[_OPTIONS];
-        contract = options[CONTRACT];
-        if (options[ID_PROPERTY] == null) {
-          for (key in data) {
-            options[ID_PROPERTY] = key;
-            break;
-          }
-        }
-        id_property_contract_check = function(key) {
-          var _ref;
-          if (contract) {
-            if (contract[key] == null) {
-              error.ContractBreak({
-                key: key,
-                contract: contract,
-                mismatch: 'idProperty'
-              });
-            }
-            if ((_ref = contract[key].type) !== 'string' && _ref !== 'number') {
-              return error.ContractBreak({
-                key: key,
-                contract: contract,
-                required: 'string or number'
-              });
-            }
-          }
-        };
-        if (record[_EVENTS]) {
-          if (id_property = options[ID_PROPERTY]) {
-            if (id_property instanceof Array) {
-              _results = [];
-              for (_i = 0, _len = id_property.length; _i < _len; _i++) {
-                part = id_property[_i];
-                id_property_contract_check(part);
-                _results.push(data[part] != null ? data[part] : data[part] = null);
-              }
-              return _results;
-            } else {
-              id_property_contract_check(id_property);
-              return data[id_property] != null ? data[id_property] : data[id_property] = null;
-            }
-          }
-        }
-      };
-
-      Record.prototype._valueCheck = function(key, value) {
-        var contract;
-        if (contract = this[_OPTIONS][CONTRACT]) {
-          return contract._match((this[_ARRAY] ? 'all' : key), value);
-        } else {
-          if (key.substr(0, 1) === '_') {
-            error.Key({
-              key: key,
-              description: 'can not start with "_"'
-            });
-          }
-          if (typeof value === 'function') {
-            return error.Type({
-              value: value,
-              description: 'can not be function'
-            });
-          }
-        }
-      };
-
-      Record.valueWrap = function(record, key, value) {
-        var class_ref, contract, key_contract, opt, subopts;
-        contract = record[_OPTIONS][CONTRACT];
-        if (is_object(value)) {
-          if (value instanceof Record) {
-            value = value._clone(1);
-          }
-          class_ref = record[_OPTIONS].subtreeClass || Record;
-          if (key_contract = contract != null ? contract[key] : void 0) {
-            if (opt = key_contract[ARRAY]) {
-              subopts = {
-                contract: {
-                  all: opt
-                }
-              };
-            }
-            if (opt = key_contract[CONTRACT]) {
-              subopts = {
-                contract: opt
-              };
-            }
-          }
-          value = new class_ref(value, subopts, record, key);
-        }
-        return value;
-      };
-
-      Record.prototype._getProperty = function(key) {
-        var record, value, _ref;
-        record = this;
-        if ((_ref = record[_DELETED_KEYS]) != null ? _ref[key] : void 0) {
-          return;
-        } else if (has_own(record[_EDITED], key)) {
-          value = record[_EDITED][key];
-        } else {
-          value = record[_SAVED][key];
-        }
-        if (!(value != null ? value[_ARRAY] : void 0)) {
-          return value;
-        }
-        return Record.arrayRecord(value[_ARRAY]);
-      };
-
-      Record.prototype._setProperty = function(key, value, initial) {
-        var record, target;
-        record = this;
-        if (initial) {
-          target = record[_SAVED];
-        } else if (!(target = record[_EDITED])) {
-          error.Permission({
-            key: key,
-            value: value,
-            description: 'Read-only Record'
-          });
-        }
-        record._valueCheck(key, value);
-        if (has_own(record, key) && util.identical(value, record[key])) {
-          return false;
-        }
-        value = Record.valueWrap(record, key, value);
-        define_value(record[_SAVED], key, value, 0, 1);
-        return true;
-      };
-
       Record.prototype._replace = function(data, emit_event) {
-        var changed, contract, flat, key, record, value, _fn;
+        var arr, changed, contract, events, flat, key, record, replacing, value;
         if (emit_event == null) {
           emit_event = true;
         }
         record = this;
-        if (record[_EVENTS] === null) {
+        events = record[_EVENTS];
+        if (events === null) {
           error.Permission({
             key: record[_PARENT_KEY],
             description: 'can not replace subobject'
           });
         }
         Record.initIdProperty(record, data);
-        changed = false;
+        replacing = true;
         if (is_array(data)) {
-
+          flat = (function() {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = data.length; _i < _len; _i++) {
+              value = data[_i];
+              _results.push(value);
+            }
+            return _results;
+          })();
+          Record.arrayify(record);
+          changed = 1;
+          arr = record[_ARRAY];
+          arr._tracker.set = function(index, value) {
+            return record._setProperty(index, value, replacing);
+          };
+          if (flat.length && arr.push.apply(arr, flat)) {
+            changed = 1;
+          }
         } else {
+          Record.dearrayify(record);
           flat = {};
           for (key in data) {
             value = data[key];
@@ -4748,52 +5154,106 @@ ksc.factory('ksc.Record', [
               }
             }
           }
-          _fn = function(key) {
-            return util.defineGetSet(record, key, (function() {
-              return record._getProperty(key);
-            }), (function(value) {
-              return record._setProperty(key, value);
-            }), 1);
-          };
           for (key in flat) {
             value = flat[key];
-            _fn(key);
-            if (record._setProperty(key, value, 1)) {
-              changed = true;
+            Record.getterify(record, key);
+            if (record._setProperty(key, value, replacing)) {
+              changed = 1;
             }
-          }
-          for (key in record[_SAVED]) {
-            if (!(!has_own(flat, key))) {
-              continue;
-            }
-            delete record[key];
-            delete record[_SAVED][key];
           }
         }
-        if (changed && record[_EVENTS] && emit_event) {
+        for (key in record[_SAVED]) {
+          if (!(!has_own(flat, key))) {
+            continue;
+          }
+          delete record[key];
+          delete record[_SAVED][key];
+          changed = 1;
+        }
+        if (changed && events && emit_event) {
           Record.emitUpdate(record, 'replace');
         }
-        return changed;
+        replacing = false;
+        return !!changed;
       };
 
-      Record.arrayRecord = function(record) {
+
+      /*
+      Setter function that writes a property of the object.
+      On initialization time (e.g. when called from {Record#_replace} it saves
+      values to {Record#._saved} or throws error later when trying to (re)write
+      a property on read-only Record.
+      
+      If there is a contract for the record it will use {Record.valueCheck} to
+      match against it.
+      Also will not allow function values nor property names starting with '_'.
+      
+      @param [number|string] key Property name
+      @param [mixed] value Data to store
+      @param [boolean] initial Indicates initiation time (optional)
+      
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      @throw [ContractBreakError] Value does not match contract for key
+      @throw [ValueError] When trying to pass a function as value
+      
+      @return [boolean] indication of value change
+       */
+
+      Record.prototype._setProperty = function(key, value, initial) {
+        var record, saved;
+        record = this;
+        saved = record[_SAVED];
+        if (!initial) {
+          error.Permission({
+            key: key,
+            value: value,
+            description: 'Read-only Record'
+          });
+        }
+        Record.valueCheck(record, key, value);
+        if (has_own(saved, key) && util.identical(value, record[key])) {
+          return false;
+        }
+        define_value(saved, key, Record.valueWrap(record, key, value), 0, 1);
+        Record.getterify(record, key);
+        return true;
+      };
+
+
+      /*
+      Helper function that filters values that reference arrayified Records.
+      All other values are returned as is.
+      
+      From array-records the native Array object will be returned. Also this
+      method makes sure that all the Record properties are copied over to
+      the native returned Array. I.e. {Record#_clone()} and other methods will
+      be also available on the returned array.
+      
+      @param [Record] record reference to record/subrecord object or value
+      
+      @return [mixed]
+       */
+
+      Record.arrayFilter = function(record) {
         var arr, desc, key, marked, object, _i, _len, _ref;
-        arr = record[_ARRAY];
+        if (!(arr = record != null ? record[_ARRAY] : void 0)) {
+          return record;
+        }
         object = record;
         marked = {};
         while (object && object.constructor !== Object) {
           _ref = Object.getOwnPropertyNames(object);
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             key = _ref[_i];
-            if (key.substr(0, 1) === '_' && !has_own(marked, key)) {
+            if (key !== _ARRAY && key.substr(0, 1) === '_' && !has_own(marked, key)) {
               marked[key] = Object.getOwnPropertyDescriptor(object, key);
             }
           }
           object = Object.getPrototypeOf(object);
         }
         for (key in arr) {
-          if (!__hasProp.call(arr, key)) continue;
-          if (key.substr(0, 1) === '_' && !has_own(marked, key)) {
+          if (key !== '_record' && key.substr(0, 1) === '_' && !has_own(marked, key)) {
             delete arr[key];
           }
         }
@@ -4801,14 +5261,57 @@ ksc.factory('ksc.Record', [
           desc = marked[key];
           Object.defineProperty(arr, key, desc);
         }
+        define_value(arr, '_record', record);
         return arr;
+      };
+
+
+      /*
+      Helper function that turns a Record instance into an array container.
+      It utilizes {ArrayTracker} and stores it as {Record#_array}.
+      
+      @param [Record] record Reference to Record object
+      
+      @return [ArrayTracker] array tracker instance
+       */
+
+      Record.arrayify = function(record) {
+        var arr;
+        define_value(record, _ARRAY, arr = []);
+        return new ArrayTracker(arr, {
+          store: record[_SAVED],
+          get: function(index) {
+            return record._getProperty(index);
+          },
+          set: function(index, value) {
+            return record._setProperty(index, value);
+          },
+          del: function(index) {
+            record._delete(index);
+            return false;
+          }
+        });
+      };
+
+
+      /*
+      Helper function that removes the {Record#_array} property effectively
+      changing the Record instance's behavior into that of a regular object's.
+      
+      @param [Record] record Reference to Record object
+      
+      @return [boolean] indicates if {Record#_array} deletion was successful
+       */
+
+      Record.dearrayify = function(record) {
+        return delete record[_ARRAY];
       };
 
 
       /*
       Event emission - with handling complexity around subobjects
       
-      @param [object] record reference to record or subrecord object
+      @param [Record] record Reference to record or subrecord object
       @param [string] action 'revert', 'replace', 'set', 'delete' etc
       @param [object] extra_info (optional) info to be attached to the emission
       
@@ -4852,6 +5355,89 @@ ksc.factory('ksc.Record', [
 
 
       /*
+      Helper function that creates a new getter/setter property (if property
+      does not exist yet).
+      The getter and setter will target methods {Record#_getProperty} and
+      {Record#_setProperty} respectively.
+      
+      @param [Record] record Reference to record or subrecord object
+      @param [number|string] index
+      
+      @return [undefined]
+       */
+
+      Record.getterify = function(record, index) {
+        if (!has_own(record, index)) {
+          util.defineGetSet(record, index, (function() {
+            return record._getProperty(index);
+          }), (function(value) {
+            return record._setProperty(index, value);
+          }), 1);
+        }
+      };
+
+
+      /*
+      Helper function to initiate ID property ({Record#_idProperty}) on a
+      top-level record if {Record#_idProperty} is not yet defined.
+      
+      @param [Record] record Reference to Record object
+      @param [object] data key-value object to init Record with
+      
+      @return [undefined]
+       */
+
+      Record.initIdProperty = function(record, data) {
+        var contract, id_property, id_property_contract_check, key, options, part, _i, _len;
+        options = record[_OPTIONS];
+        contract = options[CONTRACT];
+        if (options[ID_PROPERTY] == null) {
+          for (key in data) {
+            options[ID_PROPERTY] = key;
+            break;
+          }
+        }
+        id_property_contract_check = function(key) {
+          var _ref;
+          if (contract) {
+            if (contract[key] == null) {
+              error.ContractBreak({
+                key: key,
+                contract: contract,
+                mismatch: 'idProperty'
+              });
+            }
+            if ((_ref = contract[key].type) !== 'string' && _ref !== 'number') {
+              return error.ContractBreak({
+                key: key,
+                contract: contract,
+                required: 'string or number'
+              });
+            }
+          }
+        };
+        if (record[_EVENTS]) {
+          if (id_property = options[ID_PROPERTY]) {
+            if (is_array(id_property)) {
+              for (_i = 0, _len = id_property.length; _i < _len; _i++) {
+                part = id_property[_i];
+                id_property_contract_check(part);
+                if (data[part] == null) {
+                  data[part] = null;
+                }
+              }
+            } else {
+              id_property_contract_check(id_property);
+              if (data[id_property] == null) {
+                data[id_property] = null;
+              }
+            }
+          }
+        }
+      };
+
+
+      /*
       Define _id for the record
       
       Composite IDs will be used and ._primaryId will be created if
@@ -4871,7 +5457,7 @@ ksc.factory('ksc.Record', [
         record.id = null
         console.log record._id, record._primaryId # null, null
       
-      @param [Record] record record instance to be updated
+      @param [Record] record Record instance to be updated
       
       @return [undefined]
        */
@@ -4879,11 +5465,11 @@ ksc.factory('ksc.Record', [
       Record.setId = function(record) {
         var composite, i, id, id_property, part, value, _i, _len;
         if (id_property = record[_OPTIONS][ID_PROPERTY]) {
-          if (id_property instanceof Array) {
+          if (is_array(id_property)) {
             composite = [];
             for (i = _i = 0, _len = id_property.length; _i < _len; i = ++_i) {
               part = id_property[i];
-              if (util.isKeyConform(record[part])) {
+              if (is_key_conform(record[part])) {
                 composite.push(record[part]);
               } else if (!i) {
                 break;
@@ -4897,6 +5483,95 @@ ksc.factory('ksc.Record', [
             define_value(record, _ID, value != null ? value : null);
           }
         }
+      };
+
+
+      /*
+      Helper function that check value and key criteries (like contract match).
+      Used by {Record#_setProperty}
+      
+      @param [Record] record Reference to Record instance
+      @param [number|string] key Record property ID
+      @param [mixed] value
+      
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      @throw [ContractBreakError] Value does not match contract for key
+      @throw [ValueError] Function was passed as value
+      
+      @return [undefined]
+       */
+
+      Record.valueCheck = function(record, key, value) {
+        var contract;
+        is_key_conform(key, 1, 1);
+        if (contract = record[_OPTIONS][CONTRACT]) {
+          contract._match((record[_ARRAY] ? 'all' : key), value);
+        } else {
+          if (typeof key === 'string' && key.substr(0, 1) === '_') {
+            error.ArgumentType({
+              key: key,
+              argument: 1,
+              description: 'can not start with "_"'
+            });
+          }
+          if (typeof value === 'function') {
+            error.Value({
+              value: value,
+              description: 'can not be function'
+            });
+          }
+        }
+      };
+
+
+      /*
+      Helper function that creates a new Record for sub-objects or sub-arrays
+      and returns them (or the static value as is)
+      Used by {Record#_setProperty}
+      
+      Will use ._options.subtreeClass as subrecord class if defined (or falls
+      ack to Record). This is supposed to be used only by {EditableRecord} so
+      that the children would also be editable, but not of the constructor
+      class (i.e. not carrying any overrides).
+      
+      @param [Record] record Reference to Record instance
+      @param [number|string] key Record property ID
+      @param [mixed] value
+      
+      @return [mixed] value or reference to the wrapped Record object
+       */
+
+      Record.valueWrap = function(record, key, value) {
+        var class_ref, contract, key_contract, subopts;
+        contract = record[_OPTIONS][CONTRACT];
+        if (is_object(value)) {
+          if (value._clone != null) {
+            value = value._clone(1);
+          }
+          class_ref = record[_OPTIONS].subtreeClass || Record;
+          if (contract) {
+            if (key_contract = contract[key]) {
+              if (key_contract.array) {
+                subopts = {
+                  contract: {
+                    all: key_contract.array
+                  }
+                };
+              } else {
+                subopts = {
+                  contract: key_contract[CONTRACT]
+                };
+              }
+            } else {
+              subopts = {
+                contract: contract.all.contract
+              };
+            }
+          }
+          value = new class_ref(value, subopts, record, key);
+        }
+        return value;
       };
 
       return Record;
@@ -5940,7 +6615,7 @@ ksc.service('ksc.util', [
        */
 
       Util.empty = function() {
-        var i, key, obj, objects, _i, _j, _len, _ref;
+        var fn, i, key, obj, objects, _i, _j, _len, _ref;
         objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
         if (!objects.length) {
           error.MissingArgument({
@@ -5956,8 +6631,11 @@ ksc.service('ksc.util', [
         for (_i = 0, _len = objects.length; _i < _len; _i++) {
           obj = objects[_i];
           if (Array.isArray(obj)) {
-            for (i = _j = 0, _ref = obj.length; 0 <= _ref ? _j < _ref : _j > _ref; i = 0 <= _ref ? ++_j : --_j) {
-              obj.pop();
+            if (!(fn = obj.pop)) {
+              fn = Array.prototype.pop;
+            }
+            for (i = _j = 0, _ref = obj.length; _j < _ref; i = _j += 1) {
+              fn.call(obj);
             }
           } else {
             for (key in obj) {
@@ -6021,6 +6699,12 @@ ksc.service('ksc.util', [
         if (!is_object(comparable1, comparable2)) {
           return comparable1 === comparable2;
         }
+        if (comparable1._array) {
+          comparable1 = comparable1._array;
+        }
+        if (comparable2._array) {
+          comparable2 = comparable2._array;
+        }
         for (key in comparable1) {
           v1 = comparable1[key];
           if (!(Util.identical(v1, comparable2[key]) && has_own(comparable2, key))) {
@@ -6058,12 +6742,39 @@ ksc.service('ksc.util', [
       either a non-empty string or a number (not NaN)
       
       @param [any type] key name/id
+      @param [boolean|string] error_trigger Throwing an error (optionally with
+        error message string)
+      @param [number] argument_n (optional) Triggers ArgumentTypeError and adds
+        argument number to error message object
+      
+      @throw [KeyError] If not key conform and error throwing was requested
+      @throw [ArgumentTypeError] If not key conform and error throwing was
+        requested AND argument number was provided
       
       @return [boolean] matches key requirements
        */
 
-      Util.isKeyConform = function(key) {
-        return !!(typeof key === 'string' && key) || (typeof key === 'number' && !isNaN(key));
+      Util.isKeyConform = function(key, error_trigger, argument_n) {
+        var err;
+        if (!((typeof key === 'string' && key) || (typeof key === 'number' && !isNaN(key)))) {
+          if (error_trigger) {
+            if (typeof error_trigger !== 'string') {
+              error_trigger = 'Key conform value';
+            }
+            err = {
+              key: key,
+              description: error_trigger
+            };
+            if (argument_n) {
+              err.argument = argument_n;
+              error.ArgumentType(err);
+            } else {
+              error.Key(err);
+            }
+          }
+          return false;
+        }
+        return true;
       };
 
 
@@ -6208,12 +6919,7 @@ ksc.service('ksc.util', [
           named: {}
         });
         if (name != null) {
-          if (!Util.isKeyConform(name)) {
-            error.Key({
-              name: name,
-              requirement: 'Key type name'
-            });
-          }
+          Util.isKeyConform(name, 1);
           target = uid_store.named;
         } else {
           target = uid_store;

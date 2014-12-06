@@ -300,6 +300,7 @@ ksc.factory 'ksc.Record', [
 
       @throw [ArgumentTypeError] Key is missing or is not key conform (string or
         number)
+      @throw [ContractBreakError] Value does not match contract for key
       @throw [ValueError] When trying to pass a function as value
 
       @return [boolean] indication of value change
@@ -321,7 +322,19 @@ ksc.factory 'ksc.Record', [
 
         true
 
+      ###
+      Helper function that filters values that reference arrayified Records.
+      All other values are returned as is.
 
+      From array-records the native Array object will be returned. Also this
+      method makes sure that all the Record properties are copied over to
+      the native returned Array. I.e. {Record#_clone()} and other methods will
+      be also available on the returned array.
+
+      @param [Record] record reference to record/subrecord object or value
+
+      @return [mixed]
+      ###
       @arrayFilter: (record) ->
         unless arr = record?[_ARRAY]
           return record
@@ -344,6 +357,14 @@ ksc.factory 'ksc.Record', [
 
         arr
 
+      ###
+      Helper function that turns a Record instance into an array container.
+      It utilizes {ArrayTracker} and stores it as {Record#_array}.
+
+      @param [Record] record Reference to Record object
+
+      @return [ArrayTracker] array tracker instance
+      ###
       @arrayify: (record) ->
         define_value record, _ARRAY, arr = []
         new ArrayTracker arr,
@@ -356,13 +377,21 @@ ksc.factory 'ksc.Record', [
             record._delete index
             false
 
+      ###
+      Helper function that removes the {Record#_array} property effectively
+      changing the Record instance's behavior into that of a regular object's.
+
+      @param [Record] record Reference to Record object
+
+      @return [boolean] indicates if {Record#_array} deletion was successful
+      ###
       @dearrayify: (record) ->
         delete record[_ARRAY]
 
       ###
       Event emission - with handling complexity around subobjects
 
-      @param [object] record reference to record or subrecord object
+      @param [Record] record Reference to record or subrecord object
       @param [string] action 'revert', 'replace', 'set', 'delete' etc
       @param [object] extra_info (optional) info to be attached to the emission
 
@@ -395,11 +424,32 @@ ksc.factory 'ksc.Record', [
 
         return
 
+      ###
+      Helper function that creates a new getter/setter property (if property
+      does not exist yet).
+      The getter and setter will target methods {Record#_getProperty} and
+      {Record#_setProperty} respectively.
+
+      @param [Record] record Reference to record or subrecord object
+      @param [number|string] index
+
+      @return [undefined]
+      ###
       @getterify: (record, index) ->
         unless has_own record, index
           util.defineGetSet record, index, (-> record._getProperty index),
                             ((value) -> record._setProperty index, value), 1
+        return
 
+      ###
+      Helper function to initiate ID property ({Record#_idProperty}) on a
+      top-level record if {Record#_idProperty} is not yet defined.
+
+      @param [Record] record Reference to Record object
+      @param [object] data key-value object to init Record with
+
+      @return [undefined]
+      ###
       @initIdProperty: (record, data) ->
         options  = record[_OPTIONS]
         contract = options[CONTRACT]
@@ -425,6 +475,7 @@ ksc.factory 'ksc.Record', [
             else
               id_property_contract_check id_property
               data[id_property] ?= null
+        return
 
       ###
       Define _id for the record
@@ -446,7 +497,7 @@ ksc.factory 'ksc.Record', [
         record.id = null
         console.log record._id, record._primaryId # null, null
 
-      @param [Record] record record instance to be updated
+      @param [Record] record Record instance to be updated
 
       @return [undefined]
       ###
@@ -468,6 +519,21 @@ ksc.factory 'ksc.Record', [
 
         return
 
+      ###
+      Helper function that check value and key criteries (like contract match).
+      Used by {Record#_setProperty}
+
+      @param [Record] record Reference to Record instance
+      @param [number|string] key Record property ID
+      @param [mixed] value
+
+      @throw [ArgumentTypeError] Key is missing or is not key conform (string or
+        number)
+      @throw [ContractBreakError] Value does not match contract for key
+      @throw [ValueError] Function was passed as value
+
+      @return [undefined]
+      ###
       @valueCheck: (record, key, value) ->
         is_key_conform key, 1, 1
         if contract = record[_OPTIONS][CONTRACT]
@@ -479,9 +545,25 @@ ksc.factory 'ksc.Record', [
               argument:    1
               description: 'can not start with "_"'
           if typeof value is 'function'
-            error.Type {value, description: 'can not be function'}
+            error.Value {value, description: 'can not be function'}
         return
 
+      ###
+      Helper function that creates a new Record for sub-objects or sub-arrays
+      and returns them (or the static value as is)
+      Used by {Record#_setProperty}
+
+      Will use ._options.subtreeClass as subrecord class if defined (or falls
+      ack to Record). This is supposed to be used only by {EditableRecord} so
+      that the children would also be editable, but not of the constructor
+      class (i.e. not carrying any overrides).
+
+      @param [Record] record Reference to Record instance
+      @param [number|string] key Record property ID
+      @param [mixed] value
+
+      @return [mixed] value or reference to the wrapped Record object
+      ###
       @valueWrap: (record, key, value) ->
         contract = record[_OPTIONS][CONTRACT]
 

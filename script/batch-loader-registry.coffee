@@ -1,7 +1,7 @@
 
 ksc.service 'ksc.batchLoaderRegistry', [
-  'ksc.error', 'ksc.util',
-  (error, util) ->
+  'ksc.error',
+  (error) ->
 
     ###
     A registry service for {BatchLoader} instances and interface for $http.get

@@ -309,6 +309,7 @@ ksc.factory 'ksc.EditableRecord', [
 
       @throw [ArgumentTypeError] Key is missing or is not key conform (string or
         number)
+      @throw [ContractBreakError] Value does not match contract for key
       @throw [ValueError] When trying to pass a function as value
 
       @event 'update' sends out message on changes:
