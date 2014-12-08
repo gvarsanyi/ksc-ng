@@ -20,6 +20,14 @@ describe 'app.factory', ->
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
 
+      a = [{a: 1}, {a: 2}, {a: 3}]
+      list.push {a: 1}, {a: 2}, {a: 3}
+      for key, value of a
+        expect(list[key]._clone 1).toEqual value
+      for key, value of list
+        expect(value?._clone(1) or value).toEqual list[key]
+      return
+
     it 'Extendible as class', ->
       class X extends List
         a: 'a'

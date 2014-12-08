@@ -147,20 +147,38 @@ ksc.factory 'ksc.Record', [
       Clone record or contents
 
       @param [boolean] return_plain_object (optional) return a vanilla js Object
+      @param [boolean] exclude_static (optional) avoid cloning non-getters
+        (statically assigned in runtime without using {Record#_setProperty)
 
       @return [Object|Record] the new instance with identical data
       ###
-      _clone: (return_plain_object=false) ->
-        clone = {}
+      _clone: (return_plain_object, exclude_static) ->
         record = @
-        for key, value of record
-          if is_object value
-            value = value._clone 1
-          clone[key] = value
-        if return_plain_object
-          return clone
 
-        new record.constructor clone
+        clone = {}
+        if return_plain_object
+          for key, value of record[_SAVED]
+            if value?._clone
+              value = value._clone 1, exclude_static
+            clone[key] = value
+        else
+          statics = {}
+          for key, value of record[_SAVED]
+            if value?._clone
+              unless exclude_static
+                statics[key] = Record.getAllStatic value
+              value = value._clone 0, 1, 1
+            clone[key] = value
+          clone = new (record.constructor) clone
+          for key, value of statics
+            for key2, value2 of value
+              clone[key][key2] = value2
+
+        unless exclude_static
+          Record.getAllStatic record, clone
+
+        clone
+
 
       ###
       Placeholder method, throws error on read-only Record. See
@@ -442,6 +460,23 @@ ksc.factory 'ksc.Record', [
         return
 
       ###
+      Helper method that gets all static properties (not getter/setter
+      properties, e.g. the ones that were NOT assigned by {Record#_setProperty})
+
+      Uses the provided object as clone target or creates a new one.
+
+      @param [Record] record Reference to record object
+      @param [object] target (optional) Reference to property copy target
+
+      @return [object] copied static properties
+      ###
+      @getAllStatic: (record, target={}) ->
+        for key, value of record
+          if has_own Object.getOwnPropertyDescriptor(record, key), 'value'
+            target[key] = value
+        target
+
+      ###
       Helper function to initiate ID property ({Record#_idProperty}) on a
       top-level record if {Record#_idProperty} is not yet defined.
 
@@ -455,9 +490,7 @@ ksc.factory 'ksc.Record', [
         contract = options[CONTRACT]
 
         unless options[ID_PROPERTY]? # assign first as ID
-          for key of data
-            options[ID_PROPERTY] = key
-            break
+          return
 
         id_property_contract_check = (key) ->
           if contract
@@ -466,15 +499,15 @@ ksc.factory 'ksc.Record', [
             unless contract[key].type in ['string', 'number']
               error.ContractBreak {key, contract, required: 'string or number'}
 
-        if record[_EVENTS] # a top-level node of record (create _id on top only)
-          if id_property = options[ID_PROPERTY]
-            if is_array id_property
-              for part in id_property
-                id_property_contract_check part
-                data[part] ?= null
-            else
-              id_property_contract_check id_property
-              data[id_property] ?= null
+        # a top-level node of record (create _id on top only)
+        if record[_EVENTS] and id_property = options[ID_PROPERTY]
+          if is_array id_property
+            for part in id_property
+              id_property_contract_check part
+              data[part] ?= null
+          else
+            id_property_contract_check id_property
+            data[id_property] ?= null
         return
 
       ###
@@ -568,7 +601,7 @@ ksc.factory 'ksc.Record', [
         contract = record[_OPTIONS][CONTRACT]
 
         if is_object value
-          if value._clone? # instanceof Record or processed Array
+          if value._clone # instanceof Record or processed Array
             value = value._clone 1
 
           class_ref = record[_OPTIONS].subtreeClass or Record

@@ -3,5 +3,3 @@ research, ideas
 - generic list cache logic
 - poller/push event receiver/refresher service, API
 - getterify/setterify List elements
-- hidden (non-enumerable) properties on List generated arrays
-- make idProperty usage explicit (never create ._idProperty or ._id if option.idProperty is not defined

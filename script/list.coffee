@@ -119,22 +119,21 @@ ksc.factory 'ksc.List', [
           argument_type_error {options, argument: 3, required: 'object'}
 
         if $rootScope.isPrototypeOf options
-          scope = options
+          scope   = options
           options = {}
 
         if scope?
           unless $rootScope.isPrototypeOf scope
             argument_type_error {scope, required: '$rootScope descendant'}
 
-        for key, value of @constructor.prototype
-          if key.indexOf('constructor') is -1
-            define_value list, key, value, 0, 1
+        for key, value of @constructor.prototype when key isnt 'constructor'
+          define_value list, key, value
 
         options = angular.copy options
         define_value list, 'options', options
-        list.options.record ?= {}
+        options.record ?= {}
 
-        define_value list, 'events', new EventEmitter, 0, 1
+        define_value list, 'events', new EventEmitter
 
         # sets @_mapper, @map and @pseudo
         ListMapper.register list
@@ -701,12 +700,12 @@ ksc.factory 'ksc.List', [
               define_value item, '_parent', list # mark this record as parent
             else
               if item instanceof Record
-                item = item._clone true
+                item = item._clone 1
               item = new record_class item, record_opts, list
 
             if item._id?
               if existing = mapper.has item._id
-                existing._replace item._clone true
+                existing._replace item._clone 1
                 (action.update ?= []).push {record: existing, source: original}
               else
                 mapper.add item
