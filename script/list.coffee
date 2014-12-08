@@ -133,6 +133,8 @@ ksc.factory 'ksc.List', [
         define_value list, 'options', options
         options.record ?= {}
 
+        define_value list, '_sourceType', 'List'
+
         define_value list, 'events', new EventEmitter
 
         # sets @_mapper, @map and @pseudo
@@ -702,6 +704,7 @@ ksc.factory 'ksc.List', [
               if item instanceof Record
                 item = item._clone 1
               item = new record_class item, record_opts, list
+            Record.setId item
 
             if item._id?
               if existing = mapper.has item._id

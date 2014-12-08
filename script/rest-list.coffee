@@ -311,7 +311,7 @@ ksc.factory 'ksc.RestList', [
         for record, i in records
           if (primary_id = record[PRIMARY_ID])? or list.options.reloadOnUpdate
             query_parameters = {}
-            key = record._options.idProperty
+            key = list.options.record?.idProperty
             if primary_id
               query_parameters[key[0]] = primary_id
             else

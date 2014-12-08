@@ -3,12 +3,13 @@ describe 'app.factory', ->
 
   describe 'EditableRecord', ->
 
-    EditableRecord = Record = null
+    EditableRecord = List = Record = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
         EditableRecord = $injector.get 'ksc.EditableRecord'
+        List           = $injector.get 'ksc.List'
         Record         = $injector.get 'ksc.Record'
 
 
@@ -272,43 +273,49 @@ describe 'app.factory', ->
         expect(-> record._delete 'a', true).toThrow()
 
       it 'Can not delete idProperty key', ->
-        record = new EditableRecord {id: 1}, {idProperty: 'id'}
+        list = new List record: idProperty: 'id'
+        list.push record = new EditableRecord {id: 1}
         expect(-> record._delete 'id').toThrow()
 
-        record = new EditableRecord {id: 1, x: 2}, {idProperty: ['id', 'x']}
-        expect(-> record._delete 'x').toThrow()
+        list.push record = new EditableRecord {x: 2, id: 2}
+        expect(-> record._delete 'id').toThrow()
 
     it 'Id changes', ->
+      list = new List record: idProperty: 'id'
       example = {id: 1, x: 2}
 
-      record = new EditableRecord example
+      list.push record = new EditableRecord example
       record.id = 2
       expect(record._id).toBe 2
 
       # report to parent
-      faux_parent = {_recordChange: ->}
-      spyOn faux_parent, '_recordChange'
-      record = new EditableRecord example, null, faux_parent
+      list = new List record: idProperty: 'id'
+
+      # spy requires writable
+      Object.defineProperty list, '_recordChange', writable: true
+      spyOn list, '_recordChange'
+
+      list.push record = new EditableRecord example
       record.id = 2
       info = {node: record, action: 'set', key: 'id'}
-      expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, 1
+      expect(list._recordChange).toHaveBeenCalledWith record, info, 1
       expect(record._id).toBe 2
 
       # don't report if id has not changed
-      faux_parent = {_recordChange: ->}
-      spyOn faux_parent, '_recordChange'
-      record = new EditableRecord example, null, faux_parent
+      list = new List record: idProperty: 'id'
+
+      # spy requires writable
+      Object.defineProperty list, '_recordChange', writable: true
+      spyOn list, '_recordChange'
+
+      list.push record = new EditableRecord example
       record.x = 3
       info = {node: record, action: 'set', key: 'x'}
-      expect(faux_parent._recordChange).toHaveBeenCalledWith record, info, 1
-
-      # should not fail if parent has no ._recordChange() method
-      record = new EditableRecord example, null, {}
-      expect(-> record.id = 3).not.toThrow()
-      expect(record._id).toBe 3
+      expect(list._recordChange).toHaveBeenCalledWith record, info, 1
 
     it 'Composite id changes', ->
-      record = new EditableRecord {id: 1, x: 2}, {idProperty: ['id', 'x']}
+      list = new List record: idProperty: ['id', 'x']
+      list.push record = new EditableRecord {id: 1, x: 2}
 
       expect(-> record.x = false).toThrow() # string, number or null is required
 

@@ -14,7 +14,6 @@ ksc.factory 'ksc.Record', [
     _PSEUDO     = '_pseudo'
     _SAVED      = '_saved'
     CONTRACT    = 'contract'
-    ID_PROPERTY = 'idProperty'
 
     define_value   = util.defineValue
     has_own        = util.hasOwn
@@ -49,7 +48,6 @@ ksc.factory 'ksc.Record', [
 
     Options that may be used
     - .options.contract
-    - .options.idProperty
     - .options.subtreeClass
 
     @author Greg Varsanyi
@@ -226,11 +224,6 @@ ksc.factory 'ksc.Record', [
       ###
       (Re)define the initial data set
 
-      @note Will try and create an ._options.idProperty if it is missing off of
-        the first key in the dictionary, so that it can be used as ._id
-      @note Will set ._options.idProperty value of the data set to null if it is
-        not defined
-
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
 
@@ -256,8 +249,6 @@ ksc.factory 'ksc.Record', [
           error.Permission
             key:         record[_PARENT_KEY]
             description: 'can not replace subobject'
-
-        Record.initIdProperty record, data
 
         replacing = true
 
@@ -476,52 +467,23 @@ ksc.factory 'ksc.Record', [
             target[key] = value
         target
 
-      ###
-      Helper function to initiate ID property ({Record#_idProperty}) on a
-      top-level record if {Record#_idProperty} is not yet defined.
-
-      @param [Record] record Reference to Record object
-      @param [object] data key-value object to init Record with
-
-      @return [undefined]
-      ###
-      @initIdProperty: (record, data) ->
-        options  = record[_OPTIONS]
-        contract = options[CONTRACT]
-
-        unless options[ID_PROPERTY]? # assign first as ID
-          return
-
-        id_property_contract_check = (key) ->
-          if contract
-            unless contract[key]?
-              error.ContractBreak {key, contract, mismatch: 'idProperty'}
-            unless contract[key].type in ['string', 'number']
-              error.ContractBreak {key, contract, required: 'string or number'}
-
-        # a top-level node of record (create _id on top only)
-        if record[_EVENTS] and id_property = options[ID_PROPERTY]
-          if is_array id_property
-            for part in id_property
-              id_property_contract_check part
-              data[part] ?= null
-          else
-            id_property_contract_check id_property
-            data[id_property] ?= null
-        return
+      @getIdProperty: (record) ->
+        if record[_PARENT]?._sourceType is 'List'
+          return record[_PARENT].options.record?.idProperty
 
       ###
       Define _id for the record
 
       Composite IDs will be used and ._primaryId will be created if
-      .options.idProperty is an Array. The composite is c
+      idProperty is an Array. The composite is c
       - Parts are stringified and joined by '-'
       - If a part is empty (e.g. '' or null), the part will be skipped in ._id
       - If primary part of composite ID is null, the whole ._id is going to
         be null (becomes a pseudo/new record)
       @example
-        record = new EditableRecord {id: 1, otherId: 2, name: 'x'},
-                                    {idProperty: ['id', 'otherId', 'name']}
+        list = new List {record: {idProperty: ['id', 'otherId', 'name']}}
+        record = new EditableRecord {id: 1, otherId: 2, name: 'x'}
+        list.push record
         console.log record._id, record._primaryId # '1-2-x', 1
 
         record.otherId = null
@@ -535,18 +497,28 @@ ksc.factory 'ksc.Record', [
       @return [undefined]
       ###
       @setId: (record) ->
-        if id_property = record[_OPTIONS][ID_PROPERTY]
+        id_property_check = (key) ->
+          if contract = record[_OPTIONS][CONTRACT]
+            unless contract[key]?
+              error.ContractBreak {key, contract, mismatch: 'idProperty'}
+            unless contract[key].type in ['string', 'number']
+              error.ContractBreak {key, contract, required: 'string or number'}
+          return
+
+        if (id_property = Record.getIdProperty record)?
           if is_array id_property
             composite = []
             for part, i in id_property
-              if is_key_conform record[part]
-                composite.push record[part]
+              id_property_check part
+              if is_key_conform value = record[part]
+                composite.push value
               else unless i # if first part is unset, fall back to null
                 break
             id = if composite.length then composite.join('-') else null
             define_value record, _ID, id
             define_value record, '_primaryId', record[id_property[0]]
           else
+            id_property_check id_property
             value = record[id_property]
             define_value record, _ID, if value? then value else null
 
