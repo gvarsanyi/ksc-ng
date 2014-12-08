@@ -4,4 +4,4 @@
 - add event handling tests for array related events on [editable-]record
 - array constructor for list
 - check for mandatory idProperty on rest-list
-
+- list would only create map if idProperty is set
