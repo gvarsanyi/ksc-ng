@@ -83,22 +83,22 @@ ksc.factory 'ksc.List', [
       @property [ListMapper] helper object that handles references to records
         by their unique IDs (._id) or pseudo IDs (._pseudo)
       ###
-      _mapper: null
+      _mapper: undefined
 
       # @property [EventEmitter] reference to related event-emitter instance
-      events: null
+      events: undefined
 
       # @property [object] hash map of records (keys being record ._id values)
-      map: null
+      map: undefined
 
       # @property [object] hash map of records without ._id keys
-      pseudo: null
+      pseudo: undefined
 
       # @property [object] list-related options
-      options: null
+      options: undefined
 
       # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
-      sorter: null
+      sorter: undefined
 
 
       ###
@@ -177,7 +177,8 @@ ksc.factory 'ksc.List', [
         define_value list, 'events', new EventEmitter
 
         # sets @_mapper, @map and @pseudo
-        ListMapper.register list
+        if options.record.idProperty
+          ListMapper.register list
 
         if scope
           define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
@@ -252,15 +253,17 @@ ksc.factory 'ksc.List', [
             unless record in list
               error.Value {record, description: 'not found in list'}
 
-            unless mapper.has record
-              error.Key {record, description: 'map/pseudo id error'}
-            mapper.del record
+            if mapper
+              unless mapper.has record
+                error.Key {record, description: 'map/pseudo id error'}
+              mapper.del record
             cut.push record
           else # id (maybe old_id) passed
             id = record
-            unless record = mapper.has id
-              error.Key {id, description: 'map id error'}
-            mapper.del id
+            if mapper
+              unless record = mapper.has id
+                error.Key {id, description: 'map id error'}
+              mapper.del id
             if record._id isnt id
               cut.push id
             else
@@ -636,57 +639,59 @@ ksc.factory 'ksc.List', [
         unless record instanceof Record
           error.Type {record, required: 'Record'}
 
-        list   = @
-        map    = list.map
-        mapper = list._mapper
+        list = @
 
         add_to_map = ->
           define_value record, '_pseudo', null
           mapper.add record
 
         info = {record, info: record_info}
-        if old_id isnt record._id
-          list.events.halt()
-          try
-            unless record._id? # map -> pseudo
-              mapper.del old_id
-              define_value record, '_pseudo', util.uid 'record.pseudo'
-              mapper.add record
-              info.move =
-                from: {map: old_id}
-                to:   {pseudo: record._pseudo}
-            else unless old_id? # pseudo -> map
-              if map[record._id] # merge
-                info.merge =
-                  from: {pseudo: record._pseudo}
-                  to:   {map: record._id}
-                info.record = map[record._id]
-                info.source = record
-                list.cut record
-                list.push record
-              else # no merge
-                info.move =
-                  from: {pseudo: record._pseudo}
-                  to:   {map: record._id}
-                mapper.del null, record._pseudo
-                add_to_map()
-            else # map -> map
-              if map[record._id] # with merge
-                info.merge =
-                  from: {map: old_id}
-                  to:   {map: record._id}
-                info.record = map[record._id]
-                info.source = record
-                list.cut old_id
-                list.push record
-              else # no merge
-                info.move =
-                  from: {map: old_id}
-                  to:   {map: record._id}
+
+        if map = list.map
+          mapper = list._mapper
+
+          if old_id isnt record._id
+            list.events.halt()
+            try
+              unless record._id? # map -> pseudo
                 mapper.del old_id
-                add_to_map()
-          finally
-            list.events.unhalt()
+                define_value record, '_pseudo', util.uid 'record.pseudo'
+                mapper.add record
+                info.move =
+                  from: {map: old_id}
+                  to:   {pseudo: record._pseudo}
+              else unless old_id? # pseudo -> map
+                if map[record._id] # merge
+                  info.merge =
+                    from: {pseudo: record._pseudo}
+                    to:   {map: record._id}
+                  info.record = map[record._id]
+                  info.source = record
+                  list.cut record
+                  list.push record
+                else # no merge
+                  info.move =
+                    from: {pseudo: record._pseudo}
+                    to:   {map: record._id}
+                  mapper.del null, record._pseudo
+                  add_to_map()
+              else # map -> map
+                if map[record._id] # with merge
+                  info.merge =
+                    from: {map: old_id}
+                    to:   {map: record._id}
+                  info.record = map[record._id]
+                  info.source = record
+                  list.cut old_id
+                  list.push record
+                else # no merge
+                  info.move =
+                    from: {map: old_id}
+                    to:   {map: record._id}
+                  mapper.del old_id
+                  add_to_map()
+            finally
+              list.events.unhalt()
 
         if list.sorter # find the proper place for the updated record
           record = info.record
@@ -759,9 +764,10 @@ ksc.factory 'ksc.List', [
               if item._pseudo
                 define_value item, '_pseudo', null
             else
-              define_value item, '_pseudo', util.uid 'record.pseudo'
+              if mapper
+                define_value item, '_pseudo', util.uid 'record.pseudo'
+                mapper.add item
 
-              mapper.add item
               tmp.push item
               (action.add ?= []).push item
 
@@ -794,7 +800,7 @@ ksc.factory 'ksc.List', [
       ###
       @remove: (list, orig_fn) ->
         if record = Array.prototype[orig_fn].call list
-          list._mapper.del record
+          list._mapper?.del record
           emit_action list, {cut: [record]}
         record
 ]

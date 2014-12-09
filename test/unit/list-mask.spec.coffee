@@ -169,7 +169,9 @@ describe 'app.factory', ->
       expect(sublist[0].a).toBe 'aaa'
       expect(sublist[1].a).toBe 'abc'
 
+      console.log 'e1', sublist
       list[1].a = 'aax'
+      console.log 'e2', sublist
 
       expect(sublist.length).toBe 2
       expect(sublist[0].a).toBe 'aaa'

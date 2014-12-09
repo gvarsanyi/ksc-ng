@@ -331,7 +331,7 @@ ksc.factory 'ksc.ListMask', [
 
           source_count += 1
 
-          define_value source, source_name, source_list, 0, 1
+          define_value source, source_name, source_list
         Object.freeze source
 
         if source._
@@ -365,26 +365,27 @@ ksc.factory 'ksc.ListMask', [
 
         # copy methods from ListMask:: to the array instance
         for key, value of @constructor.prototype
-          define_value list, key, value, 0, 1
+          define_value list, key, value
 
         # disable methods that change contents
         for key in ['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift',
                     'sort', 'splice', 'unshift']
           if list[key]
-            define_value list, key, undefined
+            define_value list, key
 
-        define_value list, 'events', new EventEmitter, 0, 1
+        define_value list, 'events', new EventEmitter
 
         define_value list, 'options', options
 
-        define_value list, 'source', source, 0, 1
+        define_value list, 'source', source
 
         register_filter   list
         register_splitter list
 
         # sets @_mapper, @map and @pseudo
-        ListMapper.register list
-        sources = list._mapper._sources
+        if source.options.record.idProperty
+          ListMapper.register list
+          sources = list._mapper._sources
 
         if scope
           define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
@@ -422,7 +423,7 @@ ksc.factory 'ksc.ListMask', [
         for source_info in sources
           for record in source_info.source
             if list.filter record
-              list._mapper.add record, source_info.names
+              list._mapper?.add record, source_info.names
               add_to_list list, record
 
         return list
