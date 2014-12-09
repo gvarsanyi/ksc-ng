@@ -14,13 +14,13 @@ describe 'app.factory', ->
         ListMapper = $injector.get 'ksc.ListMapper'
         ListMask   = $injector.get 'ksc.ListMask'
 
-        list = new List {record: idProperty: 'id'}
+        list = new List 'id'
         list.push {id: 1, a: 'xyz'}, {id: null, a: 'abc'}
 
-        list2 = new List {record: idProperty: 'id2'}
+        list2 = new List 'id2'
         list2.push {id2: 1, a: 'xyz'}, {id2: 2, a: 'abc'}
 
-        list3 = new List {record: idProperty: 'id3'}
+        list3 = new List 'id3'
         list3.push {id3: 1, a: 'xyz'}, {id3: 2, a: 'abc'}
 
         sublist  = new ListMask list, (-> true)

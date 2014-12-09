@@ -273,7 +273,7 @@ describe 'app.factory', ->
         expect(-> record._delete 'a', true).toThrow()
 
       it 'Can not delete idProperty key', ->
-        list = new List record: idProperty: 'id'
+        list = new List 'id'
         list.push record = new EditableRecord {id: 1}
         expect(-> record._delete 'id').toThrow()
 
@@ -281,7 +281,7 @@ describe 'app.factory', ->
         expect(-> record._delete 'id').toThrow()
 
     it 'Id changes', ->
-      list = new List record: idProperty: 'id'
+      list = new List 'id'
       example = {id: 1, x: 2}
 
       list.push record = new EditableRecord example
@@ -289,7 +289,7 @@ describe 'app.factory', ->
       expect(record._id).toBe 2
 
       # report to parent
-      list = new List record: idProperty: 'id'
+      list = new List 'id'
 
       # spy requires writable
       Object.defineProperty list, '_recordChange', writable: true
@@ -302,7 +302,7 @@ describe 'app.factory', ->
       expect(record._id).toBe 2
 
       # don't report if id has not changed
-      list = new List record: idProperty: 'id'
+      list = new List 'id'
 
       # spy requires writable
       Object.defineProperty list, '_recordChange', writable: true

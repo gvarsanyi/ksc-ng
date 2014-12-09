@@ -106,32 +106,71 @@ ksc.factory 'ksc.List', [
       pop/shift/push/unshift logic to support the special features. Will inherit
       standard Array behavior for .length and others.
 
+      @param [Array] initial_set (optional) initial set of elements
       @param [Object] options (optional) configuration data for this list
+      @param [number|string] id_property (optional) id_property for records of
+        this list (will be copied to .options.record.idProperty)
       @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
         '$destroy' event
 
       @return [Array] returns plain [] with extra methods and some overrides
       ###
-      constructor: (options={}, scope) ->
+      constructor: (_initial_set, _options, _id_property, _scope) ->
         list = []
 
-        unless util.isObject options
-          argument_type_error {options, argument: 3, required: 'object'}
+        initial_set = options = id_property = scope = null
+        for i, argument of arguments
+          if Array.isArray argument
+            if initial_set
+              argument_type_error
+                argument:    argument
+                number:      i
+                description: 'Ambigous: can only take 1 array'
+            initial_set = argument
+          else if is_object argument
+            if $rootScope.isPrototypeOf argument
+              if scope
+                argument_type_error
+                  argument:    argument
+                  number:      i
+                  description: 'Ambigous: can only take 1 scope'
+              scope = argument
+            else
+              if options
+                argument_type_error
+                  argument:    argument
+                  number:      i
+                  description: 'Ambigous: can only take 1 object for options'
+              options = argument
+          else if util.isKeyConform argument
+            if id_property?
+              argument_type_error
+                argument:    argument
+                number:      i
+                description: 'Ambigous: can only take 1 id_property'
+            id_property = argument
+          else
+            argument_type_error
+              argument:    argument
+              number:      i
+              description: 'Unknown type for a List argument'
 
-        if $rootScope.isPrototypeOf options
-          scope   = options
-          options = {}
-
-        if scope?
-          unless $rootScope.isPrototypeOf scope
-            argument_type_error {scope, required: '$rootScope descendant'}
+        if options?.record?.idProperty? and id_property
+          argument_type_error
+            argument:    id_property
+            options:     options
+            description: 'id_property argument conflicts with ' +
+                         '.options.record.idProperty'
 
         for key, value of @constructor.prototype when key isnt 'constructor'
           define_value list, key, value
 
-        options = angular.copy options
+        options = angular.copy(options) or {}
         define_value list, 'options', options
         options.record ?= {}
+
+        if id_property?
+          options.record.idProperty = id_property
 
         define_value list, '_sourceType', 'List'
 
@@ -147,6 +186,9 @@ ksc.factory 'ksc.List', [
 
         # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
+
+        if initial_set
+          list.push initial_set...
 
         return list
 

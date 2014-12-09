@@ -46,8 +46,7 @@ describe 'app.factory', ->
       expect(list[3]._id).toBe 2
 
     it 'Number sort', ->
-      list = new List
-        record: idProperty: 'id'
+      list = new List 'id',
         sorter:
           key:  'x'
           type: 'number'

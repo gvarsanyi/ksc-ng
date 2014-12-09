@@ -28,6 +28,35 @@ describe 'app.factory', ->
         expect(value?._clone?(1) or value).toEqual a[key]
       return
 
+    describe 'Constructor argument variations', ->
+
+      it 'options and id_property', ->
+        list = new List {record: {idProperty: 'x'}}
+        expect(list.options.record.idProperty).toBe 'x'
+
+        list = new List 'x'
+        expect(list.options.record.idProperty).toBe 'x'
+
+        expect(-> new List 'x', {record: {idProperty: 'x'}}).toThrow()
+        expect(-> new List {}, {}).toThrow()
+        expect(-> new List 'x', 'x').toThrow()
+
+      it 'initial set', ->
+        list = new List [{a: 1}, {a: 2}], 'a'
+        expect(list.length).toBe 2
+        expect(list[0].a).toBe 1
+        expect(list.map[2].a).toBe 2
+        expect(-> new List [{a: 1}, {a: 1}], []).toThrow()
+
+      it '$scope', ->
+        scope = $rootScope.$new()
+        scope2 = $rootScope.$new()
+        list = new List [{a: 1}], scope, 'a'
+        expect(typeof list._scopeUnsubscriber).toBe 'function'
+
+        expect(-> new List [{a: 1}, {a: 1}], scope, scope2).toThrow()
+
+
     it 'Extensible as class', ->
       class X extends List
         a: 'a'

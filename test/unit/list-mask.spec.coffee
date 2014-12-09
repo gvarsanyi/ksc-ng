@@ -16,10 +16,10 @@ describe 'app.factory', ->
         List       = $injector.get 'ksc.List'
         ListMask   = $injector.get 'ksc.ListMask'
 
-        list = new List {record: idProperty: 'id'}
+        list = new List 'id'
         list.push {id: 1, a: 'xyz'}, {id: 2, a: 'abc'}
 
-        list2 = new List {record: idProperty: 'id2'}
+        list2 = new List 'id2'
         list2.push {id2: 1, a: 'xyz2'}, {id2: 22, a: 'abc2'}
 
         filter_c = 'a'
@@ -56,7 +56,7 @@ describe 'app.factory', ->
         expect(sublist.length).toBe 3
 
       it 'Split records w/ sorting', ->
-        list = new List {record: idProperty: 'id'}
+        list = new List 'id'
         list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8},
                   {id: 3, start: 19, end: 41}
 
@@ -465,7 +465,7 @@ describe 'app.factory', ->
         expect(sublist.pseudo.l1[1]).toBe list[1]
 
       it 'Chained ListMasks with multiple sources', ->
-        list3 = new List {record: idProperty: 'id3'}
+        list3 = new List 'id3'
         list3.push {id3: 1, a: 'xyz'}, {id3: 2, a: 'abc'}
 
         sublist1 = new ListMask {l1: list, l2: list2}, filter_fn
