@@ -696,13 +696,12 @@ ksc.factory 'ksc.List', [
           for item in items
             original = item
 
-            if item instanceof record_class
+            if item instanceof Record
               if item._parent and item._parent isnt list
                 item._parent.cut item # remove record from old parent list
+              util.mergeIn item._options, record_opts
               define_value item, '_parent', list # mark this record as parent
             else
-              if item instanceof Record
-                item = item._clone 1
               item = new record_class item, record_opts, list
             Record.setId item
 

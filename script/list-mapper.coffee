@@ -193,9 +193,9 @@ ksc.factory 'ksc.ListMapper', [
       @register: (list) ->
         mapper = new ListMapper list
 
-        define_value list, '_mapper', mapper,        0, 1
-        define_value list, 'map',     mapper.map,    0, 1
-        define_value list, 'pseudo',  mapper.pseudo, 0, 1
+        define_value list, '_mapper', mapper
+        define_value list, 'map',     mapper.map
+        define_value list, 'pseudo',  mapper.pseudo
 
         return
 ]

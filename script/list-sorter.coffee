@@ -85,7 +85,7 @@ ksc.factory 'ksc.ListSorter', [
       constructor: (list, description) ->
         sorter = @
 
-        define_value sorter, 'list', list, 0, 0
+        define_value sorter, 'list', list
 
         if typeof description is 'function'
           sorter.fn = description
@@ -282,7 +282,7 @@ ksc.factory 'ksc.ListSorter', [
           else
             sorter = null
 
-        util.defineGetSet list, 'sorter', getter, setter, 1
+        util.defineGetSet list, 'sorter', getter, setter
         util.defineGetSet list.options, 'sorter', getter, setter, 1
 
         return

@@ -5,15 +5,16 @@ ksc.factory 'ksc.Record', [
   (ArrayTracker, EventEmitter, RecordContract, error,
    util) ->
 
-    _ARRAY      = '_array'
-    _EVENTS     = '_events'
-    _ID         = '_id'
-    _OPTIONS    = '_options'
-    _PARENT     = '_parent'
-    _PARENT_KEY = '_parentKey'
-    _PSEUDO     = '_pseudo'
-    _SAVED      = '_saved'
-    CONTRACT    = 'contract'
+    _ARRAY       = '_array'
+    _EVENTS      = '_events'
+    _ID          = '_id'
+    _OPTIONS     = '_options'
+    _PARENT      = '_parent'
+    _PARENT_KEY  = '_parentKey'
+    _PRIMARY_KEY = '_primaryId'
+    _PSEUDO      = '_pseudo'
+    _SAVED       = '_saved'
+    CONTRACT     = 'contract'
 
     define_value   = util.defineValue
     has_own        = util.hasOwn
@@ -110,14 +111,15 @@ ksc.factory 'ksc.Record', [
         if has_own options, CONTRACT
           contract = options[CONTRACT] = new RecordContract options[CONTRACT]
 
+        define_value record, _PARENT, parent
         if parent? or parent_key?
           object_required 'options', parent, 3
-          define_value record, _PARENT, parent
 
           if parent_key?
             is_key_conform parent_key, 1, 4
             define_value record, _PARENT_KEY, parent_key
             delete record[_ID]
+            delete record[_PRIMARY_KEY]
             delete record[_PSEUDO]
 
         # hide (set to non-enumerable) non-data properties/methods
@@ -127,8 +129,9 @@ ksc.factory 'ksc.Record', [
               Object.defineProperty ref, key, enumerable: false
 
         unless parent_key?
-          define_value record, _ID, undefined
-          define_value record, _PSEUDO, undefined
+          define_value record, _ID
+          define_value record, _PRIMARY_KEY
+          define_value record, _PSEUDO
           define_value record, _EVENTS, new EventEmitter
           record[_EVENTS].halt()
 
@@ -427,7 +430,7 @@ ksc.factory 'ksc.Record', [
         Record.setId source
 
         unless source[_EVENTS]._halt
-          source[_PARENT]?._recordChange? source, info, old_id
+          source[_PARENT]?._recordChange source, info, old_id
 
         events.emit 'update', info
 
@@ -467,9 +470,17 @@ ksc.factory 'ksc.Record', [
             target[key] = value
         target
 
+      ###
+      Helper function that serves up parent list's .options.record.idProperty if
+      set.
+
+      @param [Record] record Reference to record object
+
+      @return [mixed] idProperty description (if defined: key or array of keys)
+      ###
       @getIdProperty: (record) ->
         if record[_PARENT]?._sourceType is 'List'
-          return record[_PARENT].options.record?.idProperty
+          return record[_PARENT].options.record.idProperty
 
       ###
       Define _id for the record
@@ -503,6 +514,11 @@ ksc.factory 'ksc.Record', [
               error.ContractBreak {key, contract, mismatch: 'idProperty'}
             unless contract[key].type in ['string', 'number']
               error.ContractBreak {key, contract, required: 'string or number'}
+            unless record[key]?
+              error.ContractBreak
+                key:      key
+                value:    record[key]
+                mismatch: 'idProperty value must exist (not nullable)'
           return
 
         if (id_property = Record.getIdProperty record)?
@@ -514,13 +530,17 @@ ksc.factory 'ksc.Record', [
                 composite.push value
               else unless i # if first part is unset, fall back to null
                 break
-            id = if composite.length then composite.join('-') else null
+
+            primary = record[id_property[0]]
+            id = if composite.length then composite.join '-' else primary
             define_value record, _ID, id
-            define_value record, '_primaryId', record[id_property[0]]
+            define_value record, _PRIMARY_KEY, primary
           else
             id_property_check id_property
-            value = record[id_property]
-            define_value record, _ID, if value? then value else null
+            define_value record, _ID, record[id_property]
+        else
+          define_value record, _ID
+          define_value record, _PRIMARY_KEY
 
         return
 

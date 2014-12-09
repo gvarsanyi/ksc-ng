@@ -327,6 +327,12 @@ describe 'app.factory', ->
       expect(record._id).toBe null
       expect(record._primaryId).toBe null
 
+      record.id = 5
+      expect(record._id).toBe '5-3'
+      expect(record._primaryId).toBe 5
+
+      expect(-> record._delete 'x').toThrow()
+
     it 'Can create empty container', ->
       record = null
       expect(-> record = new EditableRecord).not.toThrow()

@@ -13,6 +13,7 @@ describe 'app.factory', ->
 
     it 'Function', ->
       list = new List
+        record: idProperty: 'id'
         sorter: (a, b) ->
           if a._id >= b._id then 1 else -1
 
@@ -24,7 +25,7 @@ describe 'app.factory', ->
       expect(list[3]._id).toBe 4
 
     it 'String', ->
-      list = new List sorter: '_id'
+      list = new List {record: {idProperty: 'id'}, sorter: '_id'}
 
       list.push {id: 2}, {id: 1}, {id: 3}, {id: 4}
 
@@ -34,7 +35,7 @@ describe 'app.factory', ->
       expect(list[3]._id).toBe 4
 
     it 'Array of keys', ->
-      list = new List sorter: ['x', 'y']
+      list = new List {record: {idProperty: 'id'}, sorter: ['x', 'y']}
 
       list.unshift {id: 1, x: 'a', y: 'b'}, {id: 2, x: 'b', y: 'b'},
                     {id: 3, x: 'b'}, {id: 4, x: 'a', y: 'a'}
@@ -46,6 +47,7 @@ describe 'app.factory', ->
 
     it 'Number sort', ->
       list = new List
+        record: idProperty: 'id'
         sorter:
           key:  'x'
           type: 'number'
@@ -65,7 +67,7 @@ describe 'app.factory', ->
       expect(list[8].x).toBe 10
 
     it 'Numbers in natural sort (identical to number)', ->
-      list = new List sorter: 'x'
+      list = new List {record: {idProperty: 'id'}, sorter: 'x'}
 
       list.push {id: 1, x: -43}, {id: 2, x: 7}, {id: 3, x: 7.1},
                 {id: 4, x: 10}, {id: 5, x: 0},
@@ -78,6 +80,7 @@ describe 'app.factory', ->
 
     it 'Byte sort', ->
       list = new List
+        record: idProperty: 'id'
         sorter:
           key:  'id'
           type: 'byte'
@@ -92,6 +95,7 @@ describe 'app.factory', ->
 
     it 'Byte sort w/ reverse: true', ->
       list = new List
+        record: idProperty: 'id'
         sorter:
           key:  'id'
           type: 'byte'
@@ -106,7 +110,7 @@ describe 'app.factory', ->
       expect(list[4]._id).toBe ' '
 
     it 'Identical records are first-come-first-served', ->
-      list = new List sorter: 'x'
+      list = new List {record: {idProperty: 'id'}, sorter: 'x'}
 
       list.push {id: 1, x: 'b'}, {id: 2, x: 'b'}, {id: 3, x: 'aa'},
                 {id: 4, x: 'aa'}, {id: 5, x: 'b'}, {id: 6, x: 'ccc'},
@@ -124,6 +128,7 @@ describe 'app.factory', ->
 
     it 'Byte-sort w/ identicals', ->
       list = new List
+        record: idProperty: 'id'
         sorter:
           key:  'x'
           type: 'byte'
@@ -136,7 +141,7 @@ describe 'app.factory', ->
       expect(list[3].x).toBe 3
 
     it 'Natural sort variation', ->
-      list = new List sorter: 'x'
+      list = new List {record: {idProperty: 'id'}, sorter: 'x'}
 
       list.push {id: 1, x: 'a1a12a'}, {id: 2, x: 'aa'}, {id: 5, x: false},
                 {id: 3, x: 'aaaa'}, {id: 6, x: true}, {id: 4, x: 'a1a12a'},
@@ -151,7 +156,8 @@ describe 'app.factory', ->
       expect(list[6].id).toBe 6
 
     it 'Update sorter (automatic re-sorting)', ->
-      list = new List sorter: 'id'
+      list = new List {record: {idProperty: 'id'}, sorter: 'id'}
+
       list.push {id: 1, x: 'c'}, {id: 3, x: 'b'}, {id: 2, x: 'a'}
       list.sorter = 'x'
       expect(list[0].id).toBe 2
@@ -159,7 +165,8 @@ describe 'app.factory', ->
       expect(list[2].id).toBe 1
 
     it 'Pull sorter', ->
-      list = new List sorter: 'id'
+      list = new List {record: {idProperty: 'id'}, sorter: 'id'}
+
       list.push {id: 1, x: 'c'}, {id: 3, x: 'b'}, {id: 2, x: 'a'}
       list.sorter = false
       expect(list.sorter).toBe null
@@ -172,7 +179,7 @@ describe 'app.factory', ->
     describe 'Edge cases', ->
 
       it 'Sort function returns non-numeric data', ->
-        list = new List sorter: -> 'a'
+        list = new List {record: {idProperty: 'id'}, sorter: -> 'a'}
         expect(-> list.push {id: 1}, {id: 2}).toThrow()
 
       it 'sorter type is bugous', ->

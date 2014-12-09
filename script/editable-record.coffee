@@ -282,10 +282,6 @@ ksc.factory 'ksc.EditableRecord', [
           delete record[_CHANGED_KEYS][key]
           changed = true
 
-        for key of record when not has_own record[_SAVED], key
-          delete record[key]
-          changed = true
-
         if changed
           define_value record, _CHANGES, 0
           if emit_event
