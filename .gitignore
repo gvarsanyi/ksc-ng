@@ -7,3 +7,4 @@ doc/*
 test/coverage/*
 libs*.js*
 test/tmp/
+test/sauce.json

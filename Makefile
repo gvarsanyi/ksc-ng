@@ -37,12 +37,18 @@ doc: dependencies
 lint: dependencies
 	@node_modules/.bin/coffeelint script/ test/unit/
 
-test: dependencies
+_cmptest: dependencies
 	@node_modules/.bin/coffee --no-header -b -o test/tmp/pre script/
 	@cd test/tmp/pre; \
 		for JS in *.js ; do \
 			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../$$JS; \
 		done
 	@rm -rf test/tmp/pre
+
+test: dependencies _cmptest
 	-node_modules/karma/bin/karma start test/karma.conf.coffee $(file)
+	@rm -rf test/tmp
+
+sauce-test: dependencies _cmptest
+	-node_modules/karma/bin/karma start test/karma-sauce.conf.coffee $(file)
 	@rm -rf test/tmp
