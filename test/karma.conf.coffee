@@ -1,5 +1,6 @@
 
 module.exports = (config) ->
+
   files     = []
   reporters = []
 
@@ -17,6 +18,7 @@ module.exports = (config) ->
     preprocessors =
       'tmp/**/*.js':      'coverage'
       'unit/**/*.coffee': 'coffee'
+
 
   config.set
     autoWatch:        false
