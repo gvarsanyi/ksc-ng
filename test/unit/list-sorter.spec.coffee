@@ -168,7 +168,7 @@ describe 'app.factory', ->
 
       list.push {id: 1, x: 'c'}, {id: 3, x: 'b'}, {id: 2, x: 'a'}
       list.sorter = false
-      expect(list.sorter).toBe null
+      expect(list.sorter).toBeUndefined()
       # does not re-sort if sorter is pulled
       expect(list[0].id).toBe 1
       expect(list[1].id).toBe 2

@@ -44,16 +44,16 @@ ksc.factory 'ksc.EditableRecord', [
     class EditableRecord extends Record
 
       # @property [object] dictionary of changed keys
-      _changedKeys: undefined
+      _changedKeys: undefined #DOC-ONLY#
 
       # @property [number] number of editions in the data set
       _changes: 0
 
       # @property [object] dictionary of deleted keys
-      _deletedKeys: undefined
+      _deletedKeys: undefined #DOC-ONLY#
 
       # @property [object] dictionary of edited keys and new values
-      _edited: undefined
+      _edited: undefined #DOC-ONLY#
 
       ###
       Create the EditableRecord instance with initial data and options

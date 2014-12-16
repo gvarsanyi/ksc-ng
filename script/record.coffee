@@ -23,13 +23,6 @@ ksc.factory 'ksc.Record', [
     is_key_conform = util.isKeyConform
     is_object      = util.isObject
 
-    object_required = (name, value, arg) ->
-      unless is_object value
-        inf = {}
-        inf[name] = value
-        inf.argument = arg
-        inf.required = 'object'
-        error.ArgumentType inf
 
     ###
     Read-only key-value style record with supporting methods and optional
@@ -57,31 +50,31 @@ ksc.factory 'ksc.Record', [
     class Record
 
       # @property [array] array container if data set is array type
-      _array: undefined
+      _array: undefined #DOC-ONLY#
 
       # @property [object|null] reference to related event-emitter instance
-      _events: undefined
+      _events: undefined #DOC-ONLY#
 
       # @property [number|string] record id
-      _id: undefined
+      _id: undefined #DOC-ONLY#
 
       # @property [number|string] getter/setter for id property
-      _idProperty: undefined
+      _idProperty: undefined #DOC-ONLY#
 
       # @property [object] record-related options
-      _options: undefined
+      _options: undefined #DOC-ONLY#
 
       # @property [object] reference to parent record or list
-      _parent: undefined
+      _parent: undefined #DOC-ONLY#
 
       # @property [number|string] key on parent record
-      _parentKey: undefined
+      _parentKey: undefined #DOC-ONLY#
 
       # @property [number] record id
-      _pseudo: undefined
+      _pseudo: undefined #DOC-ONLY#
 
       # @property [object] container of saved data
-      _saved: undefined
+      _saved: undefined #DOC-ONLY#
 
 
       ###
@@ -104,8 +97,8 @@ ksc.factory 'ksc.Record', [
         unless is_object data
           error.Type {data, required: 'object'}
 
-        object_required 'data',    data,    1
-        object_required 'options', options, 2
+        Record.objReq 'data',    data,    1
+        Record.objReq 'options', options, 2
 
         record = @
 
@@ -117,7 +110,7 @@ ksc.factory 'ksc.Record', [
 
         define_value record, _PARENT, parent
         if parent? or parent_key?
-          object_required 'options', parent, 3
+          Record.objReq 'options', parent, 3
 
           if parent_key?
             is_key_conform parent_key, 1, 4
@@ -516,6 +509,27 @@ ksc.factory 'ksc.Record', [
         unless has_own record, index
           define_get_set record, index, (-> record._getProperty index),
                          ((value) -> record._setProperty index, value), 1
+        return
+
+      ###
+      Helper function that throws an ArgumentTypeError if requirements are
+      not met (argument is not an object)
+
+      @param [string] name Argument key
+      @param [mixed] value Argument value
+      @param [number] arg Argument index
+
+      @throw [ArgumentTypeError] Argument is not an object
+
+      @return [undefined]
+      ###
+      @objReq: (name, value, arg) ->
+        unless is_object value
+          inf = {}
+          inf[name] = value
+          inf.argument = arg
+          inf.required = 'object'
+          error.ArgumentType inf
         return
 
       ###

@@ -46,18 +46,18 @@ ksc.factory 'ksc.ListSorter', [
       # @property [function] sorter function with signiture `(a, b) ->` that
       #   should return a number, preferrably -1, 0 and 1
       #   can be an external function or generated off of description object
-      fn: undefined
+      fn: undefined #DOC-ONLY#
 
       # @property [string|Array] key or keys used for sorting (undefined if
       #   external function is used)
-      key: undefined
+      key: undefined #DOC-ONLY#
 
       # @property [Array] reference to array created by {List}
-      list: undefined
+      list: undefined #DOC-ONLY#
 
       # @property [boolean] triggers reverse-ordering
       #   (undefined if external function is used)
-      reverse: undefined
+      reverse: undefined #DOC-ONLY#
 
       ###
       @property [string] sorting type, possible values
@@ -66,7 +66,7 @@ ksc.factory 'ksc.ListSorter', [
         - 'number': number-ordering, falls back to natural for non-numbers
         (undefined if external function is used)
       ###
-      type: undefined
+      type: undefined #DOC-ONLY#
 
 
       ###
@@ -260,13 +260,13 @@ ksc.factory 'ksc.ListSorter', [
       by {List} or {ListMask}
 
       @param [List] list reference to the list (not) to be auto-sorted
-      @param [null|function|object|string|Array] description sort logic
+      @param [undefined|null|function|object|string|Array] sort logic fn or
         description, see: {ListSorter} and {ListSorter#constructor}
 
       @return [undefined]
       ###
       @register: (list, description) ->
-        sorter = null
+        sorter = undefined
 
         if description
           sorter = new ListSorter list, description
@@ -277,10 +277,10 @@ ksc.factory 'ksc.ListSorter', [
         setter = (description) ->
           if description
             sorter = new ListSorter list, description
-            Array::sort.call list, sorter.fn # re-sort
+            list._origFn.sort sorter.fn # re-sort
             list.events.emit 'update', {node: list, action: {sort: true}}
           else
-            sorter = null
+            sorter = undefined
 
         util.defineGetSet list, 'sorter', getter, setter
         util.defineGetSet list.options, 'sorter', getter, setter, 1

@@ -50,64 +50,15 @@ ksc.factory 'ksc.ArrayTracker', [
     ###
     class ArrayTracker
 
-      ###
-      @method #del(index, value)
-        Indicates that element was deleted from a certain index (always the end
-        of the array)
-
-        @param [number] index of deleted element in array
-        @param [mixed] stored value of the element
-
-        @return [false|mixed] If false is returned, store[index] will not be
-          deleted by ArrayTracker so you can keep it or deal with it any other
-          way. Any other return value will be disregarded.
-      ###
-
-      ###
-      @method #get(index, value)
-        Inject getter logic for array elements (see first example in class def)
-
-        @note It is also used for reading values when temporarly turning values
-          into plain values (e.g. for using native sort() ot reverse() methods)
-
-        @param [number] index of element in array
-        @param [mixed] value stored for the element
-
-        @return [mixed] this will be used as element value in the array
-      ###
-
-      ###
-      @method #set(index, value, next, set_type)
-        Inject setter logic or set to/leave as null for default behavior
-        (elements stored as-is). See second example in class def.
-
-        @note It is also used for re-setting values after temporarly turning
-          values into plain values (e.g. for using native sort() ot reverse()
-          methods)
-
-        @param [number] index of element in array
-        @param [mixed] value to be set
-        @param [function] next call when your biz logic is ready. Takes 0 or 1
-          argument. If argument is provided that will be stored as value.
-        @param [string] set_type Any of the following values:
-          - 'external': coming from oustide by updating an element or adding new
-          - 'move': previously processed element moved to new index (after pop,
-            unshift or splice)
-          - 'reload': after temporarly reloading array with processed values,
-            values receive updated indexes (sort and reverse)
-
-        @return [mixed] whetever you define. Return value will not be used
-      ###
-
       # @property [Array] reference to the original array
-      list: undefined
+      list: undefined #DOC-ONLY#
 
       # @property [Object] store for original/overridden properties of the
       #   referenced array (hidden: not enumerable)
-      origFn: undefined
+      origFn: undefined #DOC-ONLY#
 
       # @property [Object] reference to value store object
-      store: undefined
+      store: undefined #DOC-ONLY#
 
 
       ###
@@ -150,16 +101,16 @@ ksc.factory 'ksc.ArrayTracker', [
             unless typeof fn is 'function'
               error.Type {fn, 'Must be a function'}
           else
-            fn = null
+            fn = undefined
           fn
 
         functions = {}
         for key in ['del', 'get', 'set']
-          functions[key] = options[key] or null
+          functions[key] = options[key] or undefined
         for key, fn of functions
           functions[key] = fnize fn
           do (key) ->
-            define_get_set tracker, key, (-> functions[key] or null),
+            define_get_set tracker, key, (-> functions[key] or undefined),
                            ((fn) -> functions[key] = fnize fn), 1
 
         for key, fn of ArrayTracker when key.substr(0, 1) is '_'
@@ -170,6 +121,55 @@ ksc.factory 'ksc.ArrayTracker', [
               ArrayTracker['_' + key].apply tracker, args
 
         process tracker
+
+      ###
+      Indicates that element was deleted from a certain index (always the end
+      of the array)
+
+      @param [number] index of deleted element in array
+      @param [mixed] stored value of the element
+
+      @return [false|mixed] If false is returned, store[index] will not be
+        deleted by ArrayTracker so you can keep it or deal with it any other
+        way. Any other return value will be disregarded.
+      ###
+      del: (index, value) -> #DOC-ONLY#
+
+      ###
+      Inject getter logic for array elements (see first example in class def)
+
+      @note It is also used for reading values when temporarly turning values
+        into plain values (e.g. for using native sort() ot reverse() methods)
+
+      @param [number] index of element in array
+      @param [mixed] value stored for the element
+
+      @return [mixed] this will be used as element value in the array
+      ###
+      get: (index, value) -> #DOC-ONLY#
+
+      ###
+      Inject setter logic or set to/leave as null for default behavior
+      (elements stored as-is). See second example in class def.
+
+      @note It is also used for re-setting values after temporarly turning
+        values into plain values (e.g. for using native sort() ot reverse()
+        methods)
+
+      @param [number] index of element in array
+      @param [mixed] value to be set
+      @param [function] next call when your biz logic is ready. Takes 0 or 1
+        argument. If argument is provided that will be stored as value.
+      @param [string] set_type Any of the following values:
+        - 'external': coming from oustide by updating an element or adding new
+        - 'move': previously processed element moved to new index (after pop,
+          unshift or splice)
+        - 'reload': after temporarly reloading array with processed values,
+          values receive updated indexes (sort and reverse)
+
+      @return [mixed] whetever you define. Return value will not be used
+      ###
+      set: (index, value, next, set_type) -> #DOC-ONLY#
 
       ###
       Detach tracker from array, revert to plain values and restore original
