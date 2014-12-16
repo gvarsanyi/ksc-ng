@@ -43,10 +43,13 @@ describe 'app.factory', ->
 
 
     it 'Constructs a vanilla Array instance', ->
-      list = new RestList
+      list = new RestList 'id'
 
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
+
+    it 'idProperty is required', ->
+      expect(-> new RestList).toThrow()
 
     it 'Method .restGetRaw() with query params', ->
       list = new RestList list_cfg
@@ -108,10 +111,10 @@ describe 'app.factory', ->
       expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
 
     it 'Method .restGetRaw() with query params and callback', ->
-      list = new RestList
+      list = new RestList 'id'
       expect(-> list.restGetRaw()).toThrow() # options.endpoint.url required
 
-      list = new RestList endpoint: url: 1
+      list = new RestList 'id', endpoint: url: 1
       expect(-> list.restGetRaw()).toThrow() # options.endpoint.url to be string
 
       list = new RestList list_cfg

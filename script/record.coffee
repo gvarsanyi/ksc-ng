@@ -16,6 +16,7 @@ ksc.factory 'ksc.Record', [
     _SAVED       = '_saved'
     CONTRACT     = 'contract'
 
+    define_get_set = util.defineGetSet
     define_value   = util.defineValue
     has_own        = util.hasOwn
     is_array       = Array.isArray
@@ -63,6 +64,9 @@ ksc.factory 'ksc.Record', [
 
       # @property [number|string] record id
       _id: undefined
+
+      # @property [number|string] getter/setter for id property
+      _idProperty: undefined
 
       # @property [object] record-related options
       _options: undefined
@@ -128,11 +132,27 @@ ksc.factory 'ksc.Record', [
             for ref in refs
               Object.defineProperty ref, key, enumerable: false
 
-        unless parent_key?
+        id_property = options.idProperty
+        unless parent_key? # top level record (not subrecord)
           define_value record, _ID
           define_value record, _PRIMARY_KEY
           define_value record, _PSEUDO
           define_value record, _EVENTS, new EventEmitter
+
+          # id property getter/setter
+          Record.checkIdProperty id_property
+          id_property_get = ->
+            if id_property?
+              return id_property
+            record[_PARENT]?.idProperty
+          id_property_set = (value) ->
+            Record.checkIdProperty value
+            Record.setId record
+            return
+          define_get_set record, '_idProperty', id_property_get, id_property_set
+          define_get_set options, 'idProperty', id_property_get,
+                         id_property_set, 1
+
           record[_EVENTS].halt()
 
         record._replace data
@@ -390,6 +410,35 @@ ksc.factory 'ksc.Record', [
             false
 
       ###
+      Helper function that matches value against idProperty requirement.
+      Namely, idProperty must be either
+       - a non-empty string, or
+       - a number, or
+       - a non-empty array of non-empty strings and/or numbers
+
+      @param [mixed] id_property idProperty value
+
+      @return [undefined]
+      ###
+      @checkIdProperty: (id_property) ->
+        err = ->
+          error.Value
+            item:        item
+            description: 'idProperty items must be key conform'
+
+        if id_property?
+          if is_array id_property
+            check = id_property
+          else
+            check = [id_property]
+          unless check.length
+            err()
+          for item in check when not is_key_conform item
+            err()
+        return
+
+
+      ###
       Helper function that removes the {Record#_array} property effectively
       changing the Record instance's behavior into that of a regular object's.
 
@@ -433,24 +482,6 @@ ksc.factory 'ksc.Record', [
           source[_PARENT]?._recordChange source, info, old_id
 
         events.emit 'update', info
-
-        return
-
-      ###
-      Helper function that creates a new getter/setter property (if property
-      does not exist yet).
-      The getter and setter will target methods {Record#_getProperty} and
-      {Record#_setProperty} respectively.
-
-      @param [Record] record Reference to record or subrecord object
-      @param [number|string] index
-
-      @return [undefined]
-      ###
-      @getterify: (record, index) ->
-        unless has_own record, index
-          util.defineGetSet record, index, (-> record._getProperty index),
-                            ((value) -> record._setProperty index, value), 1
         return
 
       ###
@@ -471,16 +502,21 @@ ksc.factory 'ksc.Record', [
         target
 
       ###
-      Helper function that serves up parent list's .options.record.idProperty if
-      set.
+      Helper function that creates a new getter/setter property (if property
+      does not exist yet).
+      The getter and setter will target methods {Record#_getProperty} and
+      {Record#_setProperty} respectively.
 
-      @param [Record] record Reference to record object
+      @param [Record] record Reference to record or subrecord object
+      @param [number|string] index
 
-      @return [mixed] idProperty description (if defined: key or array of keys)
+      @return [undefined]
       ###
-      @getIdProperty: (record) ->
-        if record[_PARENT]?._sourceType is 'List'
-          return record[_PARENT].options.record.idProperty
+      @getterify: (record, index) ->
+        unless has_own record, index
+          define_get_set record, index, (-> record._getProperty index),
+                         ((value) -> record._setProperty index, value), 1
+        return
 
       ###
       Define _id for the record
@@ -521,7 +557,7 @@ ksc.factory 'ksc.Record', [
                 mismatch: 'idProperty value must exist (not nullable)'
           return
 
-        if (id_property = Record.getIdProperty record)?
+        if (id_property = record._idProperty)?
           if is_array id_property
             composite = []
             for part, i in id_property

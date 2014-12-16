@@ -36,18 +36,34 @@ ksc.factory 'ksc.RestList', [
 
     Options that may be used by methods of ksc.List
     - .options.record.class (class reference for record objects)
-    - .options.record.idProperty (property/properties that define record ID)
+    - .idProperty (property/properties that define record ID)
 
     @author Greg Varsanyi
     ###
     class RestList extends List
       # @property [object] load promise used if .options.cache is set
-      restCache: null
+      restCache: undefined
 
       ###
       @property [number] The number of REST requests pending
       ###
       restPending: 0
+
+
+      ###
+      A proxy constructor, see {List#constructor} for all logic.
+
+      Checks if .idProperty is set (required for RestList)
+
+      @throw [MissingArgumentError] if idProperty is not set
+
+      @return [Array] native arrray decorated with List and RestList properties
+      ###
+      constructor: ->
+        list = super
+        unless list.idProperty?
+          error.MissingArgument required: 'idProperty is mandatory for RestList'
+        return list
 
       ###
       Query list endpoint for raw data
@@ -104,7 +120,7 @@ ksc.factory 'ksc.RestList', [
       - .options.endpoint.responseProperty (array of records in list response)
       - .options.endpoint.url (url for endpoint)
       - .options.record.class (class reference for record objects)
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @param [boolean] force_load (optional) Request disregarding cache
       @param [Object] query_parameters (optional) Query string arguments
@@ -168,10 +184,10 @@ ksc.factory 'ksc.RestList', [
       Options that may be used:
       - .options.endpoint.url (url for endpoint)
       - .options.endpoint.bulkSave = true/'PUT' or 'POST'
-      - .options.record.idProperty (property/properties that define record ID)
       - .options.record.endpoint.url (url for endpoint with ID)
       - .options.reloadOnUpdate (force reload on save instead of picking up
         response of POST or PUT request)
+      - .idProperty (property/properties that define record ID)
 
       @param [Record/number] records... 1 or more records or ID's to save
       @param [function] callback (optional) Callback function with signiture:
@@ -210,8 +226,8 @@ ksc.factory 'ksc.RestList', [
       Options that may be used:
       - .options.endpoint.url (url for endpoint)
       - .options.endpoint.bulkDelete
-      - .options.record.idProperty (property/properties that define record ID)
       - .options.record.endpoint.url (url for endpoint with ID)
+      - .idProperty (property/properties that define record ID)
 
       @param [Record/number] records... 1 or more records or ID's to delete
       @param [function] callback (optional) Callback function with signiture:
@@ -311,7 +327,7 @@ ksc.factory 'ksc.RestList', [
         for record, i in records
           if (primary_id = record[PRIMARY_ID])? or list.options.reloadOnUpdate
             query_parameters = {}
-            key = list.options.record.idProperty
+            key = list.idProperty
             if primary_id
               query_parameters[key[0]] = primary_id
             else

@@ -276,3 +276,16 @@ describe 'app.factory', ->
       expect(-> record._delete('b')).toThrow()
       expect(-> record._delete('c', 'd')).toThrow()
       expect(-> record._delete()).toThrow()
+
+    it 'Method Record.checkIdProperty()', ->
+      expect(-> Record.checkIdProperty()).not.toThrow()
+      expect(-> Record.checkIdProperty null).not.toThrow()
+      expect(-> Record.checkIdProperty undefined).not.toThrow()
+      expect(-> Record.checkIdProperty false).toThrow()
+      expect(-> Record.checkIdProperty true).toThrow()
+      expect(-> Record.checkIdProperty []).toThrow()
+      expect(-> Record.checkIdProperty {0: 'a', 1: 'b'}).toThrow()
+      expect(-> Record.checkIdProperty 0).not.toThrow()
+      expect(-> Record.checkIdProperty [0, 1]).not.toThrow()
+      expect(-> Record.checkIdProperty 'aa').not.toThrow()
+#

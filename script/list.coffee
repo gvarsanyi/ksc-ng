@@ -73,7 +73,7 @@ ksc.factory 'ksc.List', [
 
     Options that may be used:
     - .options.record.class (class reference for record objects)
-    - .options.record.idProperty (property/properties that define record ID)
+    - .idProperty (property/properties that define record ID)
 
     @author Greg Varsanyi
     ###
@@ -87,6 +87,9 @@ ksc.factory 'ksc.List', [
 
       # @property [EventEmitter] reference to related event-emitter instance
       events: undefined
+
+      # @property [Array|number|string] idProperty for list maps (getter)
+      idProperty: undefined
 
       # @property [object] hash map of records (keys being record ._id values)
       map: undefined
@@ -109,23 +112,25 @@ ksc.factory 'ksc.List', [
       @param [Array] initial_set (optional) initial set of elements
       @param [Object] options (optional) configuration data for this list
       @param [number|string] id_property (optional) id_property for records of
-        this list (will be copied to .options.record.idProperty)
+        this list (will be copied to .idProperty getter)
       @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
         '$destroy' event
+
+      @throw [ArgumentTypeError] Ambiguous argument(s)
 
       @return [Array] returns plain [] with extra methods and some overrides
       ###
       constructor: (_initial_set, _options, _id_property, _scope) ->
         list = []
 
-        initial_set = options = id_property = scope = null
+        initial_set = options = id_property = scope = undefined
         for i, argument of arguments
           if Array.isArray argument
             if initial_set
               argument_type_error
                 argument:    argument
                 number:      i
-                description: 'Ambigous: can only take 1 array'
+                description: 'Ambiguous: can only take 1 array'
             initial_set = argument
           else if is_object argument
             if $rootScope.isPrototypeOf argument
@@ -133,21 +138,21 @@ ksc.factory 'ksc.List', [
                 argument_type_error
                   argument:    argument
                   number:      i
-                  description: 'Ambigous: can only take 1 scope'
+                  description: 'Ambiguous: can only take 1 scope'
               scope = argument
             else
               if options
                 argument_type_error
                   argument:    argument
                   number:      i
-                  description: 'Ambigous: can only take 1 object for options'
+                  description: 'Ambiguous: can only take 1 object for options'
               options = argument
           else if util.isKeyConform argument
             if id_property?
               argument_type_error
                 argument:    argument
                 number:      i
-                description: 'Ambigous: can only take 1 id_property'
+                description: 'Ambiguous: can only take 1 id_property'
             id_property = argument
           else
             argument_type_error
@@ -169,15 +174,20 @@ ksc.factory 'ksc.List', [
         define_value list, 'options', options
         options.record ?= {}
 
-        if id_property?
-          options.record.idProperty = id_property
+        # id property getter
+        Record.checkIdProperty (id_property ?= options.record.idProperty)
+        id_property_set = ->
+          error.Permission description: 'idProperty can not be changed run-time'
+        util.defineGetSet list, 'idProperty', (-> id_property), id_property_set
+        util.defineGetSet options.record, 'idProperty', (-> id_property),
+                          id_property_set, 1
 
         define_value list, '_sourceType', 'List'
 
         define_value list, 'events', new EventEmitter
 
         # sets @_mapper, @map and @pseudo
-        if options.record.idProperty
+        if id_property?
           ListMapper.register list
 
         if scope
@@ -214,9 +224,6 @@ ksc.factory 'ksc.List', [
 
         util.empty list
 
-        for key of list when key isnt 'destroy'
-          delete list[key]
-
         delete list.options
         delete list._sourceUnsubscriber
 
@@ -227,7 +234,7 @@ ksc.factory 'ksc.List', [
       Cut 1 or more records from the list
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @param [Record] records... Record(s) or record ID(s) to be removed
 
@@ -260,10 +267,9 @@ ksc.factory 'ksc.List', [
             cut.push record
           else # id (maybe old_id) passed
             id = record
-            if mapper
-              unless record = mapper.has id
-                error.Key {id, description: 'map id error'}
-              mapper.del id
+            unless record = mapper.has id
+              error.Key {id, description: 'map id error'}
+            mapper.del id
             if record._id isnt id
               cut.push id
             else
@@ -290,7 +296,7 @@ ksc.factory 'ksc.List', [
       Empty list
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes (see: {List#cut})
 
@@ -319,7 +325,7 @@ ksc.factory 'ksc.List', [
       Remove the last element
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes (see: {List#cut})
 
@@ -340,7 +346,7 @@ ksc.factory 'ksc.List', [
       {ListSorter} and {ListSorter#position}
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -379,7 +385,7 @@ ksc.factory 'ksc.List', [
       Remove the first element
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes (see: {List#cut})
 
@@ -399,7 +405,7 @@ ksc.factory 'ksc.List', [
       {ListSorter} and {ListSorter#position}
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -445,7 +451,7 @@ ksc.factory 'ksc.List', [
       {ListSorter} and {ListSorter#position}
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @throw [ArgumentTypeError] pos or count does not meet requirements
       @throw [TypeError] non-object element pushed
@@ -708,7 +714,7 @@ ksc.factory 'ksc.List', [
       Aggregate method for push/unshift
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       If list is auto-sorted, new elements will be added to their appropriate
       sorted position (i.e. not necessarily to the first/last position), see:
@@ -750,6 +756,11 @@ ksc.factory 'ksc.List', [
               define_value item, '_parent', list # mark this record as parent
             else
               item = new record_class item, record_opts, list
+            if item._idProperty isnt list.idProperty
+              error.Value
+                'list.idProperty':    list.idProperty
+                'record._idProperty': record._idProperty
+                description: 'record._idProperty conflicts with list.idProperty'
             Record.setId item
 
             if item._id?
@@ -789,7 +800,7 @@ ksc.factory 'ksc.List', [
       Aggregate method for pop/shift
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @param [Array] list Array generated by {List}
       @param [string] orig_fn 'pop' or 'shift'

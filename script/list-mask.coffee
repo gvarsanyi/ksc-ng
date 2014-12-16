@@ -257,38 +257,38 @@ ksc.factory 'ksc.ListMask', [
       @property [ListMapper] helper object that handles references to records
         by their unique IDs (._id) or pseudo IDs (._pseudo)
       ###
-      _mapper: null
+      _mapper: undefined
 
       # @property [EventEmitter] reference to related event-emitter instance
-      events: null
+      events: undefined
 
       ###
       @property [function] function with signiture `(record) ->` and boolean
         return value indicating if record should be in the filtered list
       ###
-      filter: null
+      filter: undefined
 
       # @property [object] hash map of records (keys being record ._id values)
-      map: null
+      map: undefined
 
       # @property [object] filtered list related options
-      options: null
+      options: undefined
 
       # @property [object] hash map of records without ._id keys
-      pseudo: null
+      pseudo: undefined
 
       # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
-      sorter: null
+      sorter: undefined
 
       # @property [object] reference to parent list
-      source: null
+      source: undefined
 
       ###
       @property [function] function with signiture `(record) ->` that returns
         an Array of overrides to split records or anything else to indicate no
         splitting of record
       ###
-      splitter: null
+      splitter: undefined
 
 
       ###
@@ -331,7 +331,7 @@ ksc.factory 'ksc.ListMask', [
 
           source_count += 1
 
-          define_value source, source_name, source_list
+          define_value source, source_name, source_list, 0, 1
         Object.freeze source
 
         if source._
@@ -383,9 +383,8 @@ ksc.factory 'ksc.ListMask', [
         register_splitter list
 
         # sets @_mapper, @map and @pseudo
-        if source.options.record.idProperty
-          ListMapper.register list
-          sources = list._mapper._sources
+        ListMapper.register list
+        sources = list._mapper._sources
 
         if scope
           define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
@@ -421,10 +420,10 @@ ksc.factory 'ksc.ListMask', [
 
         # add initial set of data
         for source_info in sources
-          for record in source_info.source
-            if list.filter record
-              list._mapper?.add record, source_info.names
-              add_to_list list, record
+          for record in source_info.source when list.filter record
+            if record._parent.idProperty?
+              list._mapper.add record, source_info.names
+            add_to_list list, record
 
         return list
 
@@ -451,14 +450,19 @@ ksc.factory 'ksc.ListMask', [
         for source_info in mapper._sources
           source_names = source_info.names
           for record in source_info.source
-            is_on = mapper.has record, null, source_names
+            if mapped = record._parent.idProperty
+              is_on = mapper.has record, null, source_names
+            else
+              is_on = record in list
             if list.filter record
               unless is_on
-                mapper.add record, source_names
+                if mapped
+                  mapper.add record, source_names
                 add_to_list list, record
                 (action.add ?= []).push record
             else if is_on
-              mapper.del record, null, source_names
+              if mapped
+                mapper.del record, null, source_names
               (action.cut ?= []).push record
 
         if action.cut
@@ -499,21 +503,32 @@ ksc.factory 'ksc.ListMask', [
         add_action = (name, info) ->
           ((action ?= {})[name] ?= []).push info
 
+        is_on = (map_id, pseudo_id, record) ->
+          if record._parent.idProperty
+            return [1, mapper.has map_id, pseudo_id, source_names]
+          else
+            return [0, record in list]
+
         cutter = (map_id, pseudo_id, record) ->
-          if mapper.has map_id, pseudo_id, source_names
+          [mapped, was_on] = is_on map_id, pseudo_id, record
+          if was_on
             add_action 'cut', record
             cut.push record
-            mapper.del map_id, pseudo_id, source_names
+            if mapped
+              mapper.del map_id, pseudo_id, source_names
+          return
 
         find_and_add = (map_id, pseudo_id, record) ->
-          unless is_on = mapper.has map_id, pseudo_id, source_names
+          [mapped, was_on] = is_on map_id, pseudo_id, record
+          if mapped and not was_on
             mapper.add record, source_names
-          is_on
+          was_on
 
         delete_if_on = (map_id, pseudo_id) ->
-          if is_on = mapper.has map_id, pseudo_id, source_names
+          [mapped, was_on] = is_on map_id, pseudo_id, record
+          if mapped and was_on
             mapper.del map_id, pseudo_id, source_names
-          is_on
+          was_on
 
         if incoming.cut
           for record in incoming.cut

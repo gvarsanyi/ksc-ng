@@ -152,7 +152,7 @@ ksc.factory 'ksc.EditableRecord', [
             error.ContractBreak {key, value, contract: contract[key]}
 
           # prevent idProperty key from getting deleted
-          if (id_property = Record.getIdProperty record) is key or
+          if (id_property = record._idProperty) is key or
           (is_array(id_property) and key in id_property)
             error.Permission
               key:         key
@@ -328,7 +328,7 @@ ksc.factory 'ksc.EditableRecord', [
         Record.valueCheck record, key, value
 
         # idProperty values must be string, number or null
-        if (id_property = Record.getIdProperty record) is key or
+        if (id_property = record._idProperty) is key or
         (is_array(id_property) and key in id_property)
           unless value is null or typeof value in ['string', 'number']
             error.Value {value, required: 'string or number or null'}

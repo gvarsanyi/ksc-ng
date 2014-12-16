@@ -56,7 +56,6 @@ describe 'app.factory', ->
 
         expect(-> new List [{a: 1}, {a: 1}], scope, scope2).toThrow()
 
-
     it 'Extensible as class', ->
       class X extends List
         a: 'a'
@@ -480,3 +479,30 @@ describe 'app.factory', ->
       expect(list1[0]).toBeUndefined()
       expect(list2.length).toBe 1
       expect(list2[0]).toBe record
+
+    describe 'idProperty', ->
+      it 'Record has mismatching idProperty value', ->
+        record = new EditableRecord {a: 1}, {idProperty: 'a'}
+        expect(-> new List 'id', [record]).toThrow()
+
+      it 'Changing idProperty of record to mismatching', ->
+        list = new List 'id', [{id: 1, a: 2}]
+        expect(-> record._idProperty = 'a').toThrow()
+
+      it 'Throw error if record has contract-conflict for idProperty type', ->
+        contract = {id: {type: 'boolean', a: {type: 'number'}}}
+        expect(-> new List 'id', [{a: 1}], {record: {contract}}).toThrow()
+
+      it 'Throw error for setting idProperty in runtime', ->
+        list = new List 'id', [{id: 1}]
+        expect(-> list.idProperty = 'x').toThrow()
+
+    describe 'No map/pseudo (no idProperty) behavior', ->
+
+      it '.cut()', ->
+        list = new List [{a: 1}, {a: 2}, {a: 3}]
+        list.cut list[1]
+        expect(list.length).toBe 2
+        expect(list[0].a).toBe 1
+        expect(list[1].a).toBe 3
+
