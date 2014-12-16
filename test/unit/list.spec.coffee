@@ -15,12 +15,48 @@ describe 'app.factory', ->
         util           = $injector.get 'ksc.util'
 
     it 'Constructs a vanilla Array instance', ->
-      list = new List
+      list = new List record: idProperty: 'a'
 
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
 
-    it 'Extendible as class', ->
+      a = [{a: 1}, {a: 2}, {a: 3}]
+      list.push {a: 1}, {a: 2}, {a: 3}
+      for key, value of a
+        expect(list[key]._clone 1).toEqual value
+      for key, value of list
+        expect(value?._clone?(1) or value).toEqual a[key]
+      return
+
+    describe 'Constructor argument variations', ->
+
+      it 'options and id_property', ->
+        list = new List {record: {idProperty: 'x'}}
+        expect(list.options.record.idProperty).toBe 'x'
+
+        list = new List 'x'
+        expect(list.options.record.idProperty).toBe 'x'
+
+        expect(-> new List 'x', {record: {idProperty: 'x'}}).toThrow()
+        expect(-> new List {}, {}).toThrow()
+        expect(-> new List 'x', 'x').toThrow()
+
+      it 'initial set', ->
+        list = new List [{a: 1}, {a: 2}], 'a'
+        expect(list.length).toBe 2
+        expect(list[0].a).toBe 1
+        expect(list.map[2].a).toBe 2
+        expect(-> new List [{a: 1}, {a: 1}], []).toThrow()
+
+      it '$scope', ->
+        scope = $rootScope.$new()
+        scope2 = $rootScope.$new()
+        list = new List [{a: 1}], scope, 'a'
+        expect(typeof list._scopeUnsubscriber).toBe 'function'
+
+        expect(-> new List [{a: 1}, {a: 1}], scope, scope2).toThrow()
+
+    it 'Extensible as class', ->
       class X extends List
         a: 'a'
 
@@ -44,7 +80,7 @@ describe 'app.factory', ->
       expect(-> list.push 'x').toThrow()
 
     it 'Add/remove (push, unshift, pop, shift, length)', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
       len = list.unshift {id: 3, x: 'c'}, {id: 4, x: 'd'}
 
@@ -61,7 +97,7 @@ describe 'app.factory', ->
       expect(list.pop()).toBeUndefined()
 
     it 'Methods push/unshift on sorted list (insert to sorted position)', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 8}, {id: 2}, {id: 5}
       list.sorter = 'id'
       expect(list[0].id).toBe 2
@@ -84,7 +120,7 @@ describe 'app.factory', ->
       expect(list[6].id).toBe 8
 
     it 'Record updates effect sort order in sorted lists', ->
-      list = new List sorter: 'a'
+      list = new List {record: {idProperty: 'id'}, sorter: 'a'}
       list.push {id: 1, a: 'a'}, {id: 2, a: 'f'}, {id: 3, a: 'z'}
       expect(list.map[3]).toBe list[2]
       list.map[3].a = 'b'
@@ -115,7 +151,7 @@ describe 'app.factory', ->
     describe 'Method .sort()', ->
 
       it 'default sort', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 2, x: 'c'}, {id: 1, x: 'b'}, {id: null, x: 'a'},
                   {id: null, x: 'd'}
         list.sort()
@@ -124,7 +160,7 @@ describe 'app.factory', ->
         expect(list[2].x).toBe 'b'
         expect(list[3].x).toBe 'c'
 
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: null, x: 'c'}, {id: 1, x: 'b'}, {id: null, x: 'a'},
                   {id: null, x: 'd'}, {id: 2, x: 'b'}, {id: null, x: 'c'}
         list.sort()
@@ -133,7 +169,7 @@ describe 'app.factory', ->
         expect(list[4].id).toBe 1
 
       it 'sort by a function', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 2, x: 'c'}, {id: 1, x: 'b'}, {id: null, x: 'a'},
                   {id: null, x: 'd'}
         list.sort (a, b) ->
@@ -146,12 +182,12 @@ describe 'app.factory', ->
         expect(list[3].x).toBe 'd'
 
       it 'Can not resort auto-sorted list', ->
-        list = new List sorter: 'id'
+        list = new List {record: {idProperty: 'id'}, sorter: 'id'}
         list.push {id: 2, x: 'c'}, {id: 1, x: 'b'}
         expect(-> list.sort()).toThrow()
 
       it 'Does not emit event if nothing changed', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         called = null
         list.events.on 'update', (info) ->
           called = info.action
@@ -174,7 +210,7 @@ describe 'app.factory', ->
         expect(called.sort).toBe true
 
     it 'Upsert', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
 
       len = list.unshift {id: 1, x: 'x'}
@@ -195,7 +231,7 @@ describe 'app.factory', ->
       record1 = new Record {id: 2, x: 'x'}
       record2 = new EditableRecord {id: 4, x: 'y'}
 
-      list = new List {record: {class: EditableRecord}}
+      list = new List {record: {idProperty: 'id', class: EditableRecord}}
       res = list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                       record1, record2, true
 
@@ -230,7 +266,7 @@ describe 'app.factory', ->
       expect(called).toBe true
 
     it 'Method .splice()', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 0}, {id: 10}, {id: 20}
       action = null
       list.events.on 'update', (info) ->
@@ -254,7 +290,7 @@ describe 'app.factory', ->
     describe 'Method .splice() edge cases', ->
 
       it 'on sorted list', ->
-        list = new List sorter: 'id'
+        list = new List {record: {idProperty: 'id'}, sorter: 'id'}
         list.push {id: 10}, {id: 0}, {id: 20}
         list.splice 1, 1, {id: -2}, {id: 6}
         expect(list[0]._id).toBe -2
@@ -264,7 +300,7 @@ describe 'app.factory', ->
         expect(list.length).toBe 4
 
       it 'upsert', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 0, a: 'a'}, {id: 10, a: 'b'}, {id: 20, a: 'c'}
         res = list.splice 2, 0, {id: 0, a: 'z'}, true
         expect(res.add).toBeUndefined()
@@ -274,7 +310,7 @@ describe 'app.factory', ->
         expect(list[0].a).toBe 'z'
 
       it 'nothing to do', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 0, a: 'a'}, {id: 10, a: 'b'}, {id: 20, a: 'c'}
         res = list.splice 4, true
         expect(res.add).toBeUndefined()
@@ -283,7 +319,7 @@ describe 'app.factory', ->
         expect(list.length).toBe 3
 
       it 'negative pos on empty list', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         action = null
         list.events.on 'update', (info) ->
           action = info.action
@@ -292,7 +328,7 @@ describe 'app.factory', ->
         expect(action.add[0]).toBe list[0]
 
       it 'missing count', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 0}, {id: 10}, {id: 20}
         to_be_cut = list[2]
         action = null
@@ -304,7 +340,7 @@ describe 'app.factory', ->
         expect(action.cut[0]).toBe to_be_cut
 
       it 'error handling', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         expect(-> list.splice NaN).toThrow()
         expect(-> list.splice {}).toThrow()
         expect(-> list.splice true).toThrow()
@@ -318,7 +354,7 @@ describe 'app.factory', ->
         expect(-> list.splice 0, true).not.toThrow()
 
     it 'Method .cut(records...)', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                 {id: 4, x: 'd'}
 
@@ -337,28 +373,28 @@ describe 'app.factory', ->
     describe 'Method .cut(records...) edge cases', ->
 
       it 'Not in the map (id)', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         expect(-> list.cut 2).toThrow()
 
       it 'Not in the map (record)', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         record = new EditableRecord {id: 2}
         expect(-> list.cut record).toThrow()
 
       it 'Not in the map (tempered record._id)', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1}
         util.defineValue list[0], '_id', 11
         expect(-> list.cut list[0]).toThrow()
 
       it 'Not in the pseudo map (tempered record._pseudo)', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1}
         util.defineValue list[0], '_pseudo', 11
         expect(-> list.cut list[0]).toThrow()
 
     it 'Method .empty()', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                 {id: 4, x: 'd'}
       res = list.empty()
@@ -369,7 +405,7 @@ describe 'app.factory', ->
       expect(-> list.empty()).not.toThrow()
 
     it 'Method .empty(true) # returns action object', ->
-      list = new List
+      list = new List record: idProperty: 'id'
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
       rec1 = list[0]
       rec2 = list[1]
@@ -443,3 +479,30 @@ describe 'app.factory', ->
       expect(list1[0]).toBeUndefined()
       expect(list2.length).toBe 1
       expect(list2[0]).toBe record
+
+    describe 'idProperty', ->
+      it 'Record has mismatching idProperty value', ->
+        record = new EditableRecord {a: 1}, {idProperty: 'a'}
+        expect(-> new List 'id', [record]).toThrow()
+
+      it 'Changing idProperty of record to mismatching', ->
+        list = new List 'id', [{id: 1, a: 2}]
+        expect(-> record._idProperty = 'a').toThrow()
+
+      it 'Throw error if record has contract-conflict for idProperty type', ->
+        contract = {id: {type: 'boolean', a: {type: 'number'}}}
+        expect(-> new List 'id', [{a: 1}], {record: {contract}}).toThrow()
+
+      it 'Throw error for setting idProperty in runtime', ->
+        list = new List 'id', [{id: 1}]
+        expect(-> list.idProperty = 'x').toThrow()
+
+    describe 'No map/pseudo (no idProperty) behavior', ->
+
+      it '.cut()', ->
+        list = new List [{a: 1}, {a: 2}, {a: 3}]
+        list.cut list[1]
+        expect(list.length).toBe 2
+        expect(list[0].a).toBe 1
+        expect(list[1].a).toBe 3
+

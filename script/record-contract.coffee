@@ -5,8 +5,9 @@ ksc.factory 'ksc.RecordContract', [
 
     NULLABLE = 'nullable'
 
-    has_own   = util.hasOwn
-    is_object = util.isObject
+    has_own      = util.hasOwn
+    is_object    = util.isObject
+    define_value = util.defineValue
 
 
     ###
@@ -180,7 +181,8 @@ ksc.factory 'ksc.RecordContract', [
         if record._options.contract and Object.isExtensible record
           # workaround for angular object tracker attachment problem
           unless has_own record, '$$hashKey'
-            util.defineValue record, '$$hashKey', undefined, 1
+            define_value record, '$$hashKey', undefined, 1
+
           Object.preventExtensions record
         return
 

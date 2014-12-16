@@ -14,7 +14,7 @@ describe 'app.factory', ->
     describe 'Events', ->
 
       it 'Method .push()', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         distributed = null
@@ -31,7 +31,7 @@ describe 'app.factory', ->
         expect(distributed.action.update[0].source).toEqual {id: 2, x: 'c'}
 
       it 'Method .unshift()', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         distributed = null
@@ -48,7 +48,7 @@ describe 'app.factory', ->
         expect(distributed.action.update[0].source).toEqual {id: 2, x: 'c'}
 
       it 'Method .pop()', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         distributed = null
@@ -62,7 +62,7 @@ describe 'app.factory', ->
         expect(distributed.action.cut[0].x).toBe 'b'
 
       it 'Method .shift()', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         distributed = null
@@ -76,7 +76,7 @@ describe 'app.factory', ->
         expect(distributed.action.cut[0].x).toBe 'a'
 
       it 'Method .empty()', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         distributed = null
@@ -91,7 +91,7 @@ describe 'app.factory', ->
         expect(distributed.action.cut[1].x).toBe 'b'
 
       it 'Method .cut()', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         distributed = null
@@ -106,7 +106,7 @@ describe 'app.factory', ->
         expect(distributed.action.cut[1].x).toBe 'a'
 
       it 'On record change', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         response = null
@@ -120,7 +120,7 @@ describe 'app.factory', ->
         expect(response.action.update[0].info.key).toBe 'x'
 
       it 'On record change (with ._id update)', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         response = null
@@ -141,7 +141,7 @@ describe 'app.factory', ->
         expect(list.map[3]).toBe list[1]
 
       it 'On record change (with ._id update triggered merge)', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         record = list[0]
@@ -166,7 +166,7 @@ describe 'app.factory', ->
         expect(list[0].x).toBe 'b'
 
       it 'On record change / error handling', ->
-        list = new List
+        list = new List record: idProperty: 'id'
         list.push {id: 1, a: 1}
 
         expect(-> list._recordChange {}).toThrow() # expects Record instance

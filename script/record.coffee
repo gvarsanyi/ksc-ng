@@ -5,17 +5,18 @@ ksc.factory 'ksc.Record', [
   (ArrayTracker, EventEmitter, RecordContract, error,
    util) ->
 
-    _ARRAY      = '_array'
-    _EVENTS     = '_events'
-    _ID         = '_id'
-    _OPTIONS    = '_options'
-    _PARENT     = '_parent'
-    _PARENT_KEY = '_parentKey'
-    _PSEUDO     = '_pseudo'
-    _SAVED      = '_saved'
-    CONTRACT    = 'contract'
-    ID_PROPERTY = 'idProperty'
+    _ARRAY       = '_array'
+    _EVENTS      = '_events'
+    _ID          = '_id'
+    _OPTIONS     = '_options'
+    _PARENT      = '_parent'
+    _PARENT_KEY  = '_parentKey'
+    _PRIMARY_KEY = '_primaryId'
+    _PSEUDO      = '_pseudo'
+    _SAVED       = '_saved'
+    CONTRACT     = 'contract'
 
+    define_get_set = util.defineGetSet
     define_value   = util.defineValue
     has_own        = util.hasOwn
     is_array       = Array.isArray
@@ -49,7 +50,6 @@ ksc.factory 'ksc.Record', [
 
     Options that may be used
     - .options.contract
-    - .options.idProperty
     - .options.subtreeClass
 
     @author Greg Varsanyi
@@ -64,6 +64,9 @@ ksc.factory 'ksc.Record', [
 
       # @property [number|string] record id
       _id: undefined
+
+      # @property [number|string] getter/setter for id property
+      _idProperty: undefined
 
       # @property [object] record-related options
       _options: undefined
@@ -112,14 +115,15 @@ ksc.factory 'ksc.Record', [
         if has_own options, CONTRACT
           contract = options[CONTRACT] = new RecordContract options[CONTRACT]
 
+        define_value record, _PARENT, parent
         if parent? or parent_key?
           object_required 'options', parent, 3
-          define_value record, _PARENT, parent
 
           if parent_key?
             is_key_conform parent_key, 1, 4
             define_value record, _PARENT_KEY, parent_key
             delete record[_ID]
+            delete record[_PRIMARY_KEY]
             delete record[_PSEUDO]
 
         # hide (set to non-enumerable) non-data properties/methods
@@ -128,10 +132,27 @@ ksc.factory 'ksc.Record', [
             for ref in refs
               Object.defineProperty ref, key, enumerable: false
 
-        unless parent_key?
-          define_value record, _ID, undefined
-          define_value record, _PSEUDO, undefined
+        id_property = options.idProperty
+        unless parent_key? # top level record (not subrecord)
+          define_value record, _ID
+          define_value record, _PRIMARY_KEY
+          define_value record, _PSEUDO
           define_value record, _EVENTS, new EventEmitter
+
+          # id property getter/setter
+          Record.checkIdProperty id_property
+          id_property_get = ->
+            if id_property?
+              return id_property
+            record[_PARENT]?.idProperty
+          id_property_set = (value) ->
+            Record.checkIdProperty value
+            Record.setId record
+            return
+          define_get_set record, '_idProperty', id_property_get, id_property_set
+          define_get_set options, 'idProperty', id_property_get,
+                         id_property_set, 1
+
           record[_EVENTS].halt()
 
         record._replace data
@@ -147,20 +168,38 @@ ksc.factory 'ksc.Record', [
       Clone record or contents
 
       @param [boolean] return_plain_object (optional) return a vanilla js Object
+      @param [boolean] exclude_static (optional) avoid cloning non-getters
+        (statically assigned in runtime without using {Record#_setProperty)
 
       @return [Object|Record] the new instance with identical data
       ###
-      _clone: (return_plain_object=false) ->
-        clone = {}
+      _clone: (return_plain_object, exclude_static) ->
         record = @
-        for key, value of record
-          if is_object value
-            value = value._clone 1
-          clone[key] = value
-        if return_plain_object
-          return clone
 
-        new record.constructor clone
+        clone = {}
+        if return_plain_object
+          for key, value of record[_SAVED]
+            if value?._clone
+              value = value._clone 1, exclude_static
+            clone[key] = value
+        else
+          statics = {}
+          for key, value of record[_SAVED]
+            if value?._clone
+              unless exclude_static
+                statics[key] = Record.getAllStatic value
+              value = value._clone 0, 1, 1
+            clone[key] = value
+          clone = new (record.constructor) clone
+          for key, value of statics
+            for key2, value2 of value
+              clone[key][key2] = value2
+
+        unless exclude_static
+          Record.getAllStatic record, clone
+
+        clone
+
 
       ###
       Placeholder method, throws error on read-only Record. See
@@ -208,11 +247,6 @@ ksc.factory 'ksc.Record', [
       ###
       (Re)define the initial data set
 
-      @note Will try and create an ._options.idProperty if it is missing off of
-        the first key in the dictionary, so that it can be used as ._id
-      @note Will set ._options.idProperty value of the data set to null if it is
-        not defined
-
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
 
@@ -238,8 +272,6 @@ ksc.factory 'ksc.Record', [
           error.Permission
             key:         record[_PARENT_KEY]
             description: 'can not replace subobject'
-
-        Record.initIdProperty record, data
 
         replacing = true
 
@@ -378,6 +410,35 @@ ksc.factory 'ksc.Record', [
             false
 
       ###
+      Helper function that matches value against idProperty requirement.
+      Namely, idProperty must be either
+       - a non-empty string, or
+       - a number, or
+       - a non-empty array of non-empty strings and/or numbers
+
+      @param [mixed] id_property idProperty value
+
+      @return [undefined]
+      ###
+      @checkIdProperty: (id_property) ->
+        err = ->
+          error.Value
+            item:        item
+            description: 'idProperty items must be key conform'
+
+        if id_property?
+          if is_array id_property
+            check = id_property
+          else
+            check = [id_property]
+          unless check.length
+            err()
+          for item in check when not is_key_conform item
+            err()
+        return
+
+
+      ###
       Helper function that removes the {Record#_array} property effectively
       changing the Record instance's behavior into that of a regular object's.
 
@@ -418,11 +479,27 @@ ksc.factory 'ksc.Record', [
         Record.setId source
 
         unless source[_EVENTS]._halt
-          source[_PARENT]?._recordChange? source, info, old_id
+          source[_PARENT]?._recordChange source, info, old_id
 
         events.emit 'update', info
-
         return
+
+      ###
+      Helper method that gets all static properties (not getter/setter
+      properties, e.g. the ones that were NOT assigned by {Record#_setProperty})
+
+      Uses the provided object as clone target or creates a new one.
+
+      @param [Record] record Reference to record object
+      @param [object] target (optional) Reference to property copy target
+
+      @return [object] copied static properties
+      ###
+      @getAllStatic: (record, target={}) ->
+        for key, value of record
+          if has_own Object.getOwnPropertyDescriptor(record, key), 'value'
+            target[key] = value
+        target
 
       ###
       Helper function that creates a new getter/setter property (if property
@@ -437,58 +514,23 @@ ksc.factory 'ksc.Record', [
       ###
       @getterify: (record, index) ->
         unless has_own record, index
-          util.defineGetSet record, index, (-> record._getProperty index),
-                            ((value) -> record._setProperty index, value), 1
-        return
-
-      ###
-      Helper function to initiate ID property ({Record#_idProperty}) on a
-      top-level record if {Record#_idProperty} is not yet defined.
-
-      @param [Record] record Reference to Record object
-      @param [object] data key-value object to init Record with
-
-      @return [undefined]
-      ###
-      @initIdProperty: (record, data) ->
-        options  = record[_OPTIONS]
-        contract = options[CONTRACT]
-
-        unless options[ID_PROPERTY]? # assign first as ID
-          for key of data
-            options[ID_PROPERTY] = key
-            break
-
-        id_property_contract_check = (key) ->
-          if contract
-            unless contract[key]?
-              error.ContractBreak {key, contract, mismatch: 'idProperty'}
-            unless contract[key].type in ['string', 'number']
-              error.ContractBreak {key, contract, required: 'string or number'}
-
-        if record[_EVENTS] # a top-level node of record (create _id on top only)
-          if id_property = options[ID_PROPERTY]
-            if is_array id_property
-              for part in id_property
-                id_property_contract_check part
-                data[part] ?= null
-            else
-              id_property_contract_check id_property
-              data[id_property] ?= null
+          define_get_set record, index, (-> record._getProperty index),
+                         ((value) -> record._setProperty index, value), 1
         return
 
       ###
       Define _id for the record
 
       Composite IDs will be used and ._primaryId will be created if
-      .options.idProperty is an Array. The composite is c
+      idProperty is an Array. The composite is c
       - Parts are stringified and joined by '-'
       - If a part is empty (e.g. '' or null), the part will be skipped in ._id
       - If primary part of composite ID is null, the whole ._id is going to
         be null (becomes a pseudo/new record)
       @example
-        record = new EditableRecord {id: 1, otherId: 2, name: 'x'},
-                                    {idProperty: ['id', 'otherId', 'name']}
+        list = new List {record: {idProperty: ['id', 'otherId', 'name']}}
+        record = new EditableRecord {id: 1, otherId: 2, name: 'x'}
+        list.push record
         console.log record._id, record._primaryId # '1-2-x', 1
 
         record.otherId = null
@@ -502,20 +544,39 @@ ksc.factory 'ksc.Record', [
       @return [undefined]
       ###
       @setId: (record) ->
-        if id_property = record[_OPTIONS][ID_PROPERTY]
+        id_property_check = (key) ->
+          if contract = record[_OPTIONS][CONTRACT]
+            unless contract[key]?
+              error.ContractBreak {key, contract, mismatch: 'idProperty'}
+            unless contract[key].type in ['string', 'number']
+              error.ContractBreak {key, contract, required: 'string or number'}
+            unless record[key]?
+              error.ContractBreak
+                key:      key
+                value:    record[key]
+                mismatch: 'idProperty value must exist (not nullable)'
+          return
+
+        if (id_property = record._idProperty)?
           if is_array id_property
             composite = []
             for part, i in id_property
-              if is_key_conform record[part]
-                composite.push record[part]
+              id_property_check part
+              if is_key_conform value = record[part]
+                composite.push value
               else unless i # if first part is unset, fall back to null
                 break
-            id = if composite.length then composite.join('-') else null
+
+            primary = record[id_property[0]]
+            id = if composite.length then composite.join '-' else primary
             define_value record, _ID, id
-            define_value record, '_primaryId', record[id_property[0]]
+            define_value record, _PRIMARY_KEY, primary
           else
-            value = record[id_property]
-            define_value record, _ID, if value? then value else null
+            id_property_check id_property
+            define_value record, _ID, record[id_property]
+        else
+          define_value record, _ID
+          define_value record, _PRIMARY_KEY
 
         return
 
@@ -568,7 +629,7 @@ ksc.factory 'ksc.Record', [
         contract = record[_OPTIONS][CONTRACT]
 
         if is_object value
-          if value._clone? # instanceof Record or processed Array
+          if value._clone # instanceof Record or processed Array
             value = value._clone 1
 
           class_ref = record[_OPTIONS].subtreeClass or Record

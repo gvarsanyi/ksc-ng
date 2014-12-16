@@ -73,7 +73,7 @@ ksc.factory 'ksc.List', [
 
     Options that may be used:
     - .options.record.class (class reference for record objects)
-    - .options.record.idProperty (property/properties that define record ID)
+    - .idProperty (property/properties that define record ID)
 
     @author Greg Varsanyi
     ###
@@ -83,22 +83,25 @@ ksc.factory 'ksc.List', [
       @property [ListMapper] helper object that handles references to records
         by their unique IDs (._id) or pseudo IDs (._pseudo)
       ###
-      _mapper: null
+      _mapper: undefined
 
       # @property [EventEmitter] reference to related event-emitter instance
-      events: null
+      events: undefined
+
+      # @property [Array|number|string] idProperty for list maps (getter)
+      idProperty: undefined
 
       # @property [object] hash map of records (keys being record ._id values)
-      map: null
+      map: undefined
 
       # @property [object] hash map of records without ._id keys
-      pseudo: null
+      pseudo: undefined
 
       # @property [object] list-related options
-      options: null
+      options: undefined
 
       # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
-      sorter: null
+      sorter: undefined
 
 
       ###
@@ -106,38 +109,86 @@ ksc.factory 'ksc.List', [
       pop/shift/push/unshift logic to support the special features. Will inherit
       standard Array behavior for .length and others.
 
+      @param [Array] initial_set (optional) initial set of elements
       @param [Object] options (optional) configuration data for this list
+      @param [number|string] id_property (optional) id_property for records of
+        this list (will be copied to .idProperty getter)
       @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
         '$destroy' event
 
+      @throw [ArgumentTypeError] Ambiguous argument(s)
+
       @return [Array] returns plain [] with extra methods and some overrides
       ###
-      constructor: (options={}, scope) ->
+      constructor: (_initial_set, _options, _id_property, _scope) ->
         list = []
 
-        unless util.isObject options
-          argument_type_error {options, argument: 3, required: 'object'}
+        initial_set = options = id_property = scope = undefined
+        for i, argument of arguments
+          if Array.isArray argument
+            if initial_set
+              argument_type_error
+                argument:    argument
+                number:      i
+                description: 'Ambiguous: can only take 1 array'
+            initial_set = argument
+          else if is_object argument
+            if $rootScope.isPrototypeOf argument
+              if scope
+                argument_type_error
+                  argument:    argument
+                  number:      i
+                  description: 'Ambiguous: can only take 1 scope'
+              scope = argument
+            else
+              if options
+                argument_type_error
+                  argument:    argument
+                  number:      i
+                  description: 'Ambiguous: can only take 1 object for options'
+              options = argument
+          else if util.isKeyConform argument
+            if id_property?
+              argument_type_error
+                argument:    argument
+                number:      i
+                description: 'Ambiguous: can only take 1 id_property'
+            id_property = argument
+          else
+            argument_type_error
+              argument:    argument
+              number:      i
+              description: 'Unknown type for a List argument'
 
-        if $rootScope.isPrototypeOf options
-          scope = options
-          options = {}
+        if options?.record?.idProperty? and id_property
+          argument_type_error
+            argument:    id_property
+            options:     options
+            description: 'id_property argument conflicts with ' +
+                         '.options.record.idProperty'
 
-        if scope?
-          unless $rootScope.isPrototypeOf scope
-            argument_type_error {scope, required: '$rootScope descendant'}
+        for key, value of @constructor.prototype when key isnt 'constructor'
+          define_value list, key, value
 
-        for key, value of @constructor.prototype
-          if key.indexOf('constructor') is -1
-            define_value list, key, value, 0, 1
-
-        options = angular.copy options
+        options = angular.copy(options) or {}
         define_value list, 'options', options
-        list.options.record ?= {}
+        options.record ?= {}
 
-        define_value list, 'events', new EventEmitter, 0, 1
+        # id property getter
+        Record.checkIdProperty (id_property ?= options.record.idProperty)
+        id_property_set = ->
+          error.Permission description: 'idProperty can not be changed run-time'
+        util.defineGetSet list, 'idProperty', (-> id_property), id_property_set
+        util.defineGetSet options.record, 'idProperty', (-> id_property),
+                          id_property_set, 1
+
+        define_value list, '_sourceType', 'List'
+
+        define_value list, 'events', new EventEmitter
 
         # sets @_mapper, @map and @pseudo
-        ListMapper.register list
+        if id_property?
+          ListMapper.register list
 
         if scope
           define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
@@ -146,6 +197,9 @@ ksc.factory 'ksc.List', [
 
         # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
+
+        if initial_set
+          list.push initial_set...
 
         return list
 
@@ -170,9 +224,6 @@ ksc.factory 'ksc.List', [
 
         util.empty list
 
-        for key of list when key isnt 'destroy'
-          delete list[key]
-
         delete list.options
         delete list._sourceUnsubscriber
 
@@ -183,7 +234,7 @@ ksc.factory 'ksc.List', [
       Cut 1 or more records from the list
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @param [Record] records... Record(s) or record ID(s) to be removed
 
@@ -209,9 +260,10 @@ ksc.factory 'ksc.List', [
             unless record in list
               error.Value {record, description: 'not found in list'}
 
-            unless mapper.has record
-              error.Key {record, description: 'map/pseudo id error'}
-            mapper.del record
+            if mapper
+              unless mapper.has record
+                error.Key {record, description: 'map/pseudo id error'}
+              mapper.del record
             cut.push record
           else # id (maybe old_id) passed
             id = record
@@ -244,7 +296,7 @@ ksc.factory 'ksc.List', [
       Empty list
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes (see: {List#cut})
 
@@ -273,7 +325,7 @@ ksc.factory 'ksc.List', [
       Remove the last element
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes (see: {List#cut})
 
@@ -294,7 +346,7 @@ ksc.factory 'ksc.List', [
       {ListSorter} and {ListSorter#position}
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -333,7 +385,7 @@ ksc.factory 'ksc.List', [
       Remove the first element
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @event 'update' sends out message if list changes (see: {List#cut})
 
@@ -353,7 +405,7 @@ ksc.factory 'ksc.List', [
       {ListSorter} and {ListSorter#position}
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -399,7 +451,7 @@ ksc.factory 'ksc.List', [
       {ListSorter} and {ListSorter#position}
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @throw [ArgumentTypeError] pos or count does not meet requirements
       @throw [TypeError] non-object element pushed
@@ -593,57 +645,59 @@ ksc.factory 'ksc.List', [
         unless record instanceof Record
           error.Type {record, required: 'Record'}
 
-        list   = @
-        map    = list.map
-        mapper = list._mapper
+        list = @
 
         add_to_map = ->
           define_value record, '_pseudo', null
           mapper.add record
 
         info = {record, info: record_info}
-        if old_id isnt record._id
-          list.events.halt()
-          try
-            unless record._id? # map -> pseudo
-              mapper.del old_id
-              define_value record, '_pseudo', util.uid 'record.pseudo'
-              mapper.add record
-              info.move =
-                from: {map: old_id}
-                to:   {pseudo: record._pseudo}
-            else unless old_id? # pseudo -> map
-              if map[record._id] # merge
-                info.merge =
-                  from: {pseudo: record._pseudo}
-                  to:   {map: record._id}
-                info.record = map[record._id]
-                info.source = record
-                list.cut record
-                list.push record
-              else # no merge
-                info.move =
-                  from: {pseudo: record._pseudo}
-                  to:   {map: record._id}
-                mapper.del null, record._pseudo
-                add_to_map()
-            else # map -> map
-              if map[record._id] # with merge
-                info.merge =
-                  from: {map: old_id}
-                  to:   {map: record._id}
-                info.record = map[record._id]
-                info.source = record
-                list.cut old_id
-                list.push record
-              else # no merge
-                info.move =
-                  from: {map: old_id}
-                  to:   {map: record._id}
+
+        if map = list.map
+          mapper = list._mapper
+
+          if old_id isnt record._id
+            list.events.halt()
+            try
+              unless record._id? # map -> pseudo
                 mapper.del old_id
-                add_to_map()
-          finally
-            list.events.unhalt()
+                define_value record, '_pseudo', util.uid 'record.pseudo'
+                mapper.add record
+                info.move =
+                  from: {map: old_id}
+                  to:   {pseudo: record._pseudo}
+              else unless old_id? # pseudo -> map
+                if map[record._id] # merge
+                  info.merge =
+                    from: {pseudo: record._pseudo}
+                    to:   {map: record._id}
+                  info.record = map[record._id]
+                  info.source = record
+                  list.cut record
+                  list.push record
+                else # no merge
+                  info.move =
+                    from: {pseudo: record._pseudo}
+                    to:   {map: record._id}
+                  mapper.del null, record._pseudo
+                  add_to_map()
+              else # map -> map
+                if map[record._id] # with merge
+                  info.merge =
+                    from: {map: old_id}
+                    to:   {map: record._id}
+                  info.record = map[record._id]
+                  info.source = record
+                  list.cut old_id
+                  list.push record
+                else # no merge
+                  info.move =
+                    from: {map: old_id}
+                    to:   {map: record._id}
+                  mapper.del old_id
+                  add_to_map()
+            finally
+              list.events.unhalt()
 
         if list.sorter # find the proper place for the updated record
           record = info.record
@@ -660,7 +714,7 @@ ksc.factory 'ksc.List', [
       Aggregate method for push/unshift
 
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       If list is auto-sorted, new elements will be added to their appropriate
       sorted position (i.e. not necessarily to the first/last position), see:
@@ -695,18 +749,23 @@ ksc.factory 'ksc.List', [
           for item in items
             original = item
 
-            if item instanceof record_class
+            if item instanceof Record
               if item._parent and item._parent isnt list
                 item._parent.cut item # remove record from old parent list
+              util.mergeIn item._options, record_opts
               define_value item, '_parent', list # mark this record as parent
             else
-              if item instanceof Record
-                item = item._clone true
               item = new record_class item, record_opts, list
+            if item._idProperty isnt list.idProperty
+              error.Value
+                'list.idProperty':    list.idProperty
+                'record._idProperty': record._idProperty
+                description: 'record._idProperty conflicts with list.idProperty'
+            Record.setId item
 
             if item._id?
               if existing = mapper.has item._id
-                existing._replace item._clone true
+                existing._replace item._clone 1
                 (action.update ?= []).push {record: existing, source: original}
               else
                 mapper.add item
@@ -716,9 +775,10 @@ ksc.factory 'ksc.List', [
               if item._pseudo
                 define_value item, '_pseudo', null
             else
-              define_value item, '_pseudo', util.uid 'record.pseudo'
+              if mapper
+                define_value item, '_pseudo', util.uid 'record.pseudo'
+                mapper.add item
 
-              mapper.add item
               tmp.push item
               (action.add ?= []).push item
 
@@ -740,7 +800,7 @@ ksc.factory 'ksc.List', [
       Aggregate method for pop/shift
 
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
 
       @param [Array] list Array generated by {List}
       @param [string] orig_fn 'pop' or 'shift'
@@ -751,7 +811,7 @@ ksc.factory 'ksc.List', [
       ###
       @remove: (list, orig_fn) ->
         if record = Array.prototype[orig_fn].call list
-          list._mapper.del record
+          list._mapper?.del record
           emit_action list, {cut: [record]}
         record
 ]

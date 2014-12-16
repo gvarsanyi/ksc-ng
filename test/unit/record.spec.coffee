@@ -3,11 +3,12 @@ describe 'app.factory', ->
 
   describe 'Record', ->
 
-    Record = null
+    List = Record = null
 
     beforeEach ->
       module 'app'
       inject ($injector) ->
+        List   = $injector.get 'ksc.List'
         Record = $injector.get 'ksc.Record'
 
 
@@ -109,14 +110,25 @@ describe 'app.factory', ->
       expect(record._entity()).toEqual saved
 
     it 'No _id case', ->
+      list = new List record: idProperty: 'x'
       record = null
-      expect(-> record = new Record {}, {record: idProperty: 'x'}).not.toThrow()
+      expect(-> list.push record = new Record {}).not.toThrow()
       expect(record._id).toBeUndefined()
 
-    describe 'Composite _id (._options.idProperty is array)', ->
+    it 'idProperty-contract type conflict', ->
+      list = new List record: idProperty: 'x', contract: {x: type: 'boolean'}
+      expect(-> list.push new Record {}).toThrow()
+
+    it 'idProperty missing in contract error', ->
+      list = new List record: idProperty: 'id', contract: {x: type: 'number'}
+      expect(-> list.push new Record {}).toThrow()
+
+    describe 'Composite _id (listparent.options.record.idProperty is array)', ->
 
       it 'Basic scenarios', ->
-        record = new Record {id: 1, otherId: 2}, idProperty: ['id', 'otherId']
+        list = new List record: idProperty: ['id', 'otherId']
+        record = new Record {id: 1, otherId: 2}
+        list.push record
         expect(record._id).toBe '1-2'
         expect(record._primaryId).toBe 1
 
@@ -125,15 +137,16 @@ describe 'app.factory', ->
         expect(record._primaryId).toBe 1
 
         record._replace {otherId: 1}
-        expect(record._id).toBe null
-        expect(record._primaryId).toBe null
+        expect(record._id).toBeUndefined()
+        expect(record._primaryId).toBeUndefined()
 
       it 'Contract mismatches', ->
+        list = new List record: idProperty: ['id', 'x']
         contract =
           id: {type: 'number', nullable: true}
           x:  {type: 'boolean'}
 
-        expect(-> new Record {}, {contract, idProperty: ['id', 'x']}).toThrow()
+        expect(-> list.push new Record {}, {contract}).toThrow()
 
     it 'Data separation', ->
       example_sub = {a: 3}
@@ -168,6 +181,8 @@ describe 'app.factory', ->
       expect(-> new Record {id: 1}, null, null, 'x').toThrow()
 
     it 'Contract record', ->
+      list = new List record: idProperty: 'id'
+
       contract =
         id: {type: 'number'}
         a: {type: 'string', nullable: true}
@@ -181,7 +196,7 @@ describe 'app.factory', ->
           a: {type: 'number', default: 1, nullable: true},
           b: {contract: {x: {type: 'number', nullable: true}}}}}
 
-      record = new Record {id: 1}, {contract}
+      list.push record = new Record {id: 1}, {contract}
 
       expect(record._id).toBe 1
       expect(record.id).toBe 1
@@ -233,7 +248,8 @@ describe 'app.factory', ->
       expect(-> new Record {id: 1}, {contract}).toThrow()
 
     it 'Defined .options.idProperty', ->
-      record = new Record {a: 1, b: 2}, {idProperty: 'b'}
+      list = new List record: idProperty: 'b'
+      list.push record = new Record {a: 1, b: 2}
       expect(record._id).toBe 2
 
     it 'Undefined .options.idProperty and no data leaves _id undefined', ->
@@ -260,3 +276,16 @@ describe 'app.factory', ->
       expect(-> record._delete('b')).toThrow()
       expect(-> record._delete('c', 'd')).toThrow()
       expect(-> record._delete()).toThrow()
+
+    it 'Method Record.checkIdProperty()', ->
+      expect(-> Record.checkIdProperty()).not.toThrow()
+      expect(-> Record.checkIdProperty null).not.toThrow()
+      expect(-> Record.checkIdProperty undefined).not.toThrow()
+      expect(-> Record.checkIdProperty false).toThrow()
+      expect(-> Record.checkIdProperty true).toThrow()
+      expect(-> Record.checkIdProperty []).toThrow()
+      expect(-> Record.checkIdProperty {0: 'a', 1: 'b'}).toThrow()
+      expect(-> Record.checkIdProperty 0).not.toThrow()
+      expect(-> Record.checkIdProperty [0, 1]).not.toThrow()
+      expect(-> Record.checkIdProperty 'aa').not.toThrow()
+#

@@ -69,19 +69,29 @@ ksc.factory 'ksc.ListMapper', [
 
         source = parent.source
 
-        define_value mapper, 'map',      {}, 0, 1
-        define_value mapper, 'pseudo',   {}, 0, 1
         define_value mapper, 'multi',    (source and not source._), 0, 1
         define_value mapper, '_sources', [], 0, 1
 
-        build_maps = (parent, target_map, target_pseudo, names) ->
+        has_mapped_source = (target) ->
+          if target.source
+            for k, ref of target.source when has_mapped_source ref
+              return true
+            return false
+          target.idProperty?
+
+        if mapped = has_mapped_source parent
+          define_value mapper, 'map',    {}, 0, 1
+          define_value mapper, 'pseudo', {}, 0, 1
+
+        build_maps = (parent, target_map={}, target_pseudo={}, names) ->
           if src = parent.source # chained ListMask
             if src._ # ListMask with no named sources
               build_maps src._, target_map, target_pseudo, names
             else # named sources, append names to .map and .pseudo
               for source_name, source_list of src
-                target_map[source_name]    = {}
-                target_pseudo[source_name] = {}
+                if mapped and has_mapped_source parent
+                  target_map[source_name]    = {}
+                  target_pseudo[source_name] = {}
                 subnames = (item for item in names)
                 subnames.push source_name
                 build_maps source_list, target_map[source_name],
@@ -193,9 +203,10 @@ ksc.factory 'ksc.ListMapper', [
       @register: (list) ->
         mapper = new ListMapper list
 
-        define_value list, '_mapper', mapper,        0, 1
-        define_value list, 'map',     mapper.map,    0, 1
-        define_value list, 'pseudo',  mapper.pseudo, 0, 1
+        define_value list, '_mapper', mapper
+        if mapper.map
+          define_value list, 'map',    mapper.map
+          define_value list, 'pseudo', mapper.pseudo
 
         return
 ]

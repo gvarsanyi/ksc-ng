@@ -21,7 +21,7 @@ describe 'app.factory', ->
 
         list_cfg =
           endpoint: {responseProperty: 'elements', url}
-          record:   {endpoint: {url: id_url}}
+          record:   {idProperty: 'id', endpoint: {url: id_url}}
 
         list_response =
           success: true
@@ -43,10 +43,13 @@ describe 'app.factory', ->
 
 
     it 'Constructs a vanilla Array instance', ->
-      list = new RestList
+      list = new RestList 'id'
 
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
+
+    it 'idProperty is required', ->
+      expect(-> new RestList).toThrow()
 
     it 'Method .restGetRaw() with query params', ->
       list = new RestList list_cfg
@@ -108,10 +111,10 @@ describe 'app.factory', ->
       expect(spyable.callback).toHaveBeenCalledWith null, expected_raw_response
 
     it 'Method .restGetRaw() with query params and callback', ->
-      list = new RestList
+      list = new RestList 'id'
       expect(-> list.restGetRaw()).toThrow() # options.endpoint.url required
 
-      list = new RestList endpoint: url: 1
+      list = new RestList 'id', endpoint: url: 1
       expect(-> list.restGetRaw()).toThrow() # options.endpoint.url to be string
 
       list = new RestList list_cfg
@@ -317,18 +320,18 @@ describe 'app.factory', ->
     describe 'Method .restSave()', ->
 
       it 'PUT and POST (update and new)', ->
-        list = new RestList
+        list = new RestList {record: idProperty: 'id'}
         list.push {id: 1, x: 'a'}, {id: null, x: 'a'}
         expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
         expect(-> list.restSave list[1]).toThrow() # options.record.endpoint.url
 
-        list = new RestList record: endpoint: url: 1
+        list = new RestList record: {idProperty: 'id', endpoint: url: 1}
         list.push {id: 1, x: 'a'}
         # options.record.endpoint.url to be string
         expect(-> list.restSave list[0]).toThrow()
 
 
-        list = new RestList record: {}
+        list = new RestList record: idProperty: 'id'
         list.push {id: 1, x: 'a'}
         expect(-> list.restSave list[0]).toThrow() # options.record.endpoint.url
 
@@ -379,7 +382,9 @@ describe 'app.factory', ->
         expect(list[1]._id).toBe 2
 
       it 'Save with no data change (no event triggered)', ->
-        list = new RestList {endpoint: {url}, record: {endpoint: url: id_url}}
+        list = new RestList
+          endpoint: {url},
+          record:   {idProperty: 'id', endpoint: url: id_url}
         list.push {id: 1, a: 'a'}, {id: 2, a: 'b'}
 
         update       = null
@@ -476,17 +481,23 @@ describe 'app.factory', ->
         expect(list.map['1-3'].a).toBe 'd'
 
       it 'With bulkSave', ->
-        list = new RestList endpoint: {bulkSave: 'POST'}
+        list = new RestList
+          endpoint: bulkSave: 'POST'
+          record:   idProperty: 'id'
         list.push {id: 1, x: 'a'}
         list[0].x = 'b'
         expect(-> list.restSave list[0]).toThrow() # options.endpoint.url req'd
 
-        list = new RestList endpoint: {url: 1, bulkSave: 'POST'}
+        list = new RestList
+          endpoint: {url: 1, bulkSave: 'POST'}
+          record:   idProperty: 'id'
         list.push {id: 1, x: 'a'}
         # options.endpoint.url to be string
         expect(-> list.restSave list[0]).toThrow()
 
-        list = new RestList endpoint: {url, bulkSave: 'POST'}
+        list = new RestList
+          endpoint: {url, bulkSave: 'POST'}
+          record:   idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: null, x: 'b'}, {id: 3, x: 'c'}
         list[0].x = 'x'
         list[1].x = 'x'
@@ -554,7 +565,7 @@ describe 'app.factory', ->
         list = new RestList
           reloadOnUpdate: true
           endpoint: {url, bulkSave: true}
-          record: {endpoint: {url: id_url}}
+          record: {idProperty: 'id', endpoint: {url: id_url}}
 
         list.push {id: 1, x: 'a'}, {id: null, x: 'b'}, {id: 3, x: 'c'}
 
@@ -570,7 +581,7 @@ describe 'app.factory', ->
       it 'Save error', ->
         list = new RestList
           endpoint: {url}
-          record: endpoint: url: id_url
+          record:   {idProperty: 'id', endpoint: url: id_url}
 
         list.push new EditableRecord {id: 1, a: 2}
 
@@ -603,6 +614,7 @@ describe 'app.factory', ->
       it 'Bulk save error', ->
         list = new RestList
           endpoint: {url, bulkSave: true}
+          record:   idProperty: 'id'
 
         list.push new EditableRecord {id: 1, a: 2}
 
@@ -637,7 +649,7 @@ describe 'app.factory', ->
       it 'Basic scenarios', ->
         list = new RestList
           endpoint: {url}
-          record: endpoint: url: id_url
+          record:   {idProperty: 'id', endpoint: url: id_url}
 
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
         list[0].x = 'x'
@@ -715,7 +727,9 @@ describe 'app.factory', ->
         expect(list.length).toBe 1
 
       it 'With bulkDelete', ->
-        list = new RestList endpoint: {url, bulkDelete: true}
+        list = new RestList
+          endpoint: {url, bulkDelete: true}
+          record:   idProperty: 'id'
 
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'}
         list[0].x = 'x'
@@ -746,7 +760,9 @@ describe 'app.factory', ->
         expect(spyable.callback).toHaveBeenCalled()
 
       it 'With no callback - bulk', ->
-        list = new RestList endpoint: {url, bulkDelete: 1}
+        list = new RestList
+          endpoint: {url, bulkDelete: 1}
+          record:   idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
         expect(list[0]._id).toBe 1
         $httpBackend.expectDELETE(url).respond {yo: 1}
@@ -755,7 +771,9 @@ describe 'app.factory', ->
         expect(list.length).toBe 1
 
       it 'With no callback - not bulk', ->
-        list = new RestList {endpoint: {url}, record: endpoint: url: id_url}
+        list = new RestList
+          endpoint: {url}
+          record:   {idProperty: 'id', endpoint: url: id_url}
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
         expect(list[0]._id).toBe 1
         $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {yo: 1}

@@ -37,7 +37,6 @@ ksc.factory 'ksc.EditableRecord', [
 
     Options that may be used
     - .options.contract
-    - .options.idProperty
     - .options.subtreeClass
 
     @author Greg Varsanyi
@@ -91,32 +90,36 @@ ksc.factory 'ksc.EditableRecord', [
       Clone record or contents
 
       @param [boolean] return_plain_object (optional) return a vanilla js Object
+      @param [boolean] exclude_static (optional) avoid cloning non-getters
+        (statically assigned in runtime without using
+        {EditableRecord#_setProperty)
       @param [boolean] saved_only (optional) return only saved-state data
 
       @return [Object|EditableRecord] the new instance with identical data
       ###
-      _clone: (return_plain_object=false, saved_only=false) ->
+      _clone: (return_plain_object, exclude_static, saved_only) ->
         record = @
 
-        if return_plain_object
-          clone = {}
-          source = if saved_only then record[_SAVED] else record
-          for key, value of source
-            if value instanceof Record
-              value = value._clone true, saved_only
-            clone[key] = value
-          return clone
+        clone = super return_plain_object, exclude_static
 
-        clone = new (record.constructor) record[_SAVED]
         unless saved_only
-          for key of record
-            if record[_CHANGED_KEYS][key] or not has_own record[_SAVED], key
-              value = record[key]
-              if is_object value
-                value = value._clone true
+          for key, value of record[_EDITED]
+            if value?._clone
+              value = value._clone return_plain_object, exclude_static
+            if return_plain_object
               clone[key] = value
+            else
+              clone._setProperty key, value
+
           for key of record[_DELETED_KEYS]
-            clone._delete key
+            if return_plain_object
+              delete clone[key]
+            else
+              clone._delete key
+
+        unless return_plain_object or exclude_static
+          Record.getAllStatic record, clone
+
         clone
 
       ###
@@ -148,12 +151,12 @@ ksc.factory 'ksc.EditableRecord', [
           if not i and contract = record[_OPTIONS].contract
             error.ContractBreak {key, value, contract: contract[key]}
 
-          # prevent idProperty key from deleted
-          if (id_property = record[_OPTIONS].idProperty) is key or
+          # prevent idProperty key from getting deleted
+          if (id_property = record._idProperty) is key or
           (is_array(id_property) and key in id_property)
             error.Permission
               key:         key
-              description: '._options.idProperty keys can not be deleted'
+              description: 'idProperty keys can not be deleted'
 
           if has_own record[_SAVED], key
             if record[_DELETED_KEYS][key]
@@ -209,9 +212,9 @@ ksc.factory 'ksc.EditableRecord', [
       @return [mixed] value for key
       ###
       _getProperty: (key) ->
-        value = super
-
         record = @
+
+        value = super
 
         if record[_DELETED_KEYS][key]
           return
@@ -279,10 +282,6 @@ ksc.factory 'ksc.EditableRecord', [
           delete record[_CHANGED_KEYS][key]
           changed = true
 
-        for key of record when not has_own record[_SAVED], key
-          delete record[key]
-          changed = true
-
         if changed
           define_value record, _CHANGES, 0
           if emit_event
@@ -329,7 +328,7 @@ ksc.factory 'ksc.EditableRecord', [
         Record.valueCheck record, key, value
 
         # idProperty values must be string, number or null
-        if (id_property = record[_OPTIONS].idProperty) is key or
+        if (id_property = record._idProperty) is key or
         (is_array(id_property) and key in id_property)
           unless value is null or typeof value in ['string', 'number']
             error.Value {value, required: 'string or number or null'}
