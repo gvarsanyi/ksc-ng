@@ -185,7 +185,7 @@ ksc.factory 'ksc.ListMask', [
             console.log sublist # [{id: 1, x: 'aaa'}, {id: 2, x: 'baa'}]
 
             list.idMap[1].x = 'xxx' # should remove item form sublist as it does
-                                    # not meet the filter_fn requirement any more
+                                    # not meet filter_fn requirement any more
 
             console.log sublist # [{id: 2, x: 'baa'}]
 
