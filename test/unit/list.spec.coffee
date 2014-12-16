@@ -3,7 +3,7 @@ describe 'app.factory', ->
 
   describe 'List', ->
 
-    $rootScope = EditableRecord = List = Record = util = null
+    $rootScope = EditableRecord = List = Record = list = util = null
 
     beforeEach ->
       module 'app'
@@ -14,19 +14,29 @@ describe 'app.factory', ->
         Record         = $injector.get 'ksc.Record'
         util           = $injector.get 'ksc.util'
 
-    it 'Constructs a vanilla Array instance', ->
-      list = new List record: idProperty: 'a'
+    afterEach ->
+      # all items must be getters
+      for item, i in list
+        expect(Object.getOwnPropertyDescriptor(list, i).get?).toBe true
+
+
+    it 'Constructs a vanilla Array instance with getter/setter values', ->
+      list = new List 'a'
 
       expect(Array.isArray list).toBe true
       expect(list.length).toBe 0
 
       a = [{a: 1}, {a: 2}, {a: 3}]
       list.push {a: 1}, {a: 2}, {a: 3}
+
+      expect(list.length).toBe 3
+      expect((value for value in list).length).toBe 3
+
       for key, value of a
         expect(list[key]._clone 1).toEqual value
+        expect(Object.getOwnPropertyDescriptor(list, key).get?).toBe true
       for key, value of list
         expect(value?._clone?(1) or value).toEqual a[key]
-      return
 
     describe 'Constructor argument variations', ->
 

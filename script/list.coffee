@@ -33,7 +33,7 @@ ksc.factory 'ksc.List', [
     @return [undefined]
     ###
     inject = (list, pos, records) ->
-      Array::splice.call list, pos, 0, records...
+      list._origFn.splice.call list, pos, 0, records...
       return
 
 
@@ -86,6 +86,9 @@ ksc.factory 'ksc.List', [
       ###
       _mapper: undefined
 
+      # @property [ArrayTracker] reference to getter/setter management object
+      _tracker: undefined
+
       # @property [EventEmitter] reference to related event-emitter instance
       events: undefined
 
@@ -103,7 +106,6 @@ ksc.factory 'ksc.List', [
 
       # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
       sorter: undefined
-
 
       ###
       Creates a vanilla Array instance (e.g. []), adds methods and overrides
@@ -168,9 +170,6 @@ ksc.factory 'ksc.List', [
             description: 'id_property argument conflicts with ' +
                          '.options.record.idProperty'
 
-        for key, value of @constructor.prototype when key isnt 'constructor'
-          define_value list, key, value
-
         options = angular.copy(options) or {}
         define_value list, 'options', options
         options.record ?= {}
@@ -198,6 +197,14 @@ ksc.factory 'ksc.List', [
 
         # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
+
+        new ArrayTracker list # adds ._tracker
+
+        define_value list, '_origFn', {}
+        for key, value of @constructor.prototype
+          if value? and key isnt 'constructor'
+            list._origFn[key] = list[key]
+            define_value list, key, value
 
         if initial_set
           list.push initial_set...
@@ -280,7 +287,7 @@ ksc.factory 'ksc.List', [
 
         tmp_container = []
 
-        while item = Array::pop.call list
+        while item = list._origFn.pop()
           unless item in removable
             tmp_container.push item
 
@@ -545,7 +552,7 @@ ksc.factory 'ksc.List', [
           error.Permission 'can not reverse an auto-sorted list'
 
         if list.length > 1
-          Array::reverse.call list
+          list._origFn.reverse()
 
           emit_action list, {reverse: true}
 
@@ -586,7 +593,7 @@ ksc.factory 'ksc.List', [
               return 1
             -1
 
-          Array::sort.call list, sorter_fn
+          list._origFn.sort sorter_fn
 
           for record, i in list when record isnt cmp[i]
             emit_action list, {sort: true}
@@ -705,7 +712,7 @@ ksc.factory 'ksc.List', [
         if list.sorter # find the proper place for the updated record
           record = info.record
           for item, pos in list when item is record
-            Array::splice.call list, pos, 1
+            list._origFn.splice pos, 1
             new_pos = list.sorter.position record
             inject list, new_pos, [record]
             break
@@ -813,7 +820,7 @@ ksc.factory 'ksc.List', [
       @return [Record] Removed record
       ###
       @remove: (list, orig_fn) ->
-        if record = Array.prototype[orig_fn].call list
+        if record = list._origFn[orig_fn]()
           list._mapper?.del record
           emit_action list, {cut: [record]}
         record
