@@ -50,12 +50,17 @@ Minifier also checks for unused chunks of code.
     make doc
 See generated docs at <project_dir>/doc/index.html
 
-### Run tests
+### Run tests with Chrome
     make test
-See test coverage details at <project_dir>/test/coverage/PhantomJS<version>/index.html
+See test coverage details at <project_dir>/test/coverage/Chrome<version>/index.html
+
+### Run tests with Chrome, Firefox and IE9-10-11 (via saucelabs)
+    make full-test
+Be sure to configure `test/sauce.json` or your bash environment for your sauce account.
+See test coverage details at <project_dir>/test/coverage/<browsers>/index.html
 
 ### Lint check
     make lint
 
-### All tasks combined: test, lint, doc, dist
+### All tasks combined: full-test, lint, doc, dist
     make all

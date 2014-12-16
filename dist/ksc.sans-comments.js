@@ -1240,10 +1240,10 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
         return target;
     };
     return ListMapper = function() {
-        ListMapper.prototype.map = null;
+        ListMapper.prototype.idMap = null;
         ListMapper.prototype.multi = null;
         ListMapper.prototype.parent = null;
-        ListMapper.prototype.pseudo = null;
+        ListMapper.prototype.pseudoMap = null;
         function ListMapper(parent) {
             var build_maps, has_mapped_source, mapped, mapper, source;
             this.parent = parent;
@@ -1266,8 +1266,8 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
                 return target.idProperty != null;
             };
             if (mapped = has_mapped_source(parent)) {
-                define_value(mapper, "map", {}, 0, 1);
-                define_value(mapper, "pseudo", {}, 0, 1);
+                define_value(mapper, "idMap", {}, 0, 1);
+                define_value(mapper, "pseudoMap", {}, 0, 1);
             }
             build_maps = function(parent, target_map, target_pseudo, names) {
                 var item, source_list, source_name, src, subnames, _results;
@@ -1309,7 +1309,7 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
                     });
                 }
             };
-            build_maps(parent, mapper.map, mapper.pseudo, []);
+            build_maps(parent, mapper.idMap, mapper.pseudoMap, []);
             Object.freeze(mapper._sources);
         }
         ListMapper.prototype.add = function(record, source_names) {
@@ -1317,10 +1317,10 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
             mapper = this;
             if (record._id != null) {
                 id = record._id;
-                target = mapper.map;
+                target = mapper.idMap;
             } else {
                 id = record._pseudo;
-                target = mapper.pseudo;
+                target = mapper.pseudoMap;
             }
             target = deep_target(target, source_names);
             return target[id] = record;
@@ -1333,10 +1333,10 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
                 map_id = map_id._id;
             }
             if (pseudo_id != null) {
-                target = mapper.pseudo;
+                target = mapper.pseudoMap;
                 map_id = pseudo_id;
             } else {
-                target = mapper.map;
+                target = mapper.idMap;
             }
             target = deep_target(target, source_names);
             delete target[map_id];
@@ -1350,10 +1350,10 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
             }
             if (pseudo_id != null) {
                 id = pseudo_id;
-                target = mapper.parent.pseudo;
+                target = mapper.parent.pseudoMap;
             } else {
                 id = map_id;
-                target = mapper.parent.map;
+                target = mapper.parent.idMap;
             }
             target = deep_target(target, source_names);
             return target[id] || false;
@@ -1362,9 +1362,9 @@ ksc.factory("ksc.ListMapper", [ "ksc.util", function(util) {
             var mapper;
             mapper = new ListMapper(list);
             define_value(list, "_mapper", mapper);
-            if (mapper.map) {
-                define_value(list, "map", mapper.map);
-                define_value(list, "pseudo", mapper.pseudo);
+            if (mapper.idMap) {
+                define_value(list, "idMap", mapper.idMap);
+                define_value(list, "pseudoMap", mapper.pseudoMap);
             }
         };
         return ListMapper;
@@ -1516,9 +1516,9 @@ ksc.factory("ksc.ListMask", [ "$rootScope", "ksc.EventEmitter", "ksc.List", "ksc
         ListMask.prototype._mapper = void 0;
         ListMask.prototype.events = void 0;
         ListMask.prototype.filter = void 0;
-        ListMask.prototype.map = void 0;
+        ListMask.prototype.idMap = void 0;
         ListMask.prototype.options = void 0;
-        ListMask.prototype.pseudo = void 0;
+        ListMask.prototype.pseudoMap = void 0;
         ListMask.prototype.sorter = void 0;
         ListMask.prototype.source = void 0;
         ListMask.prototype.splitter = void 0;
@@ -1773,9 +1773,9 @@ ksc.factory("ksc.ListMask", [ "$rootScope", "ksc.EventEmitter", "ksc.List", "ksc
                         from = remapper.from, to = remapper.to;
                     }
                     if (list.filter(record)) {
-                        source_found = from && delete_if_on(from.map, from.pseudo);
+                        source_found = from && delete_if_on(from.idMap, from.pseudoMap);
                         if (to) {
-                            target_found = find_and_add(to.map, to.pseudo, record);
+                            target_found = find_and_add(to.idMap, to.pseudoMap, record);
                         } else {
                             target_found = find_and_add(record._id, record._pseudo, record);
                         }
@@ -1814,10 +1814,10 @@ ksc.factory("ksc.ListMask", [ "$rootScope", "ksc.EventEmitter", "ksc.List", "ksc
                         }
                     } else {
                         if (merge) {
-                            cutter(from.map, from.pseudo, source);
-                            cutter(to.map, to.pseudo, record);
+                            cutter(from.idMap, from.pseudoMap, source);
+                            cutter(to.idMap, to.pseudoMap, record);
                         } else if (move) {
-                            cutter(from.map, from.pseudo, record);
+                            cutter(from.idMap, from.pseudoMap, record);
                         } else {
                             cutter(record._id, record._pseudo, record);
                         }
@@ -2084,9 +2084,9 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
     return List = function() {
         List.prototype._mapper = void 0;
         List.prototype.events = void 0;
+        List.prototype.idMap = void 0;
         List.prototype.idProperty = void 0;
-        List.prototype.map = void 0;
-        List.prototype.pseudo = void 0;
+        List.prototype.pseudoMap = void 0;
         List.prototype.options = void 0;
         List.prototype.sorter = void 0;
         function List() {
@@ -2234,7 +2234,7 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                         if (!mapper.has(record)) {
                             error.Key({
                                 record: record,
-                                description: "map/pseudo id error"
+                                description: "idMap/pseudoMap id error"
                             });
                         }
                         mapper.del(record);
@@ -2457,31 +2457,31 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                 record: record,
                 info: record_info
             };
-            if (map = list.map) {
+            if (map = list.idMap) {
                 mapper = list._mapper;
                 if (old_id !== record._id) {
                     list.events.halt();
                     try {
                         if (record._id == null) {
                             mapper.del(old_id);
-                            define_value(record, "_pseudo", util.uid("record.pseudo"));
+                            define_value(record, "_pseudo", util.uid("record.pseudoMap"));
                             mapper.add(record);
                             info.move = {
                                 from: {
-                                    map: old_id
+                                    idMap: old_id
                                 },
                                 to: {
-                                    pseudo: record._pseudo
+                                    pseudoMap: record._pseudo
                                 }
                             };
                         } else if (old_id == null) {
                             if (map[record._id]) {
                                 info.merge = {
                                     from: {
-                                        pseudo: record._pseudo
+                                        pseudoMap: record._pseudo
                                     },
                                     to: {
-                                        map: record._id
+                                        idMap: record._id
                                     }
                                 };
                                 info.record = map[record._id];
@@ -2491,10 +2491,10 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                             } else {
                                 info.move = {
                                     from: {
-                                        pseudo: record._pseudo
+                                        pseudoMap: record._pseudo
                                     },
                                     to: {
-                                        map: record._id
+                                        idMap: record._id
                                     }
                                 };
                                 mapper.del(null, record._pseudo);
@@ -2504,10 +2504,10 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                             if (map[record._id]) {
                                 info.merge = {
                                     from: {
-                                        map: old_id
+                                        idMap: old_id
                                     },
                                     to: {
-                                        map: record._id
+                                        idMap: record._id
                                     }
                                 };
                                 info.record = map[record._id];
@@ -2517,10 +2517,10 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                             } else {
                                 info.move = {
                                     from: {
-                                        map: old_id
+                                        idMap: old_id
                                     },
                                     to: {
-                                        map: record._id
+                                        idMap: record._id
                                     }
                                 };
                                 mapper.del(old_id);
@@ -2601,7 +2601,7 @@ ksc.factory("ksc.List", [ "$rootScope", "ksc.EditableRecord", "ksc.EventEmitter"
                         }
                     } else {
                         if (mapper) {
-                            define_value(item, "_pseudo", util.uid("record.pseudo"));
+                            define_value(item, "_pseudo", util.uid("record.pseudoMap"));
                             mapper.add(item);
                         }
                         tmp.push(item);
@@ -3558,7 +3558,7 @@ ksc.factory("ksc.RestList", [ "$http", "$q", "ksc.List", "ksc.batchLoaderRegistr
             for (i = _i = 0, _len = records.length; _i < _len; i = ++_i) {
                 record = records[i];
                 if (!util.isObject(record)) {
-                    records[i] = record = list.map[record];
+                    records[i] = record = list.idMap[record];
                 }
                 orig_rec = record;
                 pseudo_id = null;
@@ -3570,17 +3570,17 @@ ksc.factory("ksc.RestList", [ "$http", "$q", "ksc.List", "ksc.batchLoaderRegistr
                     uid = "id:" + record[PRIMARY_ID];
                 }
                 if (save_type) {
-                    record = pseudo_id && list.pseudo[pseudo_id] || list.map[id];
+                    record = pseudo_id && list.pseudoMap[pseudo_id] || list.idMap[id];
                     if (!record) {
                         error.Key({
                             key: orig_rec,
                             description: "no such record on list"
                         });
                     }
-                } else if (!(record = list.map[id])) {
+                } else if (!(record = list.idMap[id])) {
                     error.Key({
                         key: orig_rec,
-                        description: "no such record on map"
+                        description: "no such record on .idMap"
                     });
                 }
                 if (unique_record_map[uid]) {

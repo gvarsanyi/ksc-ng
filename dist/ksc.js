@@ -2312,10 +2312,10 @@ ksc.factory('ksc.ListMapper', [
     define_value = util.defineValue;
 
     /*
-    Helper function that looks up named source references on .map and .pseudo
-    hierarchies (aka target)
+    Helper function that looks up named source references on .idMap and
+    .pseudoMap hierarchies (aka target)
     
-    @param [Object] target .map or .pseudo
+    @param [Object] target .idMap or .pseudoMap
     @param [Array] source_names (optional) list of source_names that ID target
     
     @return [undefined]
@@ -2335,12 +2335,13 @@ ksc.factory('ksc.ListMapper', [
     A helper class that features creating look-up objects for mappable lists
     like {List} and {ListMask}.
     
-    On construction, it creates .map={} (for {Record}s with ._id) and .pseudo={}
-    (for {Record}s with no valid ._id but with valid ._pseudo ID) on the parent.
+    On construction, it creates .idMap={} (for {Record}s with ._id) and
+    .pseudoMap={} (for {Record}s with no valid ._id but with valid ._pseudo ID)
+    on the parent.
     
     @note Methods are prepped to handle multiple named sources for {ListMask}.
-      If multi-sourced, .map and .pseudo will have sub-objects with keys being
-      the source names. See: {ListMask}
+      If multi-sourced, .idMap and .pseudoMap will have sub-objects with keys
+      being the source names. See: {ListMask}
     
     @note This class - being just an extension - has no error handling. All
       error cases should be handled by the callers
@@ -2348,7 +2349,7 @@ ksc.factory('ksc.ListMapper', [
     @author Greg Varsanyi
      */
     return ListMapper = (function() {
-      ListMapper.prototype.map = null;
+      ListMapper.prototype.idMap = null;
 
 
       /*
@@ -2360,14 +2361,15 @@ ksc.factory('ksc.ListMapper', [
 
       ListMapper.prototype.parent = null;
 
-      ListMapper.prototype.pseudo = null;
+      ListMapper.prototype.pseudoMap = null;
 
 
       /*
-      Creates containers for records with valid ._id (.map) and pseudo records
-      (.pseudo)
+      Creates containers for records with valid ._id (.idMap) and pseudo records
+      (.pseudoMap)
       
-      Adds references to itself (as ._mapper) and .map and .pseudo to parent.
+      Adds references to itself (as ._mapper) and .idMap and .pseudoMap to
+      parent.
       
       @param [List/ListMask] list reference to parent {List} or {ListMask}
        */
@@ -2394,8 +2396,8 @@ ksc.factory('ksc.ListMapper', [
           return target.idProperty != null;
         };
         if (mapped = has_mapped_source(parent)) {
-          define_value(mapper, 'map', {}, 0, 1);
-          define_value(mapper, 'pseudo', {}, 0, 1);
+          define_value(mapper, 'idMap', {}, 0, 1);
+          define_value(mapper, 'pseudoMap', {}, 0, 1);
         }
         build_maps = function(parent, target_map, target_pseudo, names) {
           var item, source_list, source_name, src, subnames, _results;
@@ -2437,13 +2439,13 @@ ksc.factory('ksc.ListMapper', [
             });
           }
         };
-        build_maps(parent, mapper.map, mapper.pseudo, []);
+        build_maps(parent, mapper.idMap, mapper.pseudoMap, []);
         Object.freeze(mapper._sources);
       }
 
 
       /*
-      Add record to .map or .pseudo (whichever fits)
+      Add record to .idMap or .pseudoMap (whichever fits)
       
       @param [Record] record reference to a record
       @param [Array<string>] source_names (optional) named source identifier
@@ -2456,10 +2458,10 @@ ksc.factory('ksc.ListMapper', [
         mapper = this;
         if (record._id != null) {
           id = record._id;
-          target = mapper.map;
+          target = mapper.idMap;
         } else {
           id = record._pseudo;
-          target = mapper.pseudo;
+          target = mapper.pseudoMap;
         }
         target = deep_target(target, source_names);
         return target[id] = record;
@@ -2467,14 +2469,14 @@ ksc.factory('ksc.ListMapper', [
 
 
       /*
-      Delete record from .map or .pseudo (whichever fits)
+      Delete record from .idMap or .pseudoMap (whichever fits)
       
       @overload del(map_id, pseudo_id, source_names)
         @param [string|number] map_id (optional) ._id of record
         @param [string|number] pseudo_id (optional) ._pseudo ID of record
         @param [Array<string>] source_names (optional) named source identifier
       @overload del(record, na, source_names)
-        @param [Record] record reference to a record on .map or .pseudo
+        @param [Record] record reference to a record on .idMap or .pseudoMap
         @param [null] na (skipped)
         @param [Array<string>] source_names (optional) named source identifier
       
@@ -2489,10 +2491,10 @@ ksc.factory('ksc.ListMapper', [
           map_id = map_id._id;
         }
         if (pseudo_id != null) {
-          target = mapper.pseudo;
+          target = mapper.pseudoMap;
           map_id = pseudo_id;
         } else {
-          target = mapper.map;
+          target = mapper.idMap;
         }
         target = deep_target(target, source_names);
         delete target[map_id];
@@ -2500,14 +2502,14 @@ ksc.factory('ksc.ListMapper', [
 
 
       /*
-      Find a record on .map or .pseudo (whichever fits)
+      Find a record on .idMap or .pseudoMap (whichever fits)
       
       @overload has(map_id, pseudo_id, source_names)
         @param [string|number] map_id (optional) ._id of record
         @param [string|number] pseudo_id (optional) ._pseudo ID of record
         @param [Array<string>] source_names (optional) named source identifier
       @overload has(record, na, source_names)
-        @param [Record] record reference to a record on .map or .pseudo
+        @param [Record] record reference to a record on .idMap or .pseudoMap
         @param [null] na (skipped)
         @param [Array<string>] source_names (optional) named source identifier
       
@@ -2523,10 +2525,10 @@ ksc.factory('ksc.ListMapper', [
         }
         if (pseudo_id != null) {
           id = pseudo_id;
-          target = mapper.parent.pseudo;
+          target = mapper.parent.pseudoMap;
         } else {
           id = map_id;
-          target = mapper.parent.map;
+          target = mapper.parent.idMap;
         }
         target = deep_target(target, source_names);
         return target[id] || false;
@@ -2534,8 +2536,9 @@ ksc.factory('ksc.ListMapper', [
 
 
       /*
-      Helper method that creates and registers mapper objects (.map, .pseudo and
-      ._mapper) on provided Array instances created by {List} or {ListMask}
+      Helper method that creates and registers mapper objects (.idMap,
+      .pseudoMap and ._mapper) on provided Array instances created by {List}
+      or {ListMask}
       
       @param [List] list reference to the list
       
@@ -2546,9 +2549,9 @@ ksc.factory('ksc.ListMapper', [
         var mapper;
         mapper = new ListMapper(list);
         define_value(list, '_mapper', mapper);
-        if (mapper.map) {
-          define_value(list, 'map', mapper.map);
-          define_value(list, 'pseudo', mapper.pseudo);
+        if (mapper.idMap) {
+          define_value(list, 'idMap', mapper.idMap);
+          define_value(list, 'pseudoMap', mapper.pseudoMap);
         }
       };
 
@@ -2753,8 +2756,8 @@ ksc.factory('ksc.ListMask', [
     Masked list that picks up changes from parent {List} instance(s)
     Features:
     - may be a composite of multiple named parents/sources to combine different
-    kinds of records in the list. That also addes namespaces to .map and .pseudo
-    containers like: .map.sourcelistname
+    kinds of records in the list. That also addes namespaces to .idMap and
+    .pseudoMap containers like: .idMap.sourcelistname
     - May filter records (by provided function)
     - May have its own sorter, see: {ListSorter}
     
@@ -2774,8 +2777,8 @@ ksc.factory('ksc.ListMask', [
             sublist = new ListMask list, filter_fn
             console.log sublist # [{id: 1, x: 'aaa'}, {id: 2, x: 'baa'}]
     
-            list.map[1].x = 'xxx' # should remove item form sublist as it does
-                                   * not meet the filter_fn requirement any more
+            list.idMap[1].x = 'xxx' # should remove item form sublist as it does
+                                     * not meet filter_fn requirement any more
     
             console.log sublist # [{id: 2, x: 'baa'}]
     
@@ -2789,7 +2792,7 @@ ksc.factory('ksc.ListMask', [
             sublist.destroy()
     
     May also get two or more {List}s to form composite lists.
-    In this case, sources must be named so that .map.name and .pseudo.name
+    In this case, sources must be named so that .idMap.name and .pseudoMap.name
     references can be used for mapping.
     
     @example
@@ -2806,14 +2809,14 @@ ksc.factory('ksc.ListMask', [
             console.log sublist # [{id: 1, x: 'aaa'}, {id: 2, x: 'baa'},
                                  *  {id2: 1, x: 'a'}]
     
-            list.map.one[1].x = 'xxx' # removes item form sublist as it does not
-                                       * meet the filter_fn requirement any more
+            list.idMap.one[1].x = 'xxx' # removes item form sublist as it doesnt
+                                         * meet filter_fn requirement any more
     
             console.log sublist # [{id: 2, x: 'baa'}, {id2: 1, x: 'a'}]
     
     A splitter function may also be added to trigger split records appearing in
-    the list mask (but not on .map or .pseudo where the original record would
-    appear only). Split records are masks of records that have the same
+    the list mask (but not on .idMap or .pseudoMap where the original record
+    would appear only). Split records are masks of records that have the same
     attributes as the original record, except:
     - The override attributes from the filter_fn will be added as read-only
     - The original attributes appear as getter/setter pass-thorugh to the
@@ -2859,11 +2862,11 @@ ksc.factory('ksc.ListMask', [
 
       ListMask.prototype.filter = void 0;
 
-      ListMask.prototype.map = void 0;
+      ListMask.prototype.idMap = void 0;
 
       ListMask.prototype.options = void 0;
 
-      ListMask.prototype.pseudo = void 0;
+      ListMask.prototype.pseudoMap = void 0;
 
       ListMask.prototype.sorter = void 0;
 
@@ -2885,9 +2888,10 @@ ksc.factory('ksc.ListMask', [
       (aka parent) list only
       
       @note If a single {List} or {ListMask} source/parent is provided as first
-        argument, .map and .pseudo references will work just like in {List}. If
-        object with key-value pairs provided (values being sources/parents),
-        records get mapped like .map.keyname[id] and .pseudo.keyname[pseudo_id]
+        argument, .idMap and .pseudoMap references will work just like in {List}
+        If object with key-value pairs provided (values being sources/parents),
+        records get mapped like .idMap.keyname[id] and
+        .pseudoMap.keyname[pseudo_id]
       
       @overload constructor(source, options, scope)
         @param [List/Object] source reference(s) to parent {List}(s)
@@ -3194,9 +3198,9 @@ ksc.factory('ksc.ListMask', [
               from = remapper.from, to = remapper.to;
             }
             if (list.filter(record)) {
-              source_found = from && delete_if_on(from.map, from.pseudo);
+              source_found = from && delete_if_on(from.idMap, from.pseudoMap);
               if (to) {
-                target_found = find_and_add(to.map, to.pseudo, record);
+                target_found = find_and_add(to.idMap, to.pseudoMap, record);
               } else {
                 target_found = find_and_add(record._id, record._pseudo, record);
               }
@@ -3235,10 +3239,10 @@ ksc.factory('ksc.ListMask', [
               }
             } else {
               if (merge) {
-                cutter(from.map, from.pseudo, source);
-                cutter(to.map, to.pseudo, record);
+                cutter(from.idMap, from.pseudoMap, source);
+                cutter(to.idMap, to.pseudoMap, record);
               } else if (move) {
-                cutter(from.map, from.pseudo, record);
+                cutter(from.idMap, from.pseudoMap, record);
               } else {
                 cutter(record._id, record._pseudo, record);
               }
@@ -3640,7 +3644,8 @@ ksc.factory('ksc.List', [
     the list it will update the already existing one instead of being added to
     the list
     
-    Maintains a key-value map of record._id's in the .map={id: Record} property
+    Maintains a key-value map of record._id's in the .idMap={id: Record}
+    property
     
     @example
       list = new List
@@ -3652,7 +3657,7 @@ ksc.factory('ksc.List', [
       list.push {id: 2, x: 3}
       list.push {id: 2, x: 4}
       console.log list # [{id: 1, x: 2}, {id: 2, x: 4}]
-      console.log list.map[2] # {id: 2, x: 4}
+      console.log list.idMap[2] # {id: 2, x: 4}
     
     @note Do not forget to manage the lifecycle of lists to prevent memory leaks
     @example
@@ -3679,11 +3684,11 @@ ksc.factory('ksc.List', [
 
       List.prototype.events = void 0;
 
+      List.prototype.idMap = void 0;
+
       List.prototype.idProperty = void 0;
 
-      List.prototype.map = void 0;
-
-      List.prototype.pseudo = void 0;
+      List.prototype.pseudoMap = void 0;
 
       List.prototype.options = void 0;
 
@@ -3881,7 +3886,7 @@ ksc.factory('ksc.List', [
               if (!mapper.has(record)) {
                 error.Key({
                   record: record,
-                  description: 'map/pseudo id error'
+                  description: 'idMap/pseudoMap id error'
                 });
               }
               mapper.del(record);
@@ -4305,7 +4310,8 @@ ksc.factory('ksc.List', [
               action:
                 update: [
                   record: record
-                  move:   {from: {map|pseudo: id}, to: {map|pseudo: id}}
+                  move:   {from: {idMap|pseudoMap: id},
+                           to:   {idMap|pseudoMap: id}}
                   info:   record_update_info # see {EditableRecord} methods
                 ]
       
@@ -4315,7 +4321,8 @@ ksc.factory('ksc.List', [
               action:
                 merge: [
                   record: record
-                  merge:  {from: {map|pseudo: id}, to: {map|pseudo: id}}
+                  merge:  {from: {idMap|pseudoMap: id},
+                           to:   {idMap|pseudoMap: id}}
                   source: dropped_record_reference
                   info:   record_update_info # see {EditableRecord} methods
                 ]
@@ -4340,31 +4347,31 @@ ksc.factory('ksc.List', [
           record: record,
           info: record_info
         };
-        if (map = list.map) {
+        if (map = list.idMap) {
           mapper = list._mapper;
           if (old_id !== record._id) {
             list.events.halt();
             try {
               if (record._id == null) {
                 mapper.del(old_id);
-                define_value(record, '_pseudo', util.uid('record.pseudo'));
+                define_value(record, '_pseudo', util.uid('record.pseudoMap'));
                 mapper.add(record);
                 info.move = {
                   from: {
-                    map: old_id
+                    idMap: old_id
                   },
                   to: {
-                    pseudo: record._pseudo
+                    pseudoMap: record._pseudo
                   }
                 };
               } else if (old_id == null) {
                 if (map[record._id]) {
                   info.merge = {
                     from: {
-                      pseudo: record._pseudo
+                      pseudoMap: record._pseudo
                     },
                     to: {
-                      map: record._id
+                      idMap: record._id
                     }
                   };
                   info.record = map[record._id];
@@ -4374,10 +4381,10 @@ ksc.factory('ksc.List', [
                 } else {
                   info.move = {
                     from: {
-                      pseudo: record._pseudo
+                      pseudoMap: record._pseudo
                     },
                     to: {
-                      map: record._id
+                      idMap: record._id
                     }
                   };
                   mapper.del(null, record._pseudo);
@@ -4387,10 +4394,10 @@ ksc.factory('ksc.List', [
                 if (map[record._id]) {
                   info.merge = {
                     from: {
-                      map: old_id
+                      idMap: old_id
                     },
                     to: {
-                      map: record._id
+                      idMap: record._id
                     }
                   };
                   info.record = map[record._id];
@@ -4400,10 +4407,10 @@ ksc.factory('ksc.List', [
                 } else {
                   info.move = {
                     from: {
-                      map: old_id
+                      idMap: old_id
                     },
                     to: {
-                      map: record._id
+                      idMap: record._id
                     }
                   };
                   mapper.del(old_id);
@@ -4510,7 +4517,7 @@ ksc.factory('ksc.List', [
               }
             } else {
               if (mapper) {
-                define_value(item, '_pseudo', util.uid('record.pseudo'));
+                define_value(item, '_pseudo', util.uid('record.pseudoMap'));
                 mapper.add(item);
               }
               tmp.push(item);
@@ -5958,7 +5965,7 @@ ksc.factory('ksc.RestList', [
       
       Uses {RestList#writeBack}
       
-      Records may be map IDs from list.map or the record instances
+      Records may be map IDs from list.idMap or the record instances
       
       Records must be unique
       
@@ -6004,7 +6011,7 @@ ksc.factory('ksc.RestList', [
       
       Uses {RestList#writeBack}
       
-      Records may be map IDs from list.map or the record instances
+      Records may be map IDs from list.idMap or the record instances
       
       Records must be unique
       
@@ -6191,7 +6198,7 @@ ksc.factory('ksc.RestList', [
       After error checks, it will pass the request to {RestList#writeBulk} or
       {RestList#writeSolo} depending on what the endpoint supports
       
-      Records may be map IDs from list.map or the record instances
+      Records may be map IDs from list.idMap or the record instances
       
       Records must be unique
       
@@ -6232,7 +6239,7 @@ ksc.factory('ksc.RestList', [
         for (i = _i = 0, _len = records.length; _i < _len; i = ++_i) {
           record = records[i];
           if (!util.isObject(record)) {
-            records[i] = record = list.map[record];
+            records[i] = record = list.idMap[record];
           }
           orig_rec = record;
           pseudo_id = null;
@@ -6244,17 +6251,17 @@ ksc.factory('ksc.RestList', [
             uid = 'id:' + record[PRIMARY_ID];
           }
           if (save_type) {
-            record = (pseudo_id && list.pseudo[pseudo_id]) || list.map[id];
+            record = (pseudo_id && list.pseudoMap[pseudo_id]) || list.idMap[id];
             if (!record) {
               error.Key({
                 key: orig_rec,
                 description: 'no such record on list'
               });
             }
-          } else if (!(record = list.map[id])) {
+          } else if (!(record = list.idMap[id])) {
             error.Key({
               key: orig_rec,
-              description: 'no such record on map'
+              description: 'no such record on .idMap'
             });
           }
           if (unique_record_map[uid]) {

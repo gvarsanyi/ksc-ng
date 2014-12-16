@@ -48,7 +48,8 @@ ksc.factory 'ksc.List', [
     the list it will update the already existing one instead of being added to
     the list
 
-    Maintains a key-value map of record._id's in the .map={id: Record} property
+    Maintains a key-value map of record._id's in the .idMap={id: Record}
+    property
 
     @example
       list = new List
@@ -60,7 +61,7 @@ ksc.factory 'ksc.List', [
       list.push {id: 2, x: 3}
       list.push {id: 2, x: 4}
       console.log list # [{id: 1, x: 2}, {id: 2, x: 4}]
-      console.log list.map[2] # {id: 2, x: 4}
+      console.log list.idMap[2] # {id: 2, x: 4}
 
     @note Do not forget to manage the lifecycle of lists to prevent memory leaks
     @example
@@ -88,14 +89,14 @@ ksc.factory 'ksc.List', [
       # @property [EventEmitter] reference to related event-emitter instance
       events: undefined
 
+      # @property [object] hash map of records (keys being record ._id values)
+      idMap: undefined
+
       # @property [Array|number|string] idProperty for list maps (getter)
       idProperty: undefined
 
-      # @property [object] hash map of records (keys being record ._id values)
-      map: undefined
-
       # @property [object] hash map of records without ._id keys
-      pseudo: undefined
+      pseudoMap: undefined
 
       # @property [object] list-related options
       options: undefined
@@ -186,7 +187,7 @@ ksc.factory 'ksc.List', [
 
         define_value list, 'events', new EventEmitter
 
-        # sets @_mapper, @map and @pseudo
+        # sets @_mapper, @idMap and @pseudoMap
         if id_property?
           ListMapper.register list
 
@@ -262,7 +263,7 @@ ksc.factory 'ksc.List', [
 
             if mapper
               unless mapper.has record
-                error.Key {record, description: 'map/pseudo id error'}
+                error.Key {record, description: 'idMap/pseudoMap id error'}
               mapper.del record
             cut.push record
           else # id (maybe old_id) passed
@@ -624,7 +625,8 @@ ksc.factory 'ksc.List', [
               action:
                 update: [
                   record: record
-                  move:   {from: {map|pseudo: id}, to: {map|pseudo: id}}
+                  move:   {from: {idMap|pseudoMap: id},
+                           to:   {idMap|pseudoMap: id}}
                   info:   record_update_info # see {EditableRecord} methods
                 ]
 
@@ -634,7 +636,8 @@ ksc.factory 'ksc.List', [
               action:
                 merge: [
                   record: record
-                  merge:  {from: {map|pseudo: id}, to: {map|pseudo: id}}
+                  merge:  {from: {idMap|pseudoMap: id},
+                           to:   {idMap|pseudoMap: id}}
                   source: dropped_record_reference
                   info:   record_update_info # see {EditableRecord} methods
                 ]
@@ -653,47 +656,47 @@ ksc.factory 'ksc.List', [
 
         info = {record, info: record_info}
 
-        if map = list.map
+        if map = list.idMap
           mapper = list._mapper
 
           if old_id isnt record._id
             list.events.halt()
             try
-              unless record._id? # map -> pseudo
+              unless record._id? # idMap -> pseudoMap
                 mapper.del old_id
-                define_value record, '_pseudo', util.uid 'record.pseudo'
+                define_value record, '_pseudo', util.uid 'record.pseudoMap'
                 mapper.add record
                 info.move =
-                  from: {map: old_id}
-                  to:   {pseudo: record._pseudo}
-              else unless old_id? # pseudo -> map
+                  from: {idMap: old_id}
+                  to:   {pseudoMap: record._pseudo}
+              else unless old_id? # pseudoMap -> idMap
                 if map[record._id] # merge
                   info.merge =
-                    from: {pseudo: record._pseudo}
-                    to:   {map: record._id}
+                    from: {pseudoMap: record._pseudo}
+                    to:   {idMap: record._id}
                   info.record = map[record._id]
                   info.source = record
                   list.cut record
                   list.push record
                 else # no merge
                   info.move =
-                    from: {pseudo: record._pseudo}
-                    to:   {map: record._id}
+                    from: {pseudoMap: record._pseudo}
+                    to:   {idMap: record._id}
                   mapper.del null, record._pseudo
                   add_to_map()
-              else # map -> map
+              else # idMap -> idMap
                 if map[record._id] # with merge
                   info.merge =
-                    from: {map: old_id}
-                    to:   {map: record._id}
+                    from: {idMap: old_id}
+                    to:   {idMap: record._id}
                   info.record = map[record._id]
                   info.source = record
                   list.cut old_id
                   list.push record
                 else # no merge
                   info.move =
-                    from: {map: old_id}
-                    to:   {map: record._id}
+                    from: {idMap: old_id}
+                    to:   {idMap: record._id}
                   mapper.del old_id
                   add_to_map()
             finally
@@ -776,7 +779,7 @@ ksc.factory 'ksc.List', [
                 define_value item, '_pseudo', null
             else
               if mapper
-                define_value item, '_pseudo', util.uid 'record.pseudo'
+                define_value item, '_pseudo', util.uid 'record.pseudoMap'
                 mapper.add item
 
               tmp.push item

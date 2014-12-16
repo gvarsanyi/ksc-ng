@@ -369,7 +369,7 @@ describe 'app.factory', ->
         expect(update_count).toBe 2
         expect((upd = update.action.update).length).toBe 1
         expect(upd[0].record).toBe list[1]
-        expect(upd[0].move).toEqual {from: {pseudo: 2}, to: {map: 2}}
+        expect(upd[0].move).toEqual {from: {pseudoMap: 2}, to: {idMap: 2}}
 
         expect(record_list[0]).toBe list[0]
         expect(record_list[1]).toBe list[1]
@@ -410,17 +410,17 @@ describe 'app.factory', ->
 
         list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
 
-        list.map['1-2'].a = 'c'
+        list.idMap['1-2'].a = 'c'
 
-        list.restSave list.map['1-2']
+        list.restSave list.idMap['1-2']
 
         $httpBackend.expectPUT(id_url.replace '<id>', '1').respond null
         response = [{id: 1, x: 2, a: 'd'}, {id: 1, x: 3, a: 'd'}]
         $httpBackend.expectGET(url + '?id=1').respond response
         $httpBackend.flush()
 
-        expect(list.map['1-2'].a).toBe 'd'
-        expect(list.map['1-3'].a).toBe 'd'
+        expect(list.idMap['1-2'].a).toBe 'd'
+        expect(list.idMap['1-3'].a).toBe 'd'
 
       it 'With composite id + bulkSave + callback', ->
         list = new RestList
@@ -429,7 +429,7 @@ describe 'app.factory', ->
 
         list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
 
-        list.map['1-2'].a = 'c'
+        list.idMap['1-2'].a = 'c'
 
         update       = null
         update_count = 0
@@ -437,7 +437,7 @@ describe 'app.factory', ->
           update_count += 1
           update = _update
 
-        list.restSave list.map['1-2']
+        list.restSave list.idMap['1-2']
 
         $httpBackend.expectPUT(url).respond null
         response = [{id: 1, x: 2, a: 'd'}, {id: 1, x: 3, a: 'd'}]
@@ -448,8 +448,8 @@ describe 'app.factory', ->
         expect((upd = update.action.update).length).toBe 2
         expect(upd[0].record).toBe list[0]
 
-        expect(list.map['1-2'].a).toBe 'd'
-        expect(list.map['1-3'].a).toBe 'd'
+        expect(list.idMap['1-2'].a).toBe 'd'
+        expect(list.idMap['1-3'].a).toBe 'd'
 
       it 'With composite id + NO bulkSave', ->
         list = new RestList
@@ -458,10 +458,10 @@ describe 'app.factory', ->
 
         list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'}
 
-        list.map['1-2'].a = 'c'
+        list.idMap['1-2'].a = 'c'
 
         err = record_list = raw = null
-        list.restSave list.map['1-2'], (_err, _record_list, _raw...) ->
+        list.restSave list.idMap['1-2'], (_err, _record_list, _raw...) ->
           err = _err
           record_list = _record_list
           raw = _raw
@@ -477,8 +477,8 @@ describe 'app.factory', ->
         expect(raw[0].data).toBe null
         expect(raw[0].config.method).toBe 'PUT'
 
-        expect(list.map['1-2'].a).toBe 'd'
-        expect(list.map['1-3'].a).toBe 'd'
+        expect(list.idMap['1-2'].a).toBe 'd'
+        expect(list.idMap['1-3'].a).toBe 'd'
 
       it 'With bulkSave', ->
         list = new RestList
@@ -523,7 +523,7 @@ describe 'app.factory', ->
         expect((upd = update.action.update).length).toBe 2
         expect(upd[0].record).toBe list[0]
         expect(upd[1].record).toBe list[1]
-        expect(upd[1].move).toEqual {from: {pseudo: 1}, to: {map: 2}}
+        expect(upd[1].move).toEqual {from: {pseudoMap: 1}, to: {idMap: 2}}
 
         expect(record_list[0]).toBe list[0]
         expect(record_list[1]).toBe list[1]
@@ -533,11 +533,11 @@ describe 'app.factory', ->
         expect(raw[0].config.method).toBe 'POST'
 
         expect(list.length).toBe 3
-        expect(list.map[2].ext).toBe 1
-        expect(list.map[1].x).toBe 'x'
-        expect(list.map[2].x).toBe 'y'
-        expect(list.map[1]._changes).toBe 0
-        expect(list.map[2]._changes).toBe 0
+        expect(list.idMap[2].ext).toBe 1
+        expect(list.idMap[1].x).toBe 'x'
+        expect(list.idMap[2].x).toBe 'y'
+        expect(list.idMap[1]._changes).toBe 0
+        expect(list.idMap[2]._changes).toBe 0
 
         list.options.endpoint.bulkSave = true # should be PUT not POST
         list[0].x = 'a'
@@ -554,12 +554,12 @@ describe 'app.factory', ->
         $httpBackend.flush()
 
         expect(list.length).toBe 3
-        expect(list.map[2].ext).toBeUndefined()
-        expect(list.map[1].x).toBe 'a'
-        expect(list.map[2].x).toBe 'a'
-        expect(list.map[1]._changes).toBe 0
-        expect(list.map[2]._changes).toBe 0
-        expect(list.map[3]._changes).toBe 0
+        expect(list.idMap[2].ext).toBeUndefined()
+        expect(list.idMap[1].x).toBe 'a'
+        expect(list.idMap[2].x).toBe 'a'
+        expect(list.idMap[1]._changes).toBe 0
+        expect(list.idMap[2]._changes).toBe 0
+        expect(list.idMap[3]._changes).toBe 0
 
       it 'With .options.reloadOnUpdate', ->
         list = new RestList
@@ -585,8 +585,8 @@ describe 'app.factory', ->
 
         list.push new EditableRecord {id: 1, a: 2}
 
-        list.map[1].a = 3
-        expect(list.map[1]._changes).toBe 1
+        list.idMap[1].a = 3
+        expect(list.idMap[1]._changes).toBe 1
 
         response = {error: 1}
 
@@ -603,9 +603,9 @@ describe 'app.factory', ->
         $httpBackend.flush()
 
         expect(list.length).toBe 1
-        expect(list.map[1].a).toBe 3
-        expect(list.map[1]._changes).toBe 1
-        expect(list.map[1]._changedKeys.a).toBe true
+        expect(list.idMap[1].a).toBe 3
+        expect(list.idMap[1]._changes).toBe 1
+        expect(list.idMap[1]._changedKeys.a).toBe true
         expect(cb_response[0] instanceof Error).toBe true
         expect(cb_response[1]).toEqual response
         expect(promise_response[0]).toBe 'error'
@@ -618,8 +618,8 @@ describe 'app.factory', ->
 
         list.push new EditableRecord {id: 1, a: 2}
 
-        list.map[1].a = 3
-        expect(list.map[1]._changes).toBe 1
+        list.idMap[1].a = 3
+        expect(list.idMap[1]._changes).toBe 1
 
         response = {error: 1}
 
@@ -636,9 +636,9 @@ describe 'app.factory', ->
         $httpBackend.flush()
 
         expect(list.length).toBe 1
-        expect(list.map[1].a).toBe 3
-        expect(list.map[1]._changes).toBe 1
-        expect(list.map[1]._changedKeys.a).toBe true
+        expect(list.idMap[1].a).toBe 3
+        expect(list.idMap[1]._changes).toBe 1
+        expect(list.idMap[1]._changedKeys.a).toBe true
         expect(cb_response[0] instanceof Error).toBe true
         expect(cb_response[1]).toEqual response
         expect(promise_response[0]).toBe 'error'
@@ -670,7 +670,7 @@ describe 'app.factory', ->
         spyable = {callback: ->}
         spyOn spyable, 'callback'
 
-        promise = list.restDelete list.map[1], list.map[2], spyable.callback
+        promise = list.restDelete list.idMap[1], list.idMap[2], spyable.callback
         promise.then (_responses) -> # success path
           responses = _responses
 
@@ -697,13 +697,13 @@ describe 'app.factory', ->
         list.push {id: 1, x: 2, a: 'a'}, {id: 1, x: 3, a: 'b'},
                   {id: 2, x: 3, a: 'b'}
 
-        list.restDelete list.map['1-2']
+        list.restDelete list.idMap['1-2']
 
         $httpBackend.expectDELETE(url).respond {yo: 1}
         $httpBackend.flush()
 
-        expect(list.map['1-2']).toBeUndefined()
-        expect(list.map['1-3']).toBeUndefined()
+        expect(list.idMap['1-2']).toBeUndefined()
+        expect(list.idMap['1-3']).toBeUndefined()
         expect(list.length).toBe 1
 
       it 'With composite id + NO bulkDelete', ->
@@ -715,15 +715,15 @@ describe 'app.factory', ->
                   {id: 2, x: 3, a: 'b'}
 
         # won't allow identical primaryId's in the request
-        expect(-> list.restDelete list.map['1-2'], '1-3').toThrow()
+        expect(-> list.restDelete list.idMap['1-2'], '1-3').toThrow()
 
-        list.restDelete list.map['1-2']
+        list.restDelete list.idMap['1-2']
 
         $httpBackend.expectDELETE(id_url.replace '<id>', '1').respond {yo: 1}
         $httpBackend.flush()
 
-        expect(list.map['1-2']).toBeUndefined()
-        expect(list.map['1-3']).toBeUndefined()
+        expect(list.idMap['1-2']).toBeUndefined()
+        expect(list.idMap['1-3']).toBeUndefined()
         expect(list.length).toBe 1
 
       it 'With bulkDelete', ->
@@ -753,10 +753,10 @@ describe 'app.factory', ->
         expect(update.action.cut.length).toBe 2
         expect(update.action.cut[0] instanceof EditableRecord).toBe true
         expect(list.length).toBe 1
-        expect(list.map[2]).toBeUndefined()
-        expect(list.map[3]).toBeUndefined()
-        expect(list.map[1].x).toBe 'x'
-        expect(list.map[1]._changes).toBe 1
+        expect(list.idMap[2]).toBeUndefined()
+        expect(list.idMap[3]).toBeUndefined()
+        expect(list.idMap[1].x).toBe 'x'
+        expect(list.idMap[1]._changes).toBe 1
         expect(spyable.callback).toHaveBeenCalled()
 
       it 'With no callback - bulk', ->
@@ -784,7 +784,7 @@ describe 'app.factory', ->
       it 'Refuses pseudo/new records', ->
         list = new RestList list_cfg
         list.push {id: null, a: 1}
-        expect(list.pseudo[list[0]._pseudo]).toBe list[0]
+        expect(list.pseudoMap[list[0]._pseudo]).toBe list[0]
         expect(-> list.restDelete list[0]).toThrow()
 
     it 'Method .restLoad() error', ->
