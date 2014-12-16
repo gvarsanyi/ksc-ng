@@ -1,6 +1,6 @@
 .PHONY: all clean dist doc lint test
 
-all: test lint doc dist
+all: full-test lint doc dist
 
 dependencies:
 	@if [ ! -d "node_modules" ]; then \
@@ -49,6 +49,6 @@ test: dependencies _cmptest
 	-node_modules/karma/bin/karma start test/karma.conf.coffee $(file)
 	@rm -rf test/tmp
 
-sauce-test: dependencies _cmptest
-	-node_modules/karma/bin/karma start test/karma-sauce.conf.coffee $(file)
+full-test: dependencies _cmptest
+	-node_modules/karma/bin/karma start test/karma-full-with-sauce.conf.coffee $(file)
 	@rm -rf test/tmp

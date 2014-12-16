@@ -6,8 +6,8 @@ module.exports = (config) ->
 
 
   unless process.env.SAUCE_USERNAME
-    credfile = __dirname__ + '/sauce.json'
-    unless fs.existsSync credfile
+    credfile = __dirname + '/sauce.json'
+    unless require('fs').existsSync credfile
       console.error 'Create ' + credfile + ' with your credentials based on ' +
                     'the sauce-sample.json file.'
       process.exit 1
@@ -32,7 +32,7 @@ module.exports = (config) ->
 
 
   config.set
-    browsers:        Object.keys custom_launchers
+    browsers:        ['Chrome', 'Firefox'].concat Object.keys custom_launchers
     captureTimeout:  120000
     customLaunchers: custom_launchers
     reporters:       config.reporters.concat 'saucelabs'
