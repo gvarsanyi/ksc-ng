@@ -989,7 +989,6 @@ ksc.factory('ksc.EditableRecord', [
     
     Options that may be used
     - .options.contract
-    - .options.idProperty
     - .options.subtreeClass
     
     @author Greg Varsanyi
@@ -1053,46 +1052,41 @@ ksc.factory('ksc.EditableRecord', [
       Clone record or contents
       
       @param [boolean] return_plain_object (optional) return a vanilla js Object
+      @param [boolean] exclude_static (optional) avoid cloning non-getters
+        (statically assigned in runtime without using
+        {EditableRecord#_setProperty)
       @param [boolean] saved_only (optional) return only saved-state data
       
       @return [Object|EditableRecord] the new instance with identical data
        */
 
-      EditableRecord.prototype._clone = function(return_plain_object, saved_only) {
-        var clone, key, record, source, value;
-        if (return_plain_object == null) {
-          return_plain_object = false;
-        }
-        if (saved_only == null) {
-          saved_only = false;
-        }
+      EditableRecord.prototype._clone = function(return_plain_object, exclude_static, saved_only) {
+        var clone, key, record, value, _ref;
         record = this;
-        if (return_plain_object) {
-          clone = {};
-          source = saved_only ? record[_SAVED] : record;
-          for (key in source) {
-            value = source[key];
-            if (value instanceof Record) {
-              value = value._clone(true, saved_only);
-            }
-            clone[key] = value;
-          }
-          return clone;
-        }
-        clone = new record.constructor(record[_SAVED]);
+        clone = EditableRecord.__super__._clone.call(this, return_plain_object, exclude_static);
         if (!saved_only) {
-          for (key in record) {
-            if (record[_CHANGED_KEYS][key] || !has_own(record[_SAVED], key)) {
-              value = record[key];
-              if (is_object(value)) {
-                value = value._clone(true);
-              }
+          _ref = record[_EDITED];
+          for (key in _ref) {
+            value = _ref[key];
+            if (value != null ? value._clone : void 0) {
+              value = value._clone(return_plain_object, exclude_static);
+            }
+            if (return_plain_object) {
               clone[key] = value;
+            } else {
+              clone._setProperty(key, value);
             }
           }
           for (key in record[_DELETED_KEYS]) {
-            clone._delete(key);
+            if (return_plain_object) {
+              delete clone[key];
+            } else {
+              clone._delete(key);
+            }
           }
+        }
+        if (!(return_plain_object || exclude_static)) {
+          Record.getAllStatic(record, clone);
         }
         return clone;
       };
@@ -1135,10 +1129,10 @@ ksc.factory('ksc.EditableRecord', [
               contract: contract[key]
             });
           }
-          if ((id_property = record[_OPTIONS].idProperty) === key || (is_array(id_property) && __indexOf.call(id_property, key) >= 0)) {
+          if ((id_property = record._idProperty) === key || (is_array(id_property) && __indexOf.call(id_property, key) >= 0)) {
             error.Permission({
               key: key,
-              description: '._options.idProperty keys can not be deleted'
+              description: 'idProperty keys can not be deleted'
             });
           }
           if (has_own(record[_SAVED], key)) {
@@ -1202,8 +1196,8 @@ ksc.factory('ksc.EditableRecord', [
 
       EditableRecord.prototype._getProperty = function(key) {
         var record, value;
-        value = EditableRecord.__super__._getProperty.apply(this, arguments);
         record = this;
+        value = EditableRecord.__super__._getProperty.apply(this, arguments);
         if (record[_DELETED_KEYS][key]) {
           return;
         } else if (has_own(record[_EDITED], key)) {
@@ -1280,13 +1274,6 @@ ksc.factory('ksc.EditableRecord', [
           delete record[_CHANGED_KEYS][key];
           changed = true;
         }
-        for (key in record) {
-          if (!(!has_own(record[_SAVED], key))) {
-            continue;
-          }
-          delete record[key];
-          changed = true;
-        }
         if (changed) {
           define_value(record, _CHANGES, 0);
           if (emit_event) {
@@ -1335,7 +1322,7 @@ ksc.factory('ksc.EditableRecord', [
         edited = record[_EDITED];
         contract = record[_OPTIONS].contract;
         Record.valueCheck(record, key, value);
-        if ((id_property = record[_OPTIONS].idProperty) === key || (is_array(id_property) && __indexOf.call(id_property, key) >= 0)) {
+        if ((id_property = record._idProperty) === key || (is_array(id_property) && __indexOf.call(id_property, key) >= 0)) {
           if (!(value === null || ((_ref = typeof value) === 'string' || _ref === 'number'))) {
             error.Value({
               value: value,
@@ -2386,16 +2373,38 @@ ksc.factory('ksc.ListMapper', [
        */
 
       function ListMapper(parent) {
-        var build_maps, mapper, source;
+        var build_maps, has_mapped_source, mapped, mapper, source;
         this.parent = parent;
         mapper = this;
         source = parent.source;
-        define_value(mapper, 'map', {}, 0, 1);
-        define_value(mapper, 'pseudo', {}, 0, 1);
         define_value(mapper, 'multi', source && !source._, 0, 1);
         define_value(mapper, '_sources', [], 0, 1);
+        has_mapped_source = function(target) {
+          var k, ref, _ref;
+          if (target.source) {
+            _ref = target.source;
+            for (k in _ref) {
+              ref = _ref[k];
+              if (has_mapped_source(ref)) {
+                return true;
+              }
+            }
+            return false;
+          }
+          return target.idProperty != null;
+        };
+        if (mapped = has_mapped_source(parent)) {
+          define_value(mapper, 'map', {}, 0, 1);
+          define_value(mapper, 'pseudo', {}, 0, 1);
+        }
         build_maps = function(parent, target_map, target_pseudo, names) {
           var item, source_list, source_name, src, subnames, _results;
+          if (target_map == null) {
+            target_map = {};
+          }
+          if (target_pseudo == null) {
+            target_pseudo = {};
+          }
           if (src = parent.source) {
             if (src._) {
               return build_maps(src._, target_map, target_pseudo, names);
@@ -2403,8 +2412,10 @@ ksc.factory('ksc.ListMapper', [
               _results = [];
               for (source_name in src) {
                 source_list = src[source_name];
-                target_map[source_name] = {};
-                target_pseudo[source_name] = {};
+                if (mapped && has_mapped_source(parent)) {
+                  target_map[source_name] = {};
+                  target_pseudo[source_name] = {};
+                }
                 subnames = (function() {
                   var _i, _len, _results1;
                   _results1 = [];
@@ -2534,9 +2545,11 @@ ksc.factory('ksc.ListMapper', [
       ListMapper.register = function(list) {
         var mapper;
         mapper = new ListMapper(list);
-        define_value(list, '_mapper', mapper, 0, 1);
-        define_value(list, 'map', mapper.map, 0, 1);
-        define_value(list, 'pseudo', mapper.pseudo, 0, 1);
+        define_value(list, '_mapper', mapper);
+        if (mapper.map) {
+          define_value(list, 'map', mapper.map);
+          define_value(list, 'pseudo', mapper.pseudo);
+        }
       };
 
       return ListMapper;
@@ -2834,9 +2847,9 @@ ksc.factory('ksc.ListMask', [
       @property [ListMapper] helper object that handles references to records
         by their unique IDs (._id) or pseudo IDs (._pseudo)
        */
-      ListMask.prototype._mapper = null;
+      ListMask.prototype._mapper = void 0;
 
-      ListMask.prototype.events = null;
+      ListMask.prototype.events = void 0;
 
 
       /*
@@ -2844,17 +2857,17 @@ ksc.factory('ksc.ListMask', [
         return value indicating if record should be in the filtered list
        */
 
-      ListMask.prototype.filter = null;
+      ListMask.prototype.filter = void 0;
 
-      ListMask.prototype.map = null;
+      ListMask.prototype.map = void 0;
 
-      ListMask.prototype.options = null;
+      ListMask.prototype.options = void 0;
 
-      ListMask.prototype.pseudo = null;
+      ListMask.prototype.pseudo = void 0;
 
-      ListMask.prototype.sorter = null;
+      ListMask.prototype.sorter = void 0;
 
-      ListMask.prototype.source = null;
+      ListMask.prototype.source = void 0;
 
 
       /*
@@ -2863,7 +2876,7 @@ ksc.factory('ksc.ListMask', [
         splitting of record
        */
 
-      ListMask.prototype.splitter = null;
+      ListMask.prototype.splitter = void 0;
 
 
       /*
@@ -2955,18 +2968,18 @@ ksc.factory('ksc.ListMask', [
         _ref = this.constructor.prototype;
         for (key in _ref) {
           value = _ref[key];
-          define_value(list, key, value, 0, 1);
+          define_value(list, key, value);
         }
         _ref1 = ['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'];
         for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
           key = _ref1[_i];
           if (list[key]) {
-            define_value(list, key, void 0);
+            define_value(list, key);
           }
         }
-        define_value(list, 'events', new EventEmitter, 0, 1);
+        define_value(list, 'events', new EventEmitter);
         define_value(list, 'options', options);
-        define_value(list, 'source', source, 0, 1);
+        define_value(list, 'source', source);
         register_filter(list);
         register_splitter(list);
         ListMapper.register(list);
@@ -3011,10 +3024,13 @@ ksc.factory('ksc.ListMask', [
           _ref3 = source_info.source;
           for (_l = 0, _len3 = _ref3.length; _l < _len3; _l++) {
             record = _ref3[_l];
-            if (list.filter(record)) {
-              list._mapper.add(record, source_info.names);
-              add_to_list(list, record);
+            if (!(list.filter(record))) {
+              continue;
             }
+            if (record._parent.idProperty != null) {
+              list._mapper.add(record, source_info.names);
+            }
+            add_to_list(list, record);
           }
         }
         return list;
@@ -3040,7 +3056,7 @@ ksc.factory('ksc.ListMask', [
        */
 
       ListMask.prototype.update = function() {
-        var action, is_on, list, mapper, record, source_info, source_names, _i, _j, _len, _len1, _ref, _ref1;
+        var action, is_on, list, mapped, mapper, record, source_info, source_names, _i, _j, _len, _len1, _ref, _ref1;
         action = {};
         list = this;
         mapper = list._mapper;
@@ -3051,15 +3067,23 @@ ksc.factory('ksc.ListMask', [
           _ref1 = source_info.source;
           for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
             record = _ref1[_j];
-            is_on = mapper.has(record, null, source_names);
+            if (mapped = record._parent.idProperty) {
+              is_on = mapper.has(record, null, source_names);
+            } else {
+              is_on = __indexOf.call(list, record) >= 0;
+            }
             if (list.filter(record)) {
               if (!is_on) {
-                mapper.add(record, source_names);
+                if (mapped) {
+                  mapper.add(record, source_names);
+                }
                 add_to_list(list, record);
                 (action.add != null ? action.add : action.add = []).push(record);
               }
             } else if (is_on) {
-              mapper.del(record, null, source_names);
+              if (mapped) {
+                mapper.del(record, null, source_names);
+              }
               (action.cut != null ? action.cut : action.cut = []).push(record);
             }
           }
@@ -3097,7 +3121,7 @@ ksc.factory('ksc.ListMask', [
        */
 
       ListMask.update = function(info, source_names) {
-        var action, add_action, cut, cutter, delete_if_on, find_and_add, from, incoming, key, list, mapper, merge, move, record, remapper, source, source_found, target_found, to, update_info, value, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _ref3, _ref4;
+        var action, add_action, cut, cutter, delete_if_on, find_and_add, from, incoming, is_on, key, list, mapper, merge, move, record, remapper, source, source_found, target_found, to, update_info, value, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _ref3, _ref4;
         action = null;
         cut = [];
         list = this;
@@ -3107,26 +3131,39 @@ ksc.factory('ksc.ListMask', [
           var _base;
           return ((_base = (action != null ? action : action = {}))[name] != null ? _base[name] : _base[name] = []).push(info);
         };
+        is_on = function(map_id, pseudo_id, record) {
+          if (record._parent.idProperty) {
+            return [1, mapper.has(map_id, pseudo_id, source_names)];
+          } else {
+            return [0, __indexOf.call(list, record) >= 0];
+          }
+        };
         cutter = function(map_id, pseudo_id, record) {
-          if (mapper.has(map_id, pseudo_id, source_names)) {
+          var mapped, was_on, _ref;
+          _ref = is_on(map_id, pseudo_id, record), mapped = _ref[0], was_on = _ref[1];
+          if (was_on) {
             add_action('cut', record);
             cut.push(record);
-            return mapper.del(map_id, pseudo_id, source_names);
+            if (mapped) {
+              mapper.del(map_id, pseudo_id, source_names);
+            }
           }
         };
         find_and_add = function(map_id, pseudo_id, record) {
-          var is_on;
-          if (!(is_on = mapper.has(map_id, pseudo_id, source_names))) {
+          var mapped, was_on, _ref;
+          _ref = is_on(map_id, pseudo_id, record), mapped = _ref[0], was_on = _ref[1];
+          if (mapped && !was_on) {
             mapper.add(record, source_names);
           }
-          return is_on;
+          return was_on;
         };
         delete_if_on = function(map_id, pseudo_id) {
-          var is_on;
-          if (is_on = mapper.has(map_id, pseudo_id, source_names)) {
+          var mapped, was_on, _ref;
+          _ref = is_on(map_id, pseudo_id, record), mapped = _ref[0], was_on = _ref[1];
+          if (mapped && was_on) {
             mapper.del(map_id, pseudo_id, source_names);
           }
-          return is_on;
+          return was_on;
         };
         if (incoming.cut) {
           _ref = incoming.cut;
@@ -3305,7 +3342,7 @@ ksc.factory('ksc.ListSorter', [
       function ListSorter(list, description) {
         var key, sorter, type;
         sorter = this;
-        define_value(sorter, 'list', list, 0, 0);
+        define_value(sorter, 'list', list);
         if (typeof description === 'function') {
           sorter.fn = description;
         } else {
@@ -3545,7 +3582,7 @@ ksc.factory('ksc.ListSorter', [
             return sorter = null;
           }
         };
-        util.defineGetSet(list, 'sorter', getter, setter, 1);
+        util.defineGetSet(list, 'sorter', getter, setter);
         util.defineGetSet(list.options, 'sorter', getter, setter, 1);
       };
 
@@ -3628,7 +3665,7 @@ ksc.factory('ksc.List', [
     
     Options that may be used:
     - .options.record.class (class reference for record objects)
-    - .options.record.idProperty (property/properties that define record ID)
+    - .idProperty (property/properties that define record ID)
     
     @author Greg Varsanyi
      */
@@ -3638,17 +3675,19 @@ ksc.factory('ksc.List', [
       @property [ListMapper] helper object that handles references to records
         by their unique IDs (._id) or pseudo IDs (._pseudo)
        */
-      List.prototype._mapper = null;
+      List.prototype._mapper = void 0;
 
-      List.prototype.events = null;
+      List.prototype.events = void 0;
 
-      List.prototype.map = null;
+      List.prototype.idProperty = void 0;
 
-      List.prototype.pseudo = null;
+      List.prototype.map = void 0;
 
-      List.prototype.options = null;
+      List.prototype.pseudo = void 0;
 
-      List.prototype.sorter = null;
+      List.prototype.options = void 0;
+
+      List.prototype.sorter = void 0;
 
 
       /*
@@ -3656,52 +3695,106 @@ ksc.factory('ksc.List', [
       pop/shift/push/unshift logic to support the special features. Will inherit
       standard Array behavior for .length and others.
       
+      @param [Array] initial_set (optional) initial set of elements
       @param [Object] options (optional) configuration data for this list
+      @param [number|string] id_property (optional) id_property for records of
+        this list (will be copied to .idProperty getter)
       @param [ControllerScope] scope (optional) auto-unsubscribe on $scope
         '$destroy' event
+      
+      @throw [ArgumentTypeError] Ambiguous argument(s)
       
       @return [Array] returns plain [] with extra methods and some overrides
        */
 
-      function List(options, scope) {
-        var key, list, value, _base, _ref;
-        if (options == null) {
-          options = {};
-        }
+      function List() {
+        var argument, i, id_property, id_property_set, initial_set, key, list, options, scope, value, _ref, _ref1;
         list = [];
-        if (!util.isObject(options)) {
-          argument_type_error({
-            options: options,
-            argument: 3,
-            required: 'object'
-          });
-        }
-        if ($rootScope.isPrototypeOf(options)) {
-          scope = options;
-          options = {};
-        }
-        if (scope != null) {
-          if (!$rootScope.isPrototypeOf(scope)) {
+        initial_set = options = id_property = scope = void 0;
+        for (i in arguments) {
+          argument = arguments[i];
+          if (Array.isArray(argument)) {
+            if (initial_set) {
+              argument_type_error({
+                argument: argument,
+                number: i,
+                description: 'Ambiguous: can only take 1 array'
+              });
+            }
+            initial_set = argument;
+          } else if (is_object(argument)) {
+            if ($rootScope.isPrototypeOf(argument)) {
+              if (scope) {
+                argument_type_error({
+                  argument: argument,
+                  number: i,
+                  description: 'Ambiguous: can only take 1 scope'
+                });
+              }
+              scope = argument;
+            } else {
+              if (options) {
+                argument_type_error({
+                  argument: argument,
+                  number: i,
+                  description: 'Ambiguous: can only take 1 object for options'
+                });
+              }
+              options = argument;
+            }
+          } else if (util.isKeyConform(argument)) {
+            if (id_property != null) {
+              argument_type_error({
+                argument: argument,
+                number: i,
+                description: 'Ambiguous: can only take 1 id_property'
+              });
+            }
+            id_property = argument;
+          } else {
             argument_type_error({
-              scope: scope,
-              required: '$rootScope descendant'
+              argument: argument,
+              number: i,
+              description: 'Unknown type for a List argument'
             });
           }
         }
-        _ref = this.constructor.prototype;
-        for (key in _ref) {
-          value = _ref[key];
-          if (key.indexOf('constructor') === -1) {
-            define_value(list, key, value, 0, 1);
+        if (((options != null ? (_ref = options.record) != null ? _ref.idProperty : void 0 : void 0) != null) && id_property) {
+          argument_type_error({
+            argument: id_property,
+            options: options,
+            description: 'id_property argument conflicts with ' + '.options.record.idProperty'
+          });
+        }
+        _ref1 = this.constructor.prototype;
+        for (key in _ref1) {
+          value = _ref1[key];
+          if (key !== 'constructor') {
+            define_value(list, key, value);
           }
         }
-        options = angular.copy(options);
+        options = angular.copy(options) || {};
         define_value(list, 'options', options);
-        if ((_base = list.options).record == null) {
-          _base.record = {};
+        if (options.record == null) {
+          options.record = {};
         }
-        define_value(list, 'events', new EventEmitter, 0, 1);
-        ListMapper.register(list);
+        Record.checkIdProperty((id_property != null ? id_property : id_property = options.record.idProperty));
+        id_property_set = function() {
+          return error.Permission({
+            description: 'idProperty can not be changed run-time'
+          });
+        };
+        util.defineGetSet(list, 'idProperty', (function() {
+          return id_property;
+        }), id_property_set);
+        util.defineGetSet(options.record, 'idProperty', (function() {
+          return id_property;
+        }), id_property_set, 1);
+        define_value(list, '_sourceType', 'List');
+        define_value(list, 'events', new EventEmitter);
+        if (id_property != null) {
+          ListMapper.register(list);
+        }
         if (scope) {
           define_value(list, SCOPE_UNSUBSCRIBER, scope.$on('$destroy', function() {
             delete list[SCOPE_UNSUBSCRIBER];
@@ -3709,6 +3802,9 @@ ksc.factory('ksc.List', [
           }));
         }
         ListSorter.register(list, options.sorter);
+        if (initial_set) {
+          list.push.apply(list, initial_set);
+        }
         return list;
       }
 
@@ -3722,7 +3818,7 @@ ksc.factory('ksc.List', [
        */
 
       List.prototype.destroy = function() {
-        var key, list;
+        var list;
         list = this;
         if (Object.isFrozen(list)) {
           return false;
@@ -3735,11 +3831,6 @@ ksc.factory('ksc.List', [
           list._sourceUnsubscriber();
         }
         util.empty(list);
-        for (key in list) {
-          if (key !== 'destroy') {
-            delete list[key];
-          }
-        }
         delete list.options;
         delete list._sourceUnsubscriber;
         Object.freeze(list);
@@ -3751,7 +3842,7 @@ ksc.factory('ksc.List', [
       Cut 1 or more records from the list
       
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @param [Record] records... Record(s) or record ID(s) to be removed
       
@@ -3786,13 +3877,15 @@ ksc.factory('ksc.List', [
                 description: 'not found in list'
               });
             }
-            if (!mapper.has(record)) {
-              error.Key({
-                record: record,
-                description: 'map/pseudo id error'
-              });
+            if (mapper) {
+              if (!mapper.has(record)) {
+                error.Key({
+                  record: record,
+                  description: 'map/pseudo id error'
+                });
+              }
+              mapper.del(record);
             }
-            mapper.del(record);
             cut.push(record);
           } else {
             id = record;
@@ -3833,7 +3926,7 @@ ksc.factory('ksc.List', [
       Empty list
       
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @event 'update' sends out message if list changes (see: {List#cut})
       
@@ -3868,7 +3961,7 @@ ksc.factory('ksc.List', [
       Remove the last element
       
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @event 'update' sends out message if list changes (see: {List#cut})
       
@@ -3891,7 +3984,7 @@ ksc.factory('ksc.List', [
       {ListSorter} and {ListSorter#position}
       
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -3933,7 +4026,7 @@ ksc.factory('ksc.List', [
       Remove the first element
       
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @event 'update' sends out message if list changes (see: {List#cut})
       
@@ -3956,7 +4049,7 @@ ksc.factory('ksc.List', [
       {ListSorter} and {ListSorter#position}
       
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @throw [TypeError] non-object element pushed
       @throw [MissingArgumentError] no items were pushed
@@ -4005,7 +4098,7 @@ ksc.factory('ksc.List', [
       {ListSorter} and {ListSorter#position}
       
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @throw [ArgumentTypeError] pos or count does not meet requirements
       @throw [TypeError] non-object element pushed
@@ -4239,8 +4332,6 @@ ksc.factory('ksc.List', [
           });
         }
         list = this;
-        map = list.map;
-        mapper = list._mapper;
         add_to_map = function() {
           define_value(record, '_pseudo', null);
           return mapper.add(record);
@@ -4249,76 +4340,79 @@ ksc.factory('ksc.List', [
           record: record,
           info: record_info
         };
-        if (old_id !== record._id) {
-          list.events.halt();
-          try {
-            if (record._id == null) {
-              mapper.del(old_id);
-              define_value(record, '_pseudo', util.uid('record.pseudo'));
-              mapper.add(record);
-              info.move = {
-                from: {
-                  map: old_id
-                },
-                to: {
-                  pseudo: record._pseudo
-                }
-              };
-            } else if (old_id == null) {
-              if (map[record._id]) {
-                info.merge = {
-                  from: {
-                    pseudo: record._pseudo
-                  },
-                  to: {
-                    map: record._id
-                  }
-                };
-                info.record = map[record._id];
-                info.source = record;
-                list.cut(record);
-                list.push(record);
-              } else {
-                info.move = {
-                  from: {
-                    pseudo: record._pseudo
-                  },
-                  to: {
-                    map: record._id
-                  }
-                };
-                mapper.del(null, record._pseudo);
-                add_to_map();
-              }
-            } else {
-              if (map[record._id]) {
-                info.merge = {
-                  from: {
-                    map: old_id
-                  },
-                  to: {
-                    map: record._id
-                  }
-                };
-                info.record = map[record._id];
-                info.source = record;
-                list.cut(old_id);
-                list.push(record);
-              } else {
-                info.move = {
-                  from: {
-                    map: old_id
-                  },
-                  to: {
-                    map: record._id
-                  }
-                };
+        if (map = list.map) {
+          mapper = list._mapper;
+          if (old_id !== record._id) {
+            list.events.halt();
+            try {
+              if (record._id == null) {
                 mapper.del(old_id);
-                add_to_map();
+                define_value(record, '_pseudo', util.uid('record.pseudo'));
+                mapper.add(record);
+                info.move = {
+                  from: {
+                    map: old_id
+                  },
+                  to: {
+                    pseudo: record._pseudo
+                  }
+                };
+              } else if (old_id == null) {
+                if (map[record._id]) {
+                  info.merge = {
+                    from: {
+                      pseudo: record._pseudo
+                    },
+                    to: {
+                      map: record._id
+                    }
+                  };
+                  info.record = map[record._id];
+                  info.source = record;
+                  list.cut(record);
+                  list.push(record);
+                } else {
+                  info.move = {
+                    from: {
+                      pseudo: record._pseudo
+                    },
+                    to: {
+                      map: record._id
+                    }
+                  };
+                  mapper.del(null, record._pseudo);
+                  add_to_map();
+                }
+              } else {
+                if (map[record._id]) {
+                  info.merge = {
+                    from: {
+                      map: old_id
+                    },
+                    to: {
+                      map: record._id
+                    }
+                  };
+                  info.record = map[record._id];
+                  info.source = record;
+                  list.cut(old_id);
+                  list.push(record);
+                } else {
+                  info.move = {
+                    from: {
+                      map: old_id
+                    },
+                    to: {
+                      map: record._id
+                    }
+                  };
+                  mapper.del(old_id);
+                  add_to_map();
+                }
               }
+            } finally {
+              list.events.unhalt();
             }
-          } finally {
-            list.events.unhalt();
           }
         }
         if (list.sorter) {
@@ -4344,7 +4438,7 @@ ksc.factory('ksc.List', [
       Aggregate method for push/unshift
       
       Options used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       If list is auto-sorted, new elements will be added to their appropriate
       sorted position (i.e. not necessarily to the first/last position), see:
@@ -4382,20 +4476,26 @@ ksc.factory('ksc.List', [
           for (_i = 0, _len = items.length; _i < _len; _i++) {
             item = items[_i];
             original = item;
-            if (item instanceof record_class) {
+            if (item instanceof Record) {
               if (item._parent && item._parent !== list) {
                 item._parent.cut(item);
               }
+              util.mergeIn(item._options, record_opts);
               define_value(item, '_parent', list);
             } else {
-              if (item instanceof Record) {
-                item = item._clone(true);
-              }
               item = new record_class(item, record_opts, list);
             }
+            if (item._idProperty !== list.idProperty) {
+              error.Value({
+                'list.idProperty': list.idProperty,
+                'record._idProperty': record._idProperty,
+                description: 'record._idProperty conflicts with list.idProperty'
+              });
+            }
+            Record.setId(item);
             if (item._id != null) {
               if (existing = mapper.has(item._id)) {
-                existing._replace(item._clone(true));
+                existing._replace(item._clone(1));
                 (action.update != null ? action.update : action.update = []).push({
                   record: existing,
                   source: original
@@ -4409,8 +4509,10 @@ ksc.factory('ksc.List', [
                 define_value(item, '_pseudo', null);
               }
             } else {
-              define_value(item, '_pseudo', util.uid('record.pseudo'));
-              mapper.add(item);
+              if (mapper) {
+                define_value(item, '_pseudo', util.uid('record.pseudo'));
+                mapper.add(item);
+              }
               tmp.push(item);
               (action.add != null ? action.add : action.add = []).push(item);
             }
@@ -4438,7 +4540,7 @@ ksc.factory('ksc.List', [
       Aggregate method for pop/shift
       
       Option used:
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @param [Array] list Array generated by {List}
       @param [string] orig_fn 'pop' or 'shift'
@@ -4449,9 +4551,11 @@ ksc.factory('ksc.List', [
        */
 
       List.remove = function(list, orig_fn) {
-        var record;
+        var record, _ref;
         if (record = Array.prototype[orig_fn].call(list)) {
-          list._mapper.del(record);
+          if ((_ref = list._mapper) != null) {
+            _ref.del(record);
+          }
           emit_action(list, {
             cut: [record]
           });
@@ -4608,10 +4712,11 @@ ksc.factory('ksc.Mixin', [
 
 ksc.factory('ksc.RecordContract', [
   'ksc.error', 'ksc.util', function(error, util) {
-    var NULLABLE, RecordContract, has_own, is_object;
+    var NULLABLE, RecordContract, define_value, has_own, is_object;
     NULLABLE = 'nullable';
     has_own = util.hasOwn;
     is_object = util.isObject;
+    define_value = util.defineValue;
 
     /*
     Contract, integrity checkers and matchers for {Record} and descendants
@@ -4833,7 +4938,7 @@ ksc.factory('ksc.RecordContract', [
       RecordContract.finalizeRecord = function(record) {
         if (record._options.contract && Object.isExtensible(record)) {
           if (!has_own(record, '$$hashKey')) {
-            util.defineValue(record, '$$hashKey', void 0, 1);
+            define_value(record, '$$hashKey', void 0, 1);
           }
           Object.preventExtensions(record);
         }
@@ -4852,17 +4957,18 @@ ksc.factory('ksc.RecordContract', [
 ]);
 ksc.factory('ksc.Record', [
   'ksc.ArrayTracker', 'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(ArrayTracker, EventEmitter, RecordContract, error, util) {
-    var CONTRACT, ID_PROPERTY, Record, define_value, has_own, is_array, is_key_conform, is_object, object_required, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PSEUDO, _SAVED;
+    var CONTRACT, Record, define_get_set, define_value, has_own, is_array, is_key_conform, is_object, object_required, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PRIMARY_KEY, _PSEUDO, _SAVED;
     _ARRAY = '_array';
     _EVENTS = '_events';
     _ID = '_id';
     _OPTIONS = '_options';
     _PARENT = '_parent';
     _PARENT_KEY = '_parentKey';
+    _PRIMARY_KEY = '_primaryId';
     _PSEUDO = '_pseudo';
     _SAVED = '_saved';
     CONTRACT = 'contract';
-    ID_PROPERTY = 'idProperty';
+    define_get_set = util.defineGetSet;
     define_value = util.defineValue;
     has_own = util.hasOwn;
     is_array = Array.isArray;
@@ -4898,7 +5004,6 @@ ksc.factory('ksc.Record', [
     
     Options that may be used
     - .options.contract
-    - .options.idProperty
     - .options.subtreeClass
     
     @author Greg Varsanyi
@@ -4909,6 +5014,8 @@ ksc.factory('ksc.Record', [
       Record.prototype._events = void 0;
 
       Record.prototype._id = void 0;
+
+      Record.prototype._idProperty = void 0;
 
       Record.prototype._options = void 0;
 
@@ -4939,7 +5046,7 @@ ksc.factory('ksc.Record', [
        */
 
       function Record(data, options, parent, parent_key) {
-        var contract, key, record, ref, refs, target, _i, _j, _len, _len1, _ref, _ref1;
+        var contract, id_property, id_property_get, id_property_set, key, record, ref, refs, target, _i, _j, _len, _len1, _ref, _ref1;
         if (data == null) {
           data = {};
         }
@@ -4960,13 +5067,14 @@ ksc.factory('ksc.Record', [
         if (has_own(options, CONTRACT)) {
           contract = options[CONTRACT] = new RecordContract(options[CONTRACT]);
         }
+        define_value(record, _PARENT, parent);
         if ((parent != null) || (parent_key != null)) {
           object_required('options', parent, 3);
-          define_value(record, _PARENT, parent);
           if (parent_key != null) {
             is_key_conform(parent_key, 1, 4);
             define_value(record, _PARENT_KEY, parent_key);
             delete record[_ID];
+            delete record[_PRIMARY_KEY];
             delete record[_PSEUDO];
           }
         }
@@ -4984,10 +5092,26 @@ ksc.factory('ksc.Record', [
             }
           }
         }
+        id_property = options.idProperty;
         if (parent_key == null) {
-          define_value(record, _ID, void 0);
-          define_value(record, _PSEUDO, void 0);
+          define_value(record, _ID);
+          define_value(record, _PRIMARY_KEY);
+          define_value(record, _PSEUDO);
           define_value(record, _EVENTS, new EventEmitter);
+          Record.checkIdProperty(id_property);
+          id_property_get = function() {
+            var _ref2;
+            if (id_property != null) {
+              return id_property;
+            }
+            return (_ref2 = record[_PARENT]) != null ? _ref2.idProperty : void 0;
+          };
+          id_property_set = function(value) {
+            Record.checkIdProperty(value);
+            Record.setId(record);
+          };
+          define_get_set(record, '_idProperty', id_property_get, id_property_set);
+          define_get_set(options, 'idProperty', id_property_get, id_property_set, 1);
           record[_EVENTS].halt();
         }
         record._replace(data);
@@ -5004,28 +5128,51 @@ ksc.factory('ksc.Record', [
       Clone record or contents
       
       @param [boolean] return_plain_object (optional) return a vanilla js Object
+      @param [boolean] exclude_static (optional) avoid cloning non-getters
+        (statically assigned in runtime without using {Record#_setProperty)
       
       @return [Object|Record] the new instance with identical data
        */
 
-      Record.prototype._clone = function(return_plain_object) {
-        var clone, key, record, value;
-        if (return_plain_object == null) {
-          return_plain_object = false;
-        }
-        clone = {};
+      Record.prototype._clone = function(return_plain_object, exclude_static) {
+        var clone, key, key2, record, statics, value, value2, _ref, _ref1;
         record = this;
-        for (key in record) {
-          value = record[key];
-          if (is_object(value)) {
-            value = value._clone(1);
-          }
-          clone[key] = value;
-        }
+        clone = {};
         if (return_plain_object) {
-          return clone;
+          _ref = record[_SAVED];
+          for (key in _ref) {
+            value = _ref[key];
+            if (value != null ? value._clone : void 0) {
+              value = value._clone(1, exclude_static);
+            }
+            clone[key] = value;
+          }
+        } else {
+          statics = {};
+          _ref1 = record[_SAVED];
+          for (key in _ref1) {
+            value = _ref1[key];
+            if (value != null ? value._clone : void 0) {
+              if (!exclude_static) {
+                statics[key] = Record.getAllStatic(value);
+              }
+              value = value._clone(0, 1, 1);
+            }
+            clone[key] = value;
+          }
+          clone = new record.constructor(clone);
+          for (key in statics) {
+            value = statics[key];
+            for (key2 in value) {
+              value2 = value[key2];
+              clone[key][key2] = value2;
+            }
+          }
         }
-        return new record.constructor(clone);
+        if (!exclude_static) {
+          Record.getAllStatic(record, clone);
+        }
+        return clone;
       };
 
 
@@ -5087,11 +5234,6 @@ ksc.factory('ksc.Record', [
       /*
       (Re)define the initial data set
       
-      @note Will try and create an ._options.idProperty if it is missing off of
-        the first key in the dictionary, so that it can be used as ._id
-      @note Will set ._options.idProperty value of the data set to null if it is
-        not defined
-      
       @throw [TypeError] Can not take functions as values
       @throw [KeyError] Keys can not start with underscore
       
@@ -5118,7 +5260,6 @@ ksc.factory('ksc.Record', [
             description: 'can not replace subobject'
           });
         }
-        Record.initIdProperty(record, data);
         replacing = true;
         if (is_array(data)) {
           flat = (function() {
@@ -5295,6 +5436,45 @@ ksc.factory('ksc.Record', [
 
 
       /*
+      Helper function that matches value against idProperty requirement.
+      Namely, idProperty must be either
+       - a non-empty string, or
+       - a number, or
+       - a non-empty array of non-empty strings and/or numbers
+      
+      @param [mixed] id_property idProperty value
+      
+      @return [undefined]
+       */
+
+      Record.checkIdProperty = function(id_property) {
+        var check, err, item, _i, _len;
+        err = function() {
+          return error.Value({
+            item: item,
+            description: 'idProperty items must be key conform'
+          });
+        };
+        if (id_property != null) {
+          if (is_array(id_property)) {
+            check = id_property;
+          } else {
+            check = [id_property];
+          }
+          if (!check.length) {
+            err();
+          }
+          for (_i = 0, _len = check.length; _i < _len; _i++) {
+            item = check[_i];
+            if (!is_key_conform(item)) {
+              err();
+            }
+          }
+        }
+      };
+
+
+      /*
       Helper function that removes the {Record#_array} property effectively
       changing the Record instance's behavior into that of a regular object's.
       
@@ -5345,12 +5525,37 @@ ksc.factory('ksc.Record', [
         Record.setId(source);
         if (!source[_EVENTS]._halt) {
           if ((_ref = source[_PARENT]) != null) {
-            if (typeof _ref._recordChange === "function") {
-              _ref._recordChange(source, info, old_id);
-            }
+            _ref._recordChange(source, info, old_id);
           }
         }
         events.emit('update', info);
+      };
+
+
+      /*
+      Helper method that gets all static properties (not getter/setter
+      properties, e.g. the ones that were NOT assigned by {Record#_setProperty})
+      
+      Uses the provided object as clone target or creates a new one.
+      
+      @param [Record] record Reference to record object
+      @param [object] target (optional) Reference to property copy target
+      
+      @return [object] copied static properties
+       */
+
+      Record.getAllStatic = function(record, target) {
+        var key, value;
+        if (target == null) {
+          target = {};
+        }
+        for (key in record) {
+          value = record[key];
+          if (has_own(Object.getOwnPropertyDescriptor(record, key), 'value')) {
+            target[key] = value;
+          }
+        }
+        return target;
       };
 
 
@@ -5368,7 +5573,7 @@ ksc.factory('ksc.Record', [
 
       Record.getterify = function(record, index) {
         if (!has_own(record, index)) {
-          util.defineGetSet(record, index, (function() {
+          define_get_set(record, index, (function() {
             return record._getProperty(index);
           }), (function(value) {
             return record._setProperty(index, value);
@@ -5378,77 +5583,18 @@ ksc.factory('ksc.Record', [
 
 
       /*
-      Helper function to initiate ID property ({Record#_idProperty}) on a
-      top-level record if {Record#_idProperty} is not yet defined.
-      
-      @param [Record] record Reference to Record object
-      @param [object] data key-value object to init Record with
-      
-      @return [undefined]
-       */
-
-      Record.initIdProperty = function(record, data) {
-        var contract, id_property, id_property_contract_check, key, options, part, _i, _len;
-        options = record[_OPTIONS];
-        contract = options[CONTRACT];
-        if (options[ID_PROPERTY] == null) {
-          for (key in data) {
-            options[ID_PROPERTY] = key;
-            break;
-          }
-        }
-        id_property_contract_check = function(key) {
-          var _ref;
-          if (contract) {
-            if (contract[key] == null) {
-              error.ContractBreak({
-                key: key,
-                contract: contract,
-                mismatch: 'idProperty'
-              });
-            }
-            if ((_ref = contract[key].type) !== 'string' && _ref !== 'number') {
-              return error.ContractBreak({
-                key: key,
-                contract: contract,
-                required: 'string or number'
-              });
-            }
-          }
-        };
-        if (record[_EVENTS]) {
-          if (id_property = options[ID_PROPERTY]) {
-            if (is_array(id_property)) {
-              for (_i = 0, _len = id_property.length; _i < _len; _i++) {
-                part = id_property[_i];
-                id_property_contract_check(part);
-                if (data[part] == null) {
-                  data[part] = null;
-                }
-              }
-            } else {
-              id_property_contract_check(id_property);
-              if (data[id_property] == null) {
-                data[id_property] = null;
-              }
-            }
-          }
-        }
-      };
-
-
-      /*
       Define _id for the record
       
       Composite IDs will be used and ._primaryId will be created if
-      .options.idProperty is an Array. The composite is c
+      idProperty is an Array. The composite is c
       - Parts are stringified and joined by '-'
       - If a part is empty (e.g. '' or null), the part will be skipped in ._id
       - If primary part of composite ID is null, the whole ._id is going to
         be null (becomes a pseudo/new record)
       @example
-        record = new EditableRecord {id: 1, otherId: 2, name: 'x'},
-                                    {idProperty: ['id', 'otherId', 'name']}
+        list = new List {record: {idProperty: ['id', 'otherId', 'name']}}
+        record = new EditableRecord {id: 1, otherId: 2, name: 'x'}
+        list.push record
         console.log record._id, record._primaryId # '1-2-x', 1
       
         record.otherId = null
@@ -5463,25 +5609,56 @@ ksc.factory('ksc.Record', [
        */
 
       Record.setId = function(record) {
-        var composite, i, id, id_property, part, value, _i, _len;
-        if (id_property = record[_OPTIONS][ID_PROPERTY]) {
+        var composite, i, id, id_property, id_property_check, part, primary, value, _i, _len;
+        id_property_check = function(key) {
+          var contract, _ref;
+          if (contract = record[_OPTIONS][CONTRACT]) {
+            if (contract[key] == null) {
+              error.ContractBreak({
+                key: key,
+                contract: contract,
+                mismatch: 'idProperty'
+              });
+            }
+            if ((_ref = contract[key].type) !== 'string' && _ref !== 'number') {
+              error.ContractBreak({
+                key: key,
+                contract: contract,
+                required: 'string or number'
+              });
+            }
+            if (record[key] == null) {
+              error.ContractBreak({
+                key: key,
+                value: record[key],
+                mismatch: 'idProperty value must exist (not nullable)'
+              });
+            }
+          }
+        };
+        if ((id_property = record._idProperty) != null) {
           if (is_array(id_property)) {
             composite = [];
             for (i = _i = 0, _len = id_property.length; _i < _len; i = ++_i) {
               part = id_property[i];
-              if (is_key_conform(record[part])) {
-                composite.push(record[part]);
+              id_property_check(part);
+              if (is_key_conform(value = record[part])) {
+                composite.push(value);
               } else if (!i) {
                 break;
               }
             }
-            id = composite.length ? composite.join('-') : null;
+            primary = record[id_property[0]];
+            id = composite.length ? composite.join('-') : primary;
             define_value(record, _ID, id);
-            define_value(record, '_primaryId', record[id_property[0]]);
+            define_value(record, _PRIMARY_KEY, primary);
           } else {
-            value = record[id_property];
-            define_value(record, _ID, value != null ? value : null);
+            id_property_check(id_property);
+            define_value(record, _ID, record[id_property]);
           }
+        } else {
+          define_value(record, _ID);
+          define_value(record, _PRIMARY_KEY);
         }
       };
 
@@ -5546,7 +5723,7 @@ ksc.factory('ksc.Record', [
         var class_ref, contract, key_contract, subopts;
         contract = record[_OPTIONS][CONTRACT];
         if (is_object(value)) {
-          if (value._clone != null) {
+          if (value._clone) {
             value = value._clone(1);
           }
           class_ref = record[_OPTIONS].subtreeClass || Record;
@@ -5613,18 +5790,14 @@ ksc.factory('ksc.RestList', [
     
     Options that may be used by methods of ksc.List
     - .options.record.class (class reference for record objects)
-    - .options.record.idProperty (property/properties that define record ID)
+    - .idProperty (property/properties that define record ID)
     
     @author Greg Varsanyi
      */
     return RestList = (function(_super) {
       __extends(RestList, _super);
 
-      function RestList() {
-        return RestList.__super__.constructor.apply(this, arguments);
-      }
-
-      RestList.prototype.restCache = null;
+      RestList.prototype.restCache = void 0;
 
 
       /*
@@ -5632,6 +5805,28 @@ ksc.factory('ksc.RestList', [
        */
 
       RestList.prototype.restPending = 0;
+
+
+      /*
+      A proxy constructor, see {List#constructor} for all logic.
+      
+      Checks if .idProperty is set (required for RestList)
+      
+      @throw [MissingArgumentError] if idProperty is not set
+      
+      @return [Array] native arrray decorated with List and RestList properties
+       */
+
+      function RestList() {
+        var list;
+        list = RestList.__super__.constructor.apply(this, arguments);
+        if (list.idProperty == null) {
+          error.MissingArgument({
+            required: 'idProperty is mandatory for RestList'
+          });
+        }
+        return list;
+      }
 
 
       /*
@@ -5701,7 +5896,7 @@ ksc.factory('ksc.RestList', [
       - .options.endpoint.responseProperty (array of records in list response)
       - .options.endpoint.url (url for endpoint)
       - .options.record.class (class reference for record objects)
-      - .options.record.idProperty (property/properties that define record ID)
+      - .idProperty (property/properties that define record ID)
       
       @param [boolean] force_load (optional) Request disregarding cache
       @param [Object] query_parameters (optional) Query string arguments
@@ -5773,10 +5968,10 @@ ksc.factory('ksc.RestList', [
       Options that may be used:
       - .options.endpoint.url (url for endpoint)
       - .options.endpoint.bulkSave = true/'PUT' or 'POST'
-      - .options.record.idProperty (property/properties that define record ID)
       - .options.record.endpoint.url (url for endpoint with ID)
       - .options.reloadOnUpdate (force reload on save instead of picking up
         response of POST or PUT request)
+      - .idProperty (property/properties that define record ID)
       
       @param [Record/number] records... 1 or more records or ID's to save
       @param [function] callback (optional) Callback function with signiture:
@@ -5819,8 +6014,8 @@ ksc.factory('ksc.RestList', [
       Options that may be used:
       - .options.endpoint.url (url for endpoint)
       - .options.endpoint.bulkDelete
-      - .options.record.idProperty (property/properties that define record ID)
       - .options.record.endpoint.url (url for endpoint with ID)
+      - .idProperty (property/properties that define record ID)
       
       @param [Record/number] records... 1 or more records or ID's to delete
       @param [function] callback (optional) Callback function with signiture:
@@ -5945,7 +6140,7 @@ ksc.factory('ksc.RestList', [
           record = records[i];
           if (((primary_id = record[PRIMARY_ID]) != null) || list.options.reloadOnUpdate) {
             query_parameters = {};
-            key = record._options.idProperty;
+            key = list.idProperty;
             if (primary_id) {
               query_parameters[key[0]] = primary_id;
             } else {

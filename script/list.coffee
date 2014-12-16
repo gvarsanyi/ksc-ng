@@ -120,7 +120,7 @@ ksc.factory 'ksc.List', [
 
       @return [Array] returns plain [] with extra methods and some overrides
       ###
-      constructor: (_initial_set, _options, _id_property, _scope) ->
+      constructor: ->
         list = []
 
         initial_set = options = id_property = scope = undefined
