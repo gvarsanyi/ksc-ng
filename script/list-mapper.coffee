@@ -7,10 +7,10 @@ ksc.factory 'ksc.ListMapper', [
 
 
     ###
-    Helper function that looks up named source references on .map and .pseudo
-    hierarchies (aka target)
+    Helper function that looks up named source references on .idMap and
+    .pseudoMap hierarchies (aka target)
 
-    @param [Object] target .map or .pseudo
+    @param [Object] target .idMap or .pseudoMap
     @param [Array] source_names (optional) list of source_names that ID target
 
     @return [undefined]
@@ -26,12 +26,13 @@ ksc.factory 'ksc.ListMapper', [
     A helper class that features creating look-up objects for mappable lists
     like {List} and {ListMask}.
 
-    On construction, it creates .map={} (for {Record}s with ._id) and .pseudo={}
-    (for {Record}s with no valid ._id but with valid ._pseudo ID) on the parent.
+    On construction, it creates .idMap={} (for {Record}s with ._id) and
+    .pseudoMap={} (for {Record}s with no valid ._id but with valid ._pseudo ID)
+    on the parent.
 
     @note Methods are prepped to handle multiple named sources for {ListMask}.
-      If multi-sourced, .map and .pseudo will have sub-objects with keys being
-      the source names. See: {ListMask}
+      If multi-sourced, .idMap and .pseudoMap will have sub-objects with keys
+      being the source names. See: {ListMask}
 
     @note This class - being just an extension - has no error handling. All
       error cases should be handled by the callers
@@ -41,7 +42,7 @@ ksc.factory 'ksc.ListMapper', [
     class ListMapper
 
       # @property [Object] key-value (recordId: {Record}) mapping
-      map: null
+      idMap: null
 
       ###
       @property [boolean|undefined] indicates multiple named sources on parent.
@@ -53,14 +54,15 @@ ksc.factory 'ksc.ListMapper', [
       parent: null
 
       # @property [Object] key-value (recordPseudoId: {Record}) mapping
-      pseudo: null
+      pseudoMap: null
 
 
       ###
-      Creates containers for records with valid ._id (.map) and pseudo records
-      (.pseudo)
+      Creates containers for records with valid ._id (.idMap) and pseudo records
+      (.pseudoMap)
 
-      Adds references to itself (as ._mapper) and .map and .pseudo to parent.
+      Adds references to itself (as ._mapper) and .idMap and .pseudoMap to
+      parent.
 
       @param [List/ListMask] list reference to parent {List} or {ListMask}
       ###
@@ -80,14 +82,14 @@ ksc.factory 'ksc.ListMapper', [
           target.idProperty?
 
         if mapped = has_mapped_source parent
-          define_value mapper, 'map',    {}, 0, 1
-          define_value mapper, 'pseudo', {}, 0, 1
+          define_value mapper, 'idMap',     {}, 0, 1
+          define_value mapper, 'pseudoMap', {}, 0, 1
 
         build_maps = (parent, target_map={}, target_pseudo={}, names) ->
           if src = parent.source # chained ListMask
             if src._ # ListMask with no named sources
               build_maps src._, target_map, target_pseudo, names
-            else # named sources, append names to .map and .pseudo
+            else # named sources, append names to .idMap and .pseudoMap
               for source_name, source_list of src
                 if mapped and has_mapped_source parent
                   target_map[source_name]    = {}
@@ -98,13 +100,13 @@ ksc.factory 'ksc.ListMapper', [
                            target_pseudo[source_name], subnames
           else
             mapper._sources.push {names, source: parent}
-        build_maps parent, mapper.map, mapper.pseudo, []
+        build_maps parent, mapper.idMap, mapper.pseudoMap, []
 
         Object.freeze mapper._sources
 
 
       ###
-      Add record to .map or .pseudo (whichever fits)
+      Add record to .idMap or .pseudoMap (whichever fits)
 
       @param [Record] record reference to a record
       @param [Array<string>] source_names (optional) named source identifier
@@ -116,10 +118,10 @@ ksc.factory 'ksc.ListMapper', [
 
         if record._id?
           id     = record._id
-          target = mapper.map
+          target = mapper.idMap
         else
           id     = record._pseudo
-          target = mapper.pseudo
+          target = mapper.pseudoMap
 
         target = deep_target target, source_names
 
@@ -127,14 +129,14 @@ ksc.factory 'ksc.ListMapper', [
 
 
       ###
-      Delete record from .map or .pseudo (whichever fits)
+      Delete record from .idMap or .pseudoMap (whichever fits)
 
       @overload del(map_id, pseudo_id, source_names)
         @param [string|number] map_id (optional) ._id of record
         @param [string|number] pseudo_id (optional) ._pseudo ID of record
         @param [Array<string>] source_names (optional) named source identifier
       @overload del(record, na, source_names)
-        @param [Record] record reference to a record on .map or .pseudo
+        @param [Record] record reference to a record on .idMap or .pseudoMap
         @param [null] na (skipped)
         @param [Array<string>] source_names (optional) named source identifier
 
@@ -148,10 +150,10 @@ ksc.factory 'ksc.ListMapper', [
           map_id    = map_id._id
 
         if pseudo_id?
-          target = mapper.pseudo
+          target = mapper.pseudoMap
           map_id = pseudo_id
         else
-          target = mapper.map
+          target = mapper.idMap
 
         target = deep_target target, source_names
 
@@ -160,14 +162,14 @@ ksc.factory 'ksc.ListMapper', [
 
 
       ###
-      Find a record on .map or .pseudo (whichever fits)
+      Find a record on .idMap or .pseudoMap (whichever fits)
 
       @overload has(map_id, pseudo_id, source_names)
         @param [string|number] map_id (optional) ._id of record
         @param [string|number] pseudo_id (optional) ._pseudo ID of record
         @param [Array<string>] source_names (optional) named source identifier
       @overload has(record, na, source_names)
-        @param [Record] record reference to a record on .map or .pseudo
+        @param [Record] record reference to a record on .idMap or .pseudoMap
         @param [null] na (skipped)
         @param [Array<string>] source_names (optional) named source identifier
 
@@ -182,10 +184,10 @@ ksc.factory 'ksc.ListMapper', [
 
         if pseudo_id?
           id     = pseudo_id
-          target = mapper.parent.pseudo
+          target = mapper.parent.pseudoMap
         else
           id     = map_id
-          target = mapper.parent.map
+          target = mapper.parent.idMap
 
         target = deep_target target, source_names
 
@@ -193,8 +195,9 @@ ksc.factory 'ksc.ListMapper', [
 
 
       ###
-      Helper method that creates and registers mapper objects (.map, .pseudo and
-      ._mapper) on provided Array instances created by {List} or {ListMask}
+      Helper method that creates and registers mapper objects (.idMap,
+      .pseudoMap and ._mapper) on provided Array instances created by {List}
+      or {ListMask}
 
       @param [List] list reference to the list
 
@@ -204,9 +207,9 @@ ksc.factory 'ksc.ListMapper', [
         mapper = new ListMapper list
 
         define_value list, '_mapper', mapper
-        if mapper.map
-          define_value list, 'map',    mapper.map
-          define_value list, 'pseudo', mapper.pseudo
+        if mapper.idMap
+          define_value list, 'idMap',     mapper.idMap
+          define_value list, 'pseudoMap', mapper.pseudoMap
 
         return
 ]

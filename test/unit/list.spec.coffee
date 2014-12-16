@@ -45,7 +45,7 @@ describe 'app.factory', ->
         list = new List [{a: 1}, {a: 2}], 'a'
         expect(list.length).toBe 2
         expect(list[0].a).toBe 1
-        expect(list.map[2].a).toBe 2
+        expect(list.idMap[2].a).toBe 2
         expect(-> new List [{a: 1}, {a: 1}], []).toThrow()
 
       it '$scope', ->
@@ -91,7 +91,7 @@ describe 'app.factory', ->
       expect(list.pop().id).toBe 2
       expect(list.shift().id).toBe 3
       expect(list.length).toBe 2
-      expect(list.map[1].x).toBe 'a'
+      expect(list.idMap[1].x).toBe 'a'
       list.pop()
       list.pop()
       expect(list.pop()).toBeUndefined()
@@ -122,9 +122,9 @@ describe 'app.factory', ->
     it 'Record updates effect sort order in sorted lists', ->
       list = new List {record: {idProperty: 'id'}, sorter: 'a'}
       list.push {id: 1, a: 'a'}, {id: 2, a: 'f'}, {id: 3, a: 'z'}
-      expect(list.map[3]).toBe list[2]
-      list.map[3].a = 'b'
-      expect(list.map[3]).toBe list[1]
+      expect(list.idMap[3]).toBe list[2]
+      list.idMap[3].a = 'b'
+      expect(list.idMap[3]).toBe list[1]
 
     it 'Method .reverse()', ->
       list = new List
@@ -217,15 +217,15 @@ describe 'app.factory', ->
 
       expect(len).toBe 3
       expect(list.length).toBe 3
-      expect(list.map[1].x).toBe 'x'
+      expect(list.idMap[1].x).toBe 'x'
 
       affected = list.push {id: 1, x: 'y'}, {id: 4, x: 'e'},
                            {id: 2, x: 'y'}, true
 
       expect(affected.add.length).toBe 1
       expect(affected.update.length).toBe 2
-      expect(list.map[1].x).toBe 'y'
-      expect(list.map[2].x).toBe 'y'
+      expect(list.idMap[1].x).toBe 'y'
+      expect(list.idMap[2].x).toBe 'y'
 
     it 'Upsert Record instances', ->
       record1 = new Record {id: 2, x: 'x'}
@@ -235,9 +235,9 @@ describe 'app.factory', ->
       res = list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                       record1, record2, true
 
-      expect(list.map[2].x).toBe 'x'
-      expect(list.map[4].x).toBe 'y'
-      expect(list.map[4] instanceof EditableRecord).toBe true
+      expect(list.idMap[2].x).toBe 'x'
+      expect(list.idMap[4].x).toBe 'y'
+      expect(list.idMap[4] instanceof EditableRecord).toBe true
 
     it 'Constructor argument type checks', ->
       expect(-> new List true).toThrow()
@@ -358,13 +358,13 @@ describe 'app.factory', ->
       list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: 3, x: 'c'},
                 {id: 4, x: 'd'}
 
-      res = list.cut 3, list.map[2]
+      res = list.cut 3, list.idMap[2]
 
       expect(res.cut.length).toBe 2
       expect(res.cut[0].x).toBe 'c'
       expect(list.length).toBe 2
-      expect(list.map[2]).toBeUndefined()
-      expect(list.map[3]).toBeUndefined()
+      expect(list.idMap[2]).toBeUndefined()
+      expect(list.idMap[3]).toBeUndefined()
       expect(list[1].x).toBe 'd'
 
       expect(-> list.cut 32).toThrow() # no such id
@@ -372,22 +372,22 @@ describe 'app.factory', ->
 
     describe 'Method .cut(records...) edge cases', ->
 
-      it 'Not in the map (id)', ->
+      it 'Not in the idMap (id)', ->
         list = new List record: idProperty: 'id'
         expect(-> list.cut 2).toThrow()
 
-      it 'Not in the map (record)', ->
+      it 'Not in the idMap (record)', ->
         list = new List record: idProperty: 'id'
         record = new EditableRecord {id: 2}
         expect(-> list.cut record).toThrow()
 
-      it 'Not in the map (tempered record._id)', ->
+      it 'Not in the idMap (tempered record._id)', ->
         list = new List record: idProperty: 'id'
         list.push {id: 1}
         util.defineValue list[0], '_id', 11
         expect(-> list.cut list[0]).toThrow()
 
-      it 'Not in the pseudo map (tempered record._pseudo)', ->
+      it 'Not on pseudoMap (tempered record._pseudo)', ->
         list = new List record: idProperty: 'id'
         list.push {id: 1}
         util.defineValue list[0], '_pseudo', 11
@@ -423,46 +423,46 @@ describe 'app.factory', ->
 
         list.push {x: 'c'}
 
-        expect(list.pseudo[1].x).toBe 'c'
-        expect(list.pseudo[1]).toBe list[2]
+        expect(list.pseudoMap[1].x).toBe 'c'
+        expect(list.pseudoMap[1]).toBe list[2]
 
         list.push {id: null, x: 'd'}
 
-        expect(list.pseudo[1].x).toBe 'c'
-        expect(list.pseudo[2].x).toBe 'd'
-        expect(list.pseudo[2]).toBe list[3]
+        expect(list.pseudoMap[1].x).toBe 'c'
+        expect(list.pseudoMap[2].x).toBe 'd'
+        expect(list.pseudoMap[2]).toBe list[3]
 
-      it 'Moving pseudo record to map', ->
+      it 'Moving pseudoMap record to idMap', ->
         list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}, {id: null, x: 'c'},
                   {id: null, x: 'd'}
 
         list[2].id = 3
 
-        expect(list.pseudo[1]).toBeUndefined()
-        expect(list.map[3]).toBe list[2]
+        expect(list.pseudoMap[1]).toBeUndefined()
+        expect(list.idMap[3]).toBe list[2]
 
         list[3].id = 1 # merge
         expect(list.length).toBe 3
-        expect(list.pseudo[2]).toBeUndefined()
-        expect(list.map[1].x).toBe 'd'
+        expect(list.pseudoMap[2]).toBeUndefined()
+        expect(list.idMap[1].x).toBe 'd'
 
-      it 'Moving mapped record to pseudo', ->
+      it 'Moving mapped record to pseudoMap', ->
         list = new List record: idProperty: 'id'
         list.push {id: 1, x: 'a'}, {id: 2, x: 'b'}
 
         list[1].id = null
 
         expect(list[1]._pseudo).toBe 1
-        expect(list.pseudo[1]).toBe list[1]
-        expect(list.map[2]).toBeUndefined()
+        expect(list.pseudoMap[1]).toBe list[1]
+        expect(list.idMap[2]).toBeUndefined()
 
-      it 'Remove pseudo element', ->
+      it 'Remove pseudoMap element', ->
         list = new List record: idProperty: 'id'
         list.push {id: null, x: 'a'}, {id: 2, x: 'b'}
         list.shift()
         expect(list.length).toBe 1
-        expect(list.pseudo[1]).toBeUndefined()
+        expect(list.pseudoMap[1]).toBeUndefined()
 
     it 'Records may only have 1 or 0 list parents', ->
       list1  = new List record: idProperty: 'id'
@@ -497,7 +497,7 @@ describe 'app.factory', ->
         list = new List 'id', [{id: 1}]
         expect(-> list.idProperty = 'x').toThrow()
 
-    describe 'No map/pseudo (no idProperty) behavior', ->
+    describe 'No idMap/pseudoMap (no idProperty) behavior', ->
 
       it '.cut()', ->
         list = new List [{a: 1}, {a: 2}, {a: 3}]

@@ -28,20 +28,20 @@ describe 'app.factory', ->
         sublist3 = new ListMask {sub: sublist2, list3}, (-> true)
 
 
-    it 'Creates ._mapper, .map and .pseudo', ->
+    it 'Creates ._mapper, .idMap and .pseudoMap', ->
       expect(sublist._mapper instanceof ListMapper).toBe true
-      expect(typeof sublist.map).toBe 'object'
-      expect(typeof sublist.pseudo).toBe 'object'
+      expect(typeof sublist.idMap).toBe 'object'
+      expect(typeof sublist.pseudoMap).toBe 'object'
 
-    it 'Multi-level .map and .pseudo', ->
-      expect(sublist2.map.list1[1]).toBe list[0]
-      expect(sublist2.map.list2[2]).toBe list2[1]
-      expect(sublist3.map.sub.list2[2]).toBe list2[1]
-      expect(sublist3.pseudo.sub.list1[1]).toBe list[1]
-      expect(sublist3.map.list3[2]).toBe list3[1]
+    it 'Multi-level .idMap and .pseudoMap', ->
+      expect(sublist2.idMap.list1[1]).toBe list[0]
+      expect(sublist2.idMap.list2[2]).toBe list2[1]
+      expect(sublist3.idMap.sub.list2[2]).toBe list2[1]
+      expect(sublist3.pseudoMap.sub.list1[1]).toBe list[1]
+      expect(sublist3.idMap.list3[2]).toBe list3[1]
 
       list3.pop()
-      expect(sublist3.map.list3[2]).toBeUndefined()
+      expect(sublist3.idMap.list3[2]).toBeUndefined()
 
       list.pop()
-      expect(sublist3.pseudo.sub.list1[1]).toBeUndefined()
+      expect(sublist3.pseudoMap.sub.list1[1]).toBeUndefined()

@@ -113,7 +113,7 @@ describe 'app.factory', ->
         list.events.on 'update', (info) ->
           response = info
 
-        list.map[2].x = 'c'
+        list.idMap[2].x = 'c'
 
         expect(response.action.update[0].record.id).toBe 2
         expect(response.action.update[0].info.action).toBe 'set'
@@ -127,18 +127,18 @@ describe 'app.factory', ->
         list.events.on 'update', (info) ->
           response = info
 
-        list.map[2].id = 3
+        list.idMap[2].id = 3
         record = list[1]
 
         action = response.action
 
         expect(action.update.length).toBe 1
-        expect(action.update[0].move).toEqual {from: {map: 2}, to: {map: 3}}
+        expect(action.update[0].move).toEqual {from: {idMap: 2}, to: {idMap: 3}}
         expect(action.update[0].record).toBe record
         expect(action.update[0].record._id).toBe 3
         expect(action.update[0].info.key).toBe 'id'
-        expect(list.map[2]).toBeUndefined()
-        expect(list.map[3]).toBe list[1]
+        expect(list.idMap[2]).toBeUndefined()
+        expect(list.idMap[3]).toBe list[1]
 
       it 'On record change (with ._id update triggered merge)', ->
         list = new List record: idProperty: 'id'
@@ -151,17 +151,17 @@ describe 'app.factory', ->
         list.events.on 'update', (info) ->
           response = info
 
-        list.map[2].id = 1
+        list.idMap[2].id = 1
 
         action = response.action
 
         expect(action.update.length).toBe 1
-        expect(action.update[0].merge).toEqual {from: {map: 2}, to: {map: 1}}
+        expect(action.update[0].merge).toEqual {from: {idMap: 2}, to: idMap: 1}
         expect(action.update[0].record).toBe record
         expect(action.update[0].source).toBe source
         expect(action.update[0].record._id).toBe 1
         expect(action.update[0].info.key).toBe 'id'
-        expect(list.map[2]).toBeUndefined()
+        expect(list.idMap[2]).toBeUndefined()
         expect(list.length).toBe 1
         expect(list[0].x).toBe 'b'
 

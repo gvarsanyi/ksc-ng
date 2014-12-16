@@ -174,7 +174,7 @@ ksc.factory 'ksc.RestList', [
 
       Uses {RestList#writeBack}
 
-      Records may be map IDs from list.map or the record instances
+      Records may be map IDs from list.idMap or the record instances
 
       Records must be unique
 
@@ -216,7 +216,7 @@ ksc.factory 'ksc.RestList', [
 
       Uses {RestList#writeBack}
 
-      Records may be map IDs from list.map or the record instances
+      Records may be map IDs from list.idMap or the record instances
 
       Records must be unique
 
@@ -364,7 +364,7 @@ ksc.factory 'ksc.RestList', [
       After error checks, it will pass the request to {RestList#writeBulk} or
       {RestList#writeSolo} depending on what the endpoint supports
 
-      Records may be map IDs from list.map or the record instances
+      Records may be map IDs from list.idMap or the record instances
 
       Records must be unique
 
@@ -400,7 +400,7 @@ ksc.factory 'ksc.RestList', [
         unique_record_map = {}
         for record, i in records
           unless util.isObject record
-            records[i] = record = list.map[record]
+            records[i] = record = list.idMap[record]
 
           orig_rec = record
           pseudo_id = null
@@ -412,11 +412,11 @@ ksc.factory 'ksc.RestList', [
             uid = 'id:' + record[PRIMARY_ID]
 
           if save_type
-            record = (pseudo_id and list.pseudo[pseudo_id]) or list.map[id]
+            record = (pseudo_id and list.pseudoMap[pseudo_id]) or list.idMap[id]
             unless record
               error.Key {key: orig_rec, description: 'no such record on list'}
-          else unless record = list.map[id]
-            error.Key {key: orig_rec, description: 'no such record on map'}
+          else unless record = list.idMap[id]
+            error.Key {key: orig_rec, description: 'no such record on .idMap'}
 
           if unique_record_map[uid]
             error.Value {uid, description: 'not unique'}

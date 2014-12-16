@@ -163,8 +163,8 @@ ksc.factory 'ksc.ListMask', [
     Masked list that picks up changes from parent {List} instance(s)
     Features:
     - may be a composite of multiple named parents/sources to combine different
-    kinds of records in the list. That also addes namespaces to .map and .pseudo
-    containers like: .map.sourcelistname
+    kinds of records in the list. That also addes namespaces to .idMap and
+    .pseudoMap containers like: .idMap.sourcelistname
     - May filter records (by provided function)
     - May have its own sorter, see: {ListSorter}
 
@@ -184,8 +184,8 @@ ksc.factory 'ksc.ListMask', [
             sublist = new ListMask list, filter_fn
             console.log sublist # [{id: 1, x: 'aaa'}, {id: 2, x: 'baa'}]
 
-            list.map[1].x = 'xxx' # should remove item form sublist as it does
-                                  # not meet the filter_fn requirement any more
+            list.idMap[1].x = 'xxx' # should remove item form sublist as it does
+                                    # not meet the filter_fn requirement any more
 
             console.log sublist # [{id: 2, x: 'baa'}]
 
@@ -199,7 +199,7 @@ ksc.factory 'ksc.ListMask', [
             sublist.destroy()
 
     May also get two or more {List}s to form composite lists.
-    In this case, sources must be named so that .map.name and .pseudo.name
+    In this case, sources must be named so that .idMap.name and .pseudoMap.name
     references can be used for mapping.
 
     @example
@@ -216,14 +216,14 @@ ksc.factory 'ksc.ListMask', [
             console.log sublist # [{id: 1, x: 'aaa'}, {id: 2, x: 'baa'},
                                 #  {id2: 1, x: 'a'}]
 
-            list.map.one[1].x = 'xxx' # removes item form sublist as it does not
-                                      # meet the filter_fn requirement any more
+            list.idMap.one[1].x = 'xxx' # removes item form sublist as it doesnt
+                                        # meet filter_fn requirement any more
 
             console.log sublist # [{id: 2, x: 'baa'}, {id2: 1, x: 'a'}]
 
     A splitter function may also be added to trigger split records appearing in
-    the list mask (but not on .map or .pseudo where the original record would
-    appear only). Split records are masks of records that have the same
+    the list mask (but not on .idMap or .pseudoMap where the original record
+    would appear only). Split records are masks of records that have the same
     attributes as the original record, except:
     - The override attributes from the filter_fn will be added as read-only
     - The original attributes appear as getter/setter pass-thorugh to the
@@ -269,13 +269,13 @@ ksc.factory 'ksc.ListMask', [
       filter: undefined
 
       # @property [object] hash map of records (keys being record ._id values)
-      map: undefined
+      idMap: undefined
 
       # @property [object] filtered list related options
       options: undefined
 
       # @property [object] hash map of records without ._id keys
-      pseudo: undefined
+      pseudoMap: undefined
 
       # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
       sorter: undefined
@@ -297,9 +297,10 @@ ksc.factory 'ksc.ListMask', [
       (aka parent) list only
 
       @note If a single {List} or {ListMask} source/parent is provided as first
-        argument, .map and .pseudo references will work just like in {List}. If
-        object with key-value pairs provided (values being sources/parents),
-        records get mapped like .map.keyname[id] and .pseudo.keyname[pseudo_id]
+        argument, .idMap and .pseudoMap references will work just like in {List}
+        If object with key-value pairs provided (values being sources/parents),
+        records get mapped like .idMap.keyname[id] and
+        .pseudoMap.keyname[pseudo_id]
 
       @overload constructor(source, options, scope)
         @param [List/Object] source reference(s) to parent {List}(s)
@@ -382,7 +383,7 @@ ksc.factory 'ksc.ListMask', [
         register_filter   list
         register_splitter list
 
-        # sets @_mapper, @map and @pseudo
+        # sets @_mapper, @idMap and @pseudoMap
         ListMapper.register list
         sources = list._mapper._sources
 
@@ -548,10 +549,10 @@ ksc.factory 'ksc.ListMask', [
               {from, to} = remapper
 
             if list.filter record # update or add
-              source_found = from and delete_if_on from.map, from.pseudo
+              source_found = from and delete_if_on from.idMap, from.pseudoMap
 
               if to
-                target_found = find_and_add to.map, to.pseudo, record
+                target_found = find_and_add to.idMap, to.pseudoMap, record
               else
                 target_found = find_and_add record._id, record._pseudo, record
 
@@ -570,10 +571,10 @@ ksc.factory 'ksc.ListMask', [
                 add_action 'add', record
             else # remove if found
               if merge
-                cutter from.map, from.pseudo, source
-                cutter to.map, to.pseudo, record
+                cutter from.idMap, from.pseudoMap, source
+                cutter to.idMap, to.pseudoMap, record
               else if move
-                cutter from.map, from.pseudo, record
+                cutter from.idMap, from.pseudoMap, record
               else
                 cutter record._id, record._pseudo, record
 

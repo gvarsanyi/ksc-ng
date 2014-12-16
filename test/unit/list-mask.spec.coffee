@@ -75,7 +75,7 @@ describe 'app.factory', ->
         sublist[1].id = null
         expect(sublist.length).toBe 3
         expect(sublist[2].id).toBe null
-        expect(sublist[2]._original).toBe sublist.pseudo[1]
+        expect(sublist[2]._original).toBe sublist.pseudoMap[1]
         expect(sublist[2]._original).toBe list[0]
 
       it 'Changing splitter fn triggers reprocessing', ->
@@ -322,41 +322,41 @@ describe 'app.factory', ->
 
           describe 'Was on sublist', ->
 
-            it 'Parent list move: map -> map', ->
-              list.map[2].id = 9
+            it 'Parent list move: idMap -> idMap', ->
+              list.idMap[2].id = 9
 
               expect(action.update.length).toBe 1
-              move_info = {from: {map: 2}, to: {map: 9}}
+              move_info = {from: {idMap: 2}, to: {idMap: 9}}
               expect(action.update[0].move).toEqual move_info
               expect(action.update[0].record).toBe sublist[0]
-              expect(sublist.map[2]).toBeUndefined()
-              expect(sublist.map[9]).toBe list[1]
+              expect(sublist.idMap[2]).toBeUndefined()
+              expect(sublist.idMap[9]).toBe list[1]
 
-            it 'Parent list move: map -> pseudo', ->
-              list.map[2].id = null
+            it 'Parent list move: idMap -> pseudoMap', ->
+              list.idMap[2].id = null
 
               expect(action.update.length).toBe 1
-              move_info = {from: {map: 2}, to: {pseudo: sublist[0]._pseudo}}
+              move_info = {from: {idMap: 2}, to: pseudoMap: sublist[0]._pseudo}
               expect(action.update[0].move).toEqual move_info
               expect(action.update[0].record).toBe sublist[0]
-              expect(sublist.map[2]).toBeUndefined()
-              expect(sublist.pseudo[sublist[0]._pseudo]).toBe list[1]
+              expect(sublist.idMap[2]).toBeUndefined()
+              expect(sublist.pseudoMap[sublist[0]._pseudo]).toBe list[1]
 
-            it 'Parent list move: pseudo -> map', ->
+            it 'Parent list move: pseudoMap -> idMap', ->
               list[1].id = null
               orig_pseudo = list[1]._pseudo
               list[1].id = 9
 
               expect(action.update.length).toBe 1
-              move_info = {from: {pseudo: orig_pseudo}, to: {map: 9}}
+              move_info = {from: {pseudoMap: orig_pseudo}, to: {idMap: 9}}
               expect(action.update[0].move).toEqual move_info
               expect(action.update[0].record).toBe sublist[0]
-              expect(sublist.pseudo[orig_pseudo]).toBeUndefined()
-              expect(sublist.map[9]).toBe list[1]
+              expect(sublist.pseudoMap[orig_pseudo]).toBeUndefined()
+              expect(sublist.idMap[9]).toBe list[1]
 
           describe 'Was NOT on sublist', ->
 
-            it 'Parent list move: map -> map', ->
+            it 'Parent list move: idMap -> idMap', ->
               list[1]._replace {id: 2, a: 'x'} # removes from sublist
               expect(sublist.length).toBe 0
 
@@ -364,9 +364,9 @@ describe 'app.factory', ->
 
               expect(action.add.length).toBe 1
               expect(sublist.length).toBe 1
-              expect(sublist.map[9]).toBe list[1]
+              expect(sublist.idMap[9]).toBe list[1]
 
-            it 'Parent list move: map -> pseudo', ->
+            it 'Parent list move: idMap -> pseudoMap', ->
               list[1]._replace {id: 2, a: 'x'} # removes from sublist
               expect(sublist.length).toBe 0
 
@@ -374,9 +374,9 @@ describe 'app.factory', ->
 
               expect(action.add.length).toBe 1
               expect(sublist.length).toBe 1
-              expect(sublist.pseudo[list[1]._pseudo]).toBe list[1]
+              expect(sublist.pseudoMap[list[1]._pseudo]).toBe list[1]
 
-            it 'Parent list move: pseudo -> map', ->
+            it 'Parent list move: pseudoMap -> idMap', ->
               list[1]._replace {id: null, a: 'x'} # removes from sublist
               expect(sublist.length).toBe 0
 
@@ -384,18 +384,18 @@ describe 'app.factory', ->
 
               expect(action.add.length).toBe 1
               expect(sublist.length).toBe 1
-              expect(sublist.map[9]).toBe list[1]
+              expect(sublist.idMap[9]).toBe list[1]
 
         describe 'Does NOT meet filter', ->
 
-          it 'Was on sublist map', ->
+          it 'Was on sublist idMap', ->
             list[1]._replace {id: 2, a: 'y'}
 
             expect(action.cut.length).toBe 1
             expect(sublist.length).toBe 0
-            expect(sublist.map[2]).toBeUndefined()
+            expect(sublist.idMap[2]).toBeUndefined()
 
-          it 'Was on sublist pseudo', ->
+          it 'Was on sublist pseudoMap', ->
             list[1].id = null
             action = null
 
@@ -403,7 +403,7 @@ describe 'app.factory', ->
 
             expect(action.cut.length).toBe 1
             expect(sublist.length).toBe 0
-            expect(sublist.map[2]).toBeUndefined()
+            expect(sublist.idMap[2]).toBeUndefined()
 
           it 'Was not on sublist', ->
             list[1]._replace {id: 2, a: 'x'} # removes from sublist
@@ -423,12 +423,12 @@ describe 'app.factory', ->
 
           list[2].id = 2
           expect(action.update.length).toBe 1
-          merge_info = {from: {pseudo: orig_pseudo}, to: {map: 2}}
+          merge_info = {from: {pseudoMap: orig_pseudo}, to: {idMap: 2}}
           expect(action.update[0].merge).toEqual merge_info
           expect(sublist.length).toBe 1
-          expect(sublist.map[2].a).toBe 'aaa'
+          expect(sublist.idMap[2].a).toBe 'aaa'
 
-        it 'Should cut both source and target from sublist (on map)', ->
+        it 'Should cut both source and target from sublist (on idMap)', ->
           list.push {id: 9, a: 'axa'}
           expect(sublist.length).toBe 2
 
@@ -441,28 +441,28 @@ describe 'app.factory', ->
       it 'Error if trying to mix unnamed and named', ->
         expect(-> new ListMask {_: list, l2: list2}, filter_fn).toThrow()
 
-      it 'Takes multiple sources, names .map and .pseudo', ->
+      it 'Takes multiple sources, names .idMap and .pseudoMap', ->
         sublist = new ListMask {l1: list, l2: list2}, filter_fn
         expect(sublist.length).toBe 2
-        expect(sublist.map.l1[2]).toBe list[1]
-        expect(sublist.map.l2[22]).toBe list2[1]
-        expect(sublist.pseudo.l1).toEqual {}
-        expect(sublist.pseudo.l2).toEqual {}
+        expect(sublist.idMap.l1[2]).toBe list[1]
+        expect(sublist.idMap.l2[22]).toBe list2[1]
+        expect(sublist.pseudoMap.l1).toEqual {}
+        expect(sublist.pseudoMap.l2).toEqual {}
 
-      it 'Update scenarios: add, remove by rename, move to pseudo', ->
+      it 'Update scenarios: add, remove by rename, move to pseudoMap', ->
         sublist = new ListMask {l1: list, l2: list2}, filter_fn
         list.push {id: 9, a: 'axa'}
         expect(sublist.length).toBe 3
-        expect(sublist.map.l1[9]).toBe list[2]
+        expect(sublist.idMap.l1[9]).toBe list[2]
 
         list[2].a = 'eee'
         expect(sublist.length).toBe 2
-        expect(sublist.map.l1[9]).toBeUndefined()
+        expect(sublist.idMap.l1[9]).toBeUndefined()
 
         list[1].id = null
         expect(sublist.length).toBe 2
-        expect(sublist.map.l1[2]).toBeUndefined()
-        expect(sublist.pseudo.l1[1]).toBe list[1]
+        expect(sublist.idMap.l1[2]).toBeUndefined()
+        expect(sublist.pseudoMap.l1[1]).toBe list[1]
 
       it 'Chained ListMasks with multiple sources', ->
         list3 = new List 'id3'
@@ -476,16 +476,16 @@ describe 'app.factory', ->
         list.push {id: 9, a: 'axa'}, {id: 10, a: 'fsdf'}
 
         list3.push {id3: 11, a: 'aya'}
-        expect(sublist2.map.ls[2]).toBe list3[1]
-        expect(sublist2.map.ls[11]).toBe list3[2]
+        expect(sublist2.idMap.ls[2]).toBe list3[1]
+        expect(sublist2.idMap.ls[11]).toBe list3[2]
         expect(sublist2.length).toBe 5
 
         list3[2].a = 'eee'
-        expect(sublist2.map.ls[11]).toBeUndefined()
+        expect(sublist2.idMap.ls[11]).toBeUndefined()
 
-        expect(sublist2.map.sub.l2[22]).toBe list2[1]
-        list2.map[22].a = 'eee'
-        expect(sublist2.map.sub.l2[22]).toBeUndefined()
+        expect(sublist2.idMap.sub.l2[22]).toBe list2[1]
+        list2.idMap[22].a = 'eee'
+        expect(sublist2.idMap.sub.l2[22]).toBeUndefined()
 
       it 'Should not allow double-referencing list sources', ->
         refs = {l0: list, l1: list2, l2: list2}
@@ -496,9 +496,9 @@ describe 'app.factory', ->
       sublist  = new ListMask list, filter_fn
       sublist2 = new ListMask {ls1: sublist}, filter_fn
 
-      expect(list.map).toBeUndefined()
-      expect(sublist.map).toBeUndefined()
-      expect(sublist2.map).toBeUndefined()
+      expect(list.idMap).toBeUndefined()
+      expect(sublist.idMap).toBeUndefined()
+      expect(sublist2.idMap).toBeUndefined()
       expect(list.length).toBe 2
       expect(sublist.length).toBe 1
       expect(sublist2.length).toBe 1
