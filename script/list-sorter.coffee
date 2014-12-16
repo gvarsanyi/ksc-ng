@@ -46,27 +46,27 @@ ksc.factory 'ksc.ListSorter', [
       # @property [function] sorter function with signiture `(a, b) ->` that
       #   should return a number, preferrably -1, 0 and 1
       #   can be an external function or generated off of description object
-      fn: null
+      fn: undefined
 
-      # @property [string|Array] key or keys used for sorting (null if external
-      #   function is used)
-      key: null
+      # @property [string|Array] key or keys used for sorting (undefined if
+      #   external function is used)
+      key: undefined
 
       # @property [Array] reference to array created by {List}
-      list: null
+      list: undefined
 
       # @property [boolean] triggers reverse-ordering
-      #   (null if external function is used)
-      reverse: null
+      #   (undefined if external function is used)
+      reverse: undefined
 
       ###
       @property [string] sorting type, possible values
         - 'byte': compare based on ASCII/UTF8 character value (stringifies vals)
         - 'natural': human-perceived "natural" order, case-insensitive (default)
         - 'number': number-ordering, falls back to natural for non-numbers
-        (null if external function is used)
+        (undefined if external function is used)
       ###
-      type: null
+      type: undefined
 
 
       ###

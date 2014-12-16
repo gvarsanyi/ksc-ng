@@ -22,17 +22,17 @@ ksc.factory 'ksc.BatchLoader', [
     class BatchLoader
 
       # @property [string] url of rest-loader endpoint
-      endpoint: null
+      endpoint: undefined
 
       # @property [object] key-value map (of endpoint keys and urls)
-      map: null
+      map: undefined
 
       # @property [boolean] whether batch loader accepts requests
       #   setting to false triggers flush()
-      open: true
+      open: undefined
 
       # @property [Array] list of registered requests (waiting for `.flush()`)
-      requests: null
+      requests: undefined
 
       ###
 

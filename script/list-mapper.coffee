@@ -42,19 +42,19 @@ ksc.factory 'ksc.ListMapper', [
     class ListMapper
 
       # @property [Object] key-value (recordId: {Record}) mapping
-      idMap: null
+      idMap: undefined
 
       ###
       @property [boolean|undefined] indicates multiple named sources on parent.
         Set to boolean if parent is {ListMask} or undefined {List}.
       ###
-      multi: null
+      multi: undefined
 
       # @property [List/ListMask] parent {List} or {ListMask}
-      parent: null
+      parent: undefined
 
       # @property [Object] key-value (recordPseudoId: {Record}) mapping
-      pseudoMap: null
+      pseudoMap: undefined
 
 
       ###
