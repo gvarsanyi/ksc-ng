@@ -1,6 +1,6 @@
 .PHONY: all clean dist doc lint test
 
-all: full-test lint doc dist
+all: test lint doc dist
 
 dependencies:
 	@if [ ! -d "node_modules" ]; then \
@@ -28,7 +28,6 @@ tmpcompile:
 
 dist: clean dependencies tmpcompile
 	@cat test/dep/test/coffeescript-helpers.js test/dep/test/module-init.js .tmp/js/*.js > dist/ksc.js
-	@rm -rf .tmp
 	@ls -la dist/ksc.js
 	@node_modules/.bin/uglifyjs dist/ksc.js -b -o dist/ksc.sans-comments.js
 	@ls -la dist/ksc.sans-comments.js
@@ -47,8 +46,6 @@ lint: dependencies
 
 test: dependencies tmpcompile
 	-node_modules/karma/bin/karma start test/karma.conf.coffee $(file)
-	@rm -rf .tmp
 
 full-test: dependencies tmpcompile
 	-node_modules/karma/bin/karma start test/karma-full-with-sauce.conf.coffee $(file)
-	@rm -rf .tmp

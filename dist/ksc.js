@@ -68,61 +68,6 @@ ksc.factory('ksc.ArrayTracker', [
     ArrayTracker = (function() {
 
       /*
-      @method #del(index, value)
-        Indicates that element was deleted from a certain index (always the end
-        of the array)
-      
-        @param [number] index of deleted element in array
-        @param [mixed] stored value of the element
-      
-        @return [false|mixed] If false is returned, store[index] will not be
-          deleted by ArrayTracker so you can keep it or deal with it any other
-          way. Any other return value will be disregarded.
-       */
-
-      /*
-      @method #get(index, value)
-        Inject getter logic for array elements (see first example in class def)
-      
-        @note It is also used for reading values when temporarly turning values
-          into plain values (e.g. for using native sort() ot reverse() methods)
-      
-        @param [number] index of element in array
-        @param [mixed] value stored for the element
-      
-        @return [mixed] this will be used as element value in the array
-       */
-
-      /*
-      @method #set(index, value, next, set_type)
-        Inject setter logic or set to/leave as null for default behavior
-        (elements stored as-is). See second example in class def.
-      
-        @note It is also used for re-setting values after temporarly turning
-          values into plain values (e.g. for using native sort() ot reverse()
-          methods)
-      
-        @param [number] index of element in array
-        @param [mixed] value to be set
-        @param [function] next call when your biz logic is ready. Takes 0 or 1
-          argument. If argument is provided that will be stored as value.
-        @param [string] set_type Any of the following values:
-          - 'external': coming from oustide by updating an element or adding new
-          - 'move': previously processed element moved to new index (after pop,
-            unshift or splice)
-          - 'reload': after temporarly reloading array with processed values,
-            values receive updated indexes (sort and reverse)
-      
-        @return [mixed] whetever you define. Return value will not be used
-       */
-      ArrayTracker.prototype.list = void 0;
-
-      ArrayTracker.prototype.origFn = void 0;
-
-      ArrayTracker.prototype.store = void 0;
-
-
-      /*
       Create the ArrayTracker instance and attach it to the provided array
       
       @throw [ArgumentTypeError] list, options type mismatch
@@ -132,7 +77,6 @@ ksc.factory('ksc.ArrayTracker', [
       @param [object] options (optional) you may add handler functions and/or
         a store object here: del, get, set and sotre will be picked up.
        */
-
       function ArrayTracker(list, options) {
         var fn, fnize, functions, key, orig_fn, store, tracker, _fn, _fn1, _i, _len, _ref;
         if (options == null) {
@@ -179,7 +123,7 @@ ksc.factory('ksc.ArrayTracker', [
               });
             }
           } else {
-            fn = null;
+            fn = void 0;
           }
           return fn;
         };
@@ -187,11 +131,11 @@ ksc.factory('ksc.ArrayTracker', [
         _ref = ['del', 'get', 'set'];
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           key = _ref[_i];
-          functions[key] = options[key] || null;
+          functions[key] = options[key] || void 0;
         }
         _fn = function(key) {
           return define_get_set(tracker, key, (function() {
-            return functions[key] || null;
+            return functions[key] || void 0;
           }), (function(fn) {
             return functions[key] = fnize(fn);
           }), 1);
@@ -223,6 +167,55 @@ ksc.factory('ksc.ArrayTracker', [
         }
         process(tracker);
       }
+
+
+      /*
+      Indicates that element was deleted from a certain index (always the end
+      of the array)
+      
+      @param [number] index of deleted element in array
+      @param [mixed] stored value of the element
+      
+      @return [false|mixed] If false is returned, store[index] will not be
+        deleted by ArrayTracker so you can keep it or deal with it any other
+        way. Any other return value will be disregarded.
+       */
+
+
+      /*
+      Inject getter logic for array elements (see first example in class def)
+      
+      @note It is also used for reading values when temporarly turning values
+        into plain values (e.g. for using native sort() ot reverse() methods)
+      
+      @param [number] index of element in array
+      @param [mixed] value stored for the element
+      
+      @return [mixed] this will be used as element value in the array
+       */
+
+
+      /*
+      Inject setter logic or set to/leave as null for default behavior
+      (elements stored as-is). See second example in class def.
+      
+      @note It is also used for re-setting values after temporarly turning
+        values into plain values (e.g. for using native sort() ot reverse()
+        methods)
+      
+      @param [number] index of element in array
+      @param [mixed] value to be set
+      @param [function] next call when your biz logic is ready. Takes 0 or 1
+        argument. If argument is provided that will be stored as value.
+      @param [string] set_type Any of the following values:
+        - 'external': coming from oustide by updating an element or adding new
+        - 'move': previously processed element moved to new index (after pop,
+          unshift or splice)
+        - 'reload': after temporarly reloading array with processed values,
+          values receive updated indexes (sort and reverse)
+      
+      @return [mixed] whetever you define. Return value will not be used
+       */
 
 
       /*
@@ -271,7 +264,7 @@ ksc.factory('ksc.ArrayTracker', [
        */
 
       ArrayTracker.add = function(tracker, items, index, move_to_right) {
-        var i, items_len, list, orig_len, store, value, _i, _j, _len, _ref;
+        var i, items_len, list, orig_len, record, store, value, _i, _j, _len, _ref;
         if (move_to_right == null) {
           move_to_right = true;
         }
@@ -280,7 +273,9 @@ ksc.factory('ksc.ArrayTracker', [
         orig_len = list.length;
         if (move_to_right && orig_len > index) {
           for (i = _i = _ref = orig_len - 1; _i >= index; i = _i += -1) {
-            set_element(tracker, i + items_len, store[i], 'move');
+            record = store[i];
+            store[i] = void 0;
+            set_element(tracker, i + items_len, record, 'move');
           }
         }
         for (i = _j = 0, _len = items.length; _j < _len; i = ++_j) {
@@ -393,16 +388,18 @@ ksc.factory('ksc.ArrayTracker', [
        */
 
       ArrayTracker.rm = function(tracker, index) {
-        var del, deletable, i, list, orig_len, res, store, _i, _ref;
+        var del, deletable, i, list, orig_len, record, res, store, _i, _ref;
         list = tracker.list, store = tracker.store;
         if (list.length) {
           orig_len = list.length;
           res = list[index];
-          for (i = _i = _ref = index + 1; _i < orig_len; i = _i += 1) {
-            set_element(tracker, i - 1, store[i], 'move');
-          }
           if (del = tracker.del) {
             deletable = store[orig_len - 1];
+          }
+          for (i = _i = _ref = index + 1; _i < orig_len; i = _i += 1) {
+            record = store[i];
+            store[i] = void 0;
+            set_element(tracker, i - 1, record, 'move');
           }
           list.length = orig_len - 1;
           if ((typeof del === "function" ? del(orig_len - 1, deletable) : void 0) !== false) {
@@ -427,17 +424,18 @@ ksc.factory('ksc.ArrayTracker', [
        */
 
       ArrayTracker.setElement = function(tracker, index, value, set_type) {
-        var work;
+        var store, work;
         work = function() {
           if (arguments.length) {
             value = arguments[0];
           }
-          if (tracker.store[index] === value) {
+          if (store[index] === value) {
             return false;
           }
-          tracker.store[index] = value;
+          store[index] = value;
           return true;
         };
+        store = tracker.store;
         if (tracker.set) {
           tracker.set(index, value, work, set_type || 'external');
         } else {
@@ -566,8 +564,13 @@ ksc.factory('ksc.ArrayTracker', [
         how_many = parseInt(how_many, 10) || 0;
         how_many = Math.max(0, Math.min(how_many, orig_len - index));
         res = list.slice(index, index + how_many);
-        move = function(i) {
-          return set_element(tracker, i - how_many + items_len, store[i], 'move');
+        move = function(i, to_right) {
+          var record;
+          record = store[i];
+          if (to_right) {
+            store[i] = void 0;
+          }
+          return set_element(tracker, i - how_many + items_len, record, 'move');
         };
         if (how_many > items_len) {
           for (i = _i = _ref1 = index + how_many; _i < orig_len; i = _i += 1) {
@@ -578,7 +581,7 @@ ksc.factory('ksc.ArrayTracker', [
           }
         } else if (how_many < items_len) {
           for (i = _k = _ref3 = orig_len - 1, _ref4 = index + how_many; _k >= _ref4; i = _k += -1) {
-            move(i);
+            move(i, 1);
           }
         }
         if (items_len) {
@@ -771,14 +774,6 @@ ksc.factory('ksc.BatchLoader', [
     @author Greg Varsanyi
      */
     return BatchLoader = (function() {
-      BatchLoader.prototype.endpoint = null;
-
-      BatchLoader.prototype.map = null;
-
-      BatchLoader.prototype.open = true;
-
-      BatchLoader.prototype.requests = null;
-
 
       /*
       
@@ -788,7 +783,6 @@ ksc.factory('ksc.BatchLoader', [
       @throw [ArgumentTypeError] missing or mismatching endpoint or map
       @throw [TypeError] invalid map entry
        */
-
       function BatchLoader(endpoint, map) {
         var key, loader, open, setter, url;
         this.endpoint = endpoint;
@@ -996,13 +990,7 @@ ksc.factory('ksc.EditableRecord', [
     return EditableRecord = (function(_super) {
       __extends(EditableRecord, _super);
 
-      EditableRecord.prototype._changedKeys = null;
-
       EditableRecord.prototype._changes = 0;
-
-      EditableRecord.prototype._deletedKeys = null;
-
-      EditableRecord.prototype._edited = null;
 
 
       /*
@@ -1756,8 +1744,6 @@ ksc.factory('ksc.EventEmitter', [
     EventSubscriptions = (function() {
       function EventSubscriptions() {}
 
-      EventSubscriptions.prototype.names = null;
-
 
       /*
       Emission logic
@@ -2308,28 +2294,8 @@ ksc.factory('ksc.EventEmitter', [
 ]);
 ksc.factory('ksc.ListMapper', [
   'ksc.util', function(util) {
-    var ListMapper, deep_target, define_value;
+    var ListMapper, define_value;
     define_value = util.defineValue;
-
-    /*
-    Helper function that looks up named source references on .idMap and
-    .pseudoMap hierarchies (aka target)
-    
-    @param [Object] target .idMap or .pseudoMap
-    @param [Array] source_names (optional) list of source_names that ID target
-    
-    @return [undefined]
-     */
-    deep_target = function(target, source_names) {
-      var source_name, _i, _len;
-      if (source_names) {
-        for (_i = 0, _len = source_names.length; _i < _len; _i++) {
-          source_name = source_names[_i];
-          target = target[source_name];
-        }
-      }
-      return target;
-    };
 
     /*
     A helper class that features creating look-up objects for mappable lists
@@ -2349,20 +2315,11 @@ ksc.factory('ksc.ListMapper', [
     @author Greg Varsanyi
      */
     return ListMapper = (function() {
-      ListMapper.prototype.idMap = null;
-
 
       /*
       @property [boolean|undefined] indicates multiple named sources on parent.
         Set to boolean if parent is {ListMask} or undefined {List}.
        */
-
-      ListMapper.prototype.multi = null;
-
-      ListMapper.prototype.parent = null;
-
-      ListMapper.prototype.pseudoMap = null;
-
 
       /*
       Creates containers for records with valid ._id (.idMap) and pseudo records
@@ -2373,7 +2330,6 @@ ksc.factory('ksc.ListMapper', [
       
       @param [List/ListMask] list reference to parent {List} or {ListMask}
        */
-
       function ListMapper(parent) {
         var build_maps, has_mapped_source, mapped, mapper, source;
         this.parent = parent;
@@ -2445,7 +2401,7 @@ ksc.factory('ksc.ListMapper', [
 
 
       /*
-      Add record to .idMap or .pseudoMap (whichever fits)
+      Add record to .idMap or .pseudoMap (whichever fits) as getter/setter
       
       @param [Record] record reference to a record
       @param [Array<string>] source_names (optional) named source identifier
@@ -2463,8 +2419,13 @@ ksc.factory('ksc.ListMapper', [
           id = record._pseudo;
           target = mapper.pseudoMap;
         }
-        target = deep_target(target, source_names);
-        return target[id] = record;
+        target = ListMapper.deepTarget(target, source_names);
+        util.defineGetSet(target, id, (function() {
+          return record;
+        }), (function(value) {
+          return record._replace(value);
+        }), 1);
+        return record;
       };
 
 
@@ -2496,7 +2457,7 @@ ksc.factory('ksc.ListMapper', [
         } else {
           target = mapper.idMap;
         }
-        target = deep_target(target, source_names);
+        target = ListMapper.deepTarget(target, source_names);
         delete target[map_id];
       };
 
@@ -2530,8 +2491,30 @@ ksc.factory('ksc.ListMapper', [
           id = map_id;
           target = mapper.parent.idMap;
         }
-        target = deep_target(target, source_names);
+        target = ListMapper.deepTarget(target, source_names);
         return target[id] || false;
+      };
+
+
+      /*
+      Helper function that looks up named source references on .idMap and
+      .pseudoMap hierarchies (aka target)
+      
+      @param [Object] target .idMap or .pseudoMap
+      @param [Array] source_names (optional) list of source_names that ID target
+      
+      @return [undefined]
+       */
+
+      ListMapper.deepTarget = function(target, source_names) {
+        var source_name, _i, _len;
+        if (source_names) {
+          for (_i = 0, _len = source_names.length; _i < _len; _i++) {
+            source_name = source_names[_i];
+            target = target[source_name];
+          }
+        }
+        return target;
       };
 
 
@@ -2562,195 +2545,13 @@ ksc.factory('ksc.ListMapper', [
 ]);
 
 ksc.factory('ksc.ListMask', [
-  '$rootScope', 'ksc.EventEmitter', 'ksc.List', 'ksc.ListMapper', 'ksc.ListSorter', 'ksc.error', 'ksc.util', function($rootScope, EventEmitter, List, ListMapper, ListSorter, error, util) {
-    var ListMask, SCOPE_UNSUBSCRIBER, add_to_list, argument_type_error, array_push, cut_from_list, define_get_set, define_value, is_object, rebuild_list, register_filter, register_splitter, splitter_wrap;
+  '$rootScope', 'ksc.ArrayTracker', 'ksc.EventEmitter', 'ksc.List', 'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util', function($rootScope, ArrayTracker, EventEmitter, List, ListMapper, ListSorter, Record, error, util) {
+    var ListMask, SCOPE_UNSUBSCRIBER, argument_type_error, define_get_set, define_value, is_object;
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber';
     argument_type_error = error.ArgumentType;
     define_get_set = util.defineGetSet;
     define_value = util.defineValue;
     is_object = util.isObject;
-    array_push = Array.prototype.push;
-
-    /*
-    Helper function that adds element to list Array in a sort-sensitive way when
-    needed
-    
-    @param [Array] list container array instance generated by ListMask
-    @param [Record] record Item to inject
-    
-    @return [undefined]
-     */
-    add_to_list = function(list, record) {
-      var item, pos, records, _i, _len;
-      records = splitter_wrap(list, record);
-      if (list.sorter) {
-        for (_i = 0, _len = records.length; _i < _len; _i++) {
-          item = records[_i];
-          pos = list.sorter.position(item);
-          Array.prototype.splice.call(list, pos, 0, item);
-        }
-      } else {
-        array_push.apply(list, records);
-      }
-    };
-
-    /*
-    Helper function that removes elements from list Array
-    
-    @param [Array] list container array instance generated by ListMask
-    @param [Array] records Record items to cut
-    
-    @return [undefined]
-     */
-    cut_from_list = function(list, records) {
-      var record, target, tmp_container;
-      tmp_container = [];
-      while (record = Array.prototype.pop.call(list)) {
-        target = record._original || record;
-        if (__indexOf.call(records, target) < 0) {
-          tmp_container.push(record);
-        }
-      }
-      if (tmp_container.length) {
-        tmp_container.reverse();
-        array_push.apply(list, tmp_container);
-      }
-    };
-    rebuild_list = function(list) {
-      var record, source_info, _i, _j, _len, _len1, _ref, _ref1;
-      util.empty(list);
-      _ref = list._mapper._sources;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        source_info = _ref[_i];
-        _ref1 = source_info.source;
-        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-          record = _ref1[_j];
-          if (list.filter(record)) {
-            array_push.apply(list, splitter_wrap(list, record));
-          }
-        }
-      }
-    };
-
-    /*
-    Helper function that registers a filter function on the {ListMask} object
-    (and its .options object)
-    
-    @param [ListMask] list Reference to list mask
-    
-    @return [undefined]
-     */
-    register_filter = function(list) {
-      var default_fn, filter, filter_get, filter_set;
-      default_fn = (function() {
-        return true;
-      });
-      if (!(filter = list.options.filter)) {
-        filter = default_fn;
-      }
-      filter_get = function() {
-        return filter;
-      };
-      filter_set = function(filter_function) {
-        if (!filter_function) {
-          filter_function = default_fn;
-        }
-        if (typeof filter_function !== 'function') {
-          error.Type({
-            filter_function: filter_function,
-            required: 'function'
-          });
-        }
-        filter = filter_function;
-        return list.update();
-      };
-      define_get_set(list, 'filter', filter_get, filter_set, 1);
-      define_get_set(list.options, 'filter', filter_get, filter_set, 1);
-    };
-
-    /*
-    Helper function that registers a splitter function function on the
-    {ListMask} object (and its .options object)
-    
-    @param [ListMask] list Reference to list mask
-    
-    @return [undefined]
-     */
-    register_splitter = function(list) {
-      var default_fn, splitter, splitter_get, splitter_set;
-      default_fn = (function() {
-        return false;
-      });
-      if (!(splitter = list.options.splitter)) {
-        splitter = default_fn;
-      }
-      splitter_get = function() {
-        return splitter;
-      };
-      splitter_set = function(splitter_function) {
-        if (!splitter_function) {
-          splitter_function = default_fn;
-        }
-        if (typeof splitter_function !== 'function') {
-          error.Type({
-            splitter_function: splitter_function,
-            required: 'function'
-          });
-        }
-        splitter = splitter_function;
-        return list.update();
-      };
-      define_get_set(list, 'splitter', splitter_get, splitter_set, 1);
-      define_get_set(list.options, 'splitter', splitter_get, splitter_set, 1);
-    };
-
-    /*
-    Helper function to wrap splitter function and turn them into an Array
-    instance (either with the original record only, or all the masked record
-    children)
-    
-    @param [Array] list Array instance generated by {ListMask}
-    @param [Record] record Record instance to match and optionally split
-    
-    @return [Array]
-     */
-    splitter_wrap = function(list, record) {
-      var info, key, record_mask, record_masks, result, value, _fn, _i, _len;
-      if ((result = list.splitter(record)) && result instanceof Array) {
-        record_masks = [];
-        for (_i = 0, _len = result.length; _i < _len; _i++) {
-          info = result[_i];
-          if (!is_object(info)) {
-            error.Type({
-              splitter: list.splitter,
-              description: 'If Array is returned, all elements must be ' + 'objects with override data'
-            });
-          }
-          record_mask = Object.create(record);
-          _fn = function(key, record) {
-            var getter, setter;
-            getter = function() {
-              return record[key];
-            };
-            setter = function(value) {
-              return record[key] = value;
-            };
-            return define_get_set(record_mask, key, getter, setter, 1);
-          };
-          for (key in record) {
-            _fn(key, record);
-          }
-          for (key in info) {
-            value = info[key];
-            define_value(record_mask, key, value, 0, 1);
-          }
-          define_value(record_mask, '_original', record);
-          record_masks.push(record_mask);
-        }
-        return record_masks;
-      }
-      return [record];
-    };
 
     /*
     Masked list that picks up changes from parent {List} instance(s)
@@ -2850,37 +2651,6 @@ ksc.factory('ksc.ListMask', [
       @property [ListMapper] helper object that handles references to records
         by their unique IDs (._id) or pseudo IDs (._pseudo)
        */
-      ListMask.prototype._mapper = void 0;
-
-      ListMask.prototype.events = void 0;
-
-
-      /*
-      @property [function] function with signiture `(record) ->` and boolean
-        return value indicating if record should be in the filtered list
-       */
-
-      ListMask.prototype.filter = void 0;
-
-      ListMask.prototype.idMap = void 0;
-
-      ListMask.prototype.options = void 0;
-
-      ListMask.prototype.pseudoMap = void 0;
-
-      ListMask.prototype.sorter = void 0;
-
-      ListMask.prototype.source = void 0;
-
-
-      /*
-      @property [function] function with signiture `(record) ->` that returns
-        an Array of overrides to split records or anything else to indicate no
-        splitting of record
-       */
-
-      ListMask.prototype.splitter = void 0;
-
 
       /*
       Creates a vanilla Array instance (e.g. []), disables methods like
@@ -2908,7 +2678,6 @@ ksc.factory('ksc.ListMask', [
       
       @return [Array] returns plain [] with processed contents
        */
-
       function ListMask(source, filter, options, scope) {
         var flat_sources, key, list, record, source_count, source_info, source_list, source_name, sources, unsubscriber, value, _fn, _i, _j, _k, _l, _len, _len1, _len2, _len3, _ref, _ref1, _ref2, _ref3;
         if (source instanceof Array || typeof source !== 'object') {
@@ -2969,23 +2738,36 @@ ksc.factory('ksc.ListMask', [
           options.filter = filter;
         }
         list = [];
+        new ArrayTracker(list, {
+          set: function(index, value, next, set_type) {
+            var record;
+            if (set_type === 'external' && (record = list._tracker.store[index]) instanceof Record) {
+              record._replace(value);
+            } else {
+              next();
+            }
+          }
+        });
+        define_value(list, '_origFn', {});
         _ref = this.constructor.prototype;
         for (key in _ref) {
           value = _ref[key];
-          define_value(list, key, value);
+          if ((value != null) && key !== 'constructor') {
+            list._origFn[key] = list[key];
+            define_value(list, key, value);
+          }
         }
-        _ref1 = ['copyWithin', 'fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'];
+        _ref1 = ['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'];
         for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
           key = _ref1[_i];
-          if (list[key]) {
-            define_value(list, key);
-          }
+          list._origFn[key] = list[key];
+          define_value(list, key);
         }
         define_value(list, 'events', new EventEmitter);
         define_value(list, 'options', options);
         define_value(list, 'source', source);
-        register_filter(list);
-        register_splitter(list);
+        ListMask.registerFilter(list);
+        ListMask.registerSplitter(list);
         ListMapper.register(list);
         sources = list._mapper._sources;
         if (scope) {
@@ -3034,7 +2816,7 @@ ksc.factory('ksc.ListMask', [
             if (record._parent.idProperty != null) {
               list._mapper.add(record, source_info.names);
             }
-            add_to_list(list, record);
+            ListMask.add(list, record);
           }
         }
         return list;
@@ -3050,7 +2832,65 @@ ksc.factory('ksc.ListMask', [
       @return [boolean] false if the object was already destroyed
        */
 
-      ListMask.prototype.destroy = List.prototype.destroy;
+      ListMask.prototype.destroy = function() {
+        return List.prototype.destroy.call(this);
+      };
+
+
+      /*
+      Record filter logic that defines the list mask
+      
+      @note This is Getter/setter for function. Function should be assigned at
+        init time (as part of the constructor arguments, like this:
+        `new ListMask src_list, filter_fn`) and can be changed run-time by
+        assigning a new function to either list_mask.filter or
+        list_mask.options.filter.
+      
+      @note list_mask.filter or list_mask.options.filter have the same
+        getter/setter
+      
+      @param [Record] record Record instance to check
+      
+      @return [boolean] indicates if record should be on the masked list
+       */
+
+
+      /*
+      Optional list auto-sorter logic, see: {ListSorter}
+      
+      @note This is Getter/setter for function or undefined. Will start as
+        undefined by default. Function can be assigned at init time (as part of
+        options, like: `new ListMask src_list, filter_fn, {sorter: fn}`) or in
+        run-time by assigning function or null/undefined to either
+        list_mask.sorter or list_mask.options.sorter.
+      
+      @note list_mask.sorter or list_mask.options.sorter have the same
+        getter/setter
+      
+      @param [Record] record_a Record instance to compare
+      @param [Record] record_b Record instance to compare
+      
+      @return [number] <0, 0, >0 indicates sort relation between records A and B
+       */
+
+
+      /*
+      Optional record splitter logic
+      
+      @note This is Getter/setter for function or undefined. Will start as
+        undefined by default. Function can be assigned at init time (as part
+        of options, like: `new ListMask src_list, filter_fn, {splitter: fn}`) or
+        in run-time by assigning function or null/undefined to either
+        list_mask.splitter or list_mask.options.splitter.
+      
+      @note list_mask.splitter or list_mask.options.splitter have the same
+        getter/setter
+      
+      @param [Record] record Record instance to check
+      
+      @return [Array<Record>|false] split records in array or anything else to
+        indicate no splitting of record
+       */
 
 
       /*
@@ -3081,7 +2921,7 @@ ksc.factory('ksc.ListMask', [
                 if (mapped) {
                   mapper.add(record, source_names);
                 }
-                add_to_list(list, record);
+                ListMask.add(list, record);
                 (action.add != null ? action.add : action.add = []).push(record);
               }
             } else if (is_on) {
@@ -3093,9 +2933,9 @@ ksc.factory('ksc.ListMask', [
           }
         }
         if (action.cut) {
-          cut_from_list(list, action.cut);
+          ListMask.cut(list, action.cut);
         }
-        rebuild_list(list);
+        ListMask.rebuild(list);
         if (action.add || action.cut) {
           list.events.emit('update', {
             node: list,
@@ -3103,6 +2943,208 @@ ksc.factory('ksc.ListMask', [
           });
         }
         return action;
+      };
+
+
+      /*
+      Helper function that adds element to list Array in a sort-sensitive way
+      when needed
+      
+      @param [Array] list container array instance generated by ListMask
+      @param [Record] record Item to inject
+      
+      @return [undefined]
+       */
+
+      ListMask.add = function(list, record) {
+        var item, pos, records, _i, _len;
+        records = ListMask.splitterWrap(list, record);
+        if (list.sorter) {
+          for (_i = 0, _len = records.length; _i < _len; _i++) {
+            item = records[_i];
+            pos = list.sorter.position(item);
+            list._origFn.splice.call(list, pos, 0, item);
+          }
+        } else {
+          list._origFn.push.apply(list, records);
+        }
+      };
+
+
+      /*
+      Helper function that removes elements from list Array
+      
+      @param [Array] list container array instance generated by ListMask
+      @param [Array] records Record items to cut
+      
+      @return [undefined]
+       */
+
+      ListMask.cut = function(list, records) {
+        var record, target, tmp_container;
+        tmp_container = [];
+        while (record = list._origFn.pop()) {
+          target = record._original || record;
+          if (__indexOf.call(records, target) < 0) {
+            tmp_container.push(record);
+          }
+        }
+        if (tmp_container.length) {
+          tmp_container.reverse();
+          list._origFn.push.apply(list, tmp_container);
+        }
+      };
+
+
+      /*
+      Helper function that empties and reloads masked list Array instance from
+      source (used when source changes are untrackable or ambiguous).
+      
+      @param [Array] list container array instance generated by ListMask
+      
+      @return [undefined]
+       */
+
+      ListMask.rebuild = function(list) {
+        var record, source_info, _i, _j, _len, _len1, _ref, _ref1;
+        util.empty(list);
+        _ref = list._mapper._sources;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          source_info = _ref[_i];
+          _ref1 = source_info.source;
+          for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+            record = _ref1[_j];
+            if (list.filter(record)) {
+              list._origFn.push.apply(list, ListMask.splitterWrap(list, record));
+            }
+          }
+        }
+      };
+
+
+      /*
+      Helper function that registers a filter function on the {ListMask} object
+      (and its .options object)
+      
+      @param [ListMask] list Reference to list mask
+      
+      @return [undefined]
+       */
+
+      ListMask.registerFilter = function(list) {
+        var default_fn, filter, filter_get, filter_set;
+        default_fn = (function() {
+          return true;
+        });
+        if (!(filter = list.options.filter)) {
+          filter = default_fn;
+        }
+        filter_get = function() {
+          return filter;
+        };
+        filter_set = function(filter_function) {
+          if (!filter_function) {
+            filter_function = default_fn;
+          }
+          if (typeof filter_function !== 'function') {
+            error.Type({
+              filter_function: filter_function,
+              required: 'function'
+            });
+          }
+          filter = filter_function;
+          return list.update();
+        };
+        define_get_set(list, 'filter', filter_get, filter_set, 1);
+        define_get_set(list.options, 'filter', filter_get, filter_set, 1);
+      };
+
+
+      /*
+      Helper function that registers a splitter function function on the
+      {ListMask} object (and its .options object)
+      
+      @param [ListMask] list Reference to list mask
+      
+      @return [undefined]
+       */
+
+      ListMask.registerSplitter = function(list) {
+        var default_fn, splitter, splitter_get, splitter_set;
+        default_fn = (function() {
+          return false;
+        });
+        if (!(splitter = list.options.splitter)) {
+          splitter = default_fn;
+        }
+        splitter_get = function() {
+          return splitter;
+        };
+        splitter_set = function(splitter_function) {
+          if (!splitter_function) {
+            splitter_function = default_fn;
+          }
+          if (typeof splitter_function !== 'function') {
+            error.Type({
+              splitter_function: splitter_function,
+              required: 'function'
+            });
+          }
+          splitter = splitter_function;
+          return list.update();
+        };
+        define_get_set(list, 'splitter', splitter_get, splitter_set, 1);
+        define_get_set(list.options, 'splitter', splitter_get, splitter_set, 1);
+      };
+
+
+      /*
+      Helper function to wrap splitter function and turn them into an Array
+      instance (either with the original record only, or all the masked record
+      children)
+      
+      @param [Array] list Array instance generated by {ListMask}
+      @param [Record] record Record instance to match and optionally split
+      
+      @return [Array]
+       */
+
+      ListMask.splitterWrap = function(list, record) {
+        var info, key, record_mask, record_masks, result, value, _fn, _i, _len;
+        if ((result = list.splitter(record)) && result instanceof Array) {
+          record_masks = [];
+          for (_i = 0, _len = result.length; _i < _len; _i++) {
+            info = result[_i];
+            if (!is_object(info)) {
+              error.Type({
+                splitter: list.splitter,
+                description: 'If Array is returned, all elements must be ' + 'objects with override data'
+              });
+            }
+            record_mask = Object.create(record);
+            _fn = function(key, record) {
+              var getter, setter;
+              getter = function() {
+                return record[key];
+              };
+              setter = function(value) {
+                return record[key] = value;
+              };
+              return define_get_set(record_mask, key, getter, setter, 1);
+            };
+            for (key in record) {
+              _fn(key, record);
+            }
+            for (key in info) {
+              value = info[key];
+              define_value(record_mask, key, value, 0, 1);
+            }
+            define_value(record_mask, '_original', record);
+            record_masks.push(record_mask);
+          }
+          return record_masks;
+        }
+        return [record];
       };
 
 
@@ -3184,7 +3226,7 @@ ksc.factory('ksc.ListMask', [
               continue;
             }
             find_and_add(record._id, record._pseudo, record);
-            add_to_list(list, record);
+            ListMask.add(list, record);
             add_action('add', record);
           }
         }
@@ -3234,7 +3276,7 @@ ksc.factory('ksc.ListMask', [
                 }
                 add_action('update', update_info);
               } else {
-                add_to_list(list, record);
+                ListMask.add(list, record);
                 add_action('add', record);
               }
             } else {
@@ -3250,9 +3292,9 @@ ksc.factory('ksc.ListMask', [
           }
         }
         if (!list.sorter) {
-          rebuild_list(list);
+          ListMask.rebuild(list);
         } else if (cut.length) {
-          cut_from_list(list, cut);
+          ListMask.cut(list, cut);
         }
         if (action) {
           list.events.emit('update', {
@@ -3309,25 +3351,14 @@ ksc.factory('ksc.ListSorter', [
     @author Greg Varsanyi
      */
     return ListSorter = (function() {
-      ListSorter.prototype.fn = null;
-
-      ListSorter.prototype.key = null;
-
-      ListSorter.prototype.list = null;
-
-      ListSorter.prototype.reverse = null;
-
 
       /*
       @property [string] sorting type, possible values
         - 'byte': compare based on ASCII/UTF8 character value (stringifies vals)
         - 'natural': human-perceived "natural" order, case-insensitive (default)
         - 'number': number-ordering, falls back to natural for non-numbers
-        (null if external function is used)
+        (undefined if external function is used)
        */
-
-      ListSorter.prototype.type = null;
-
 
       /*
       Creates ListSorter object
@@ -3342,7 +3373,6 @@ ksc.factory('ksc.ListSorter', [
       
       @throw [ValueError] if a sorter value is errorous
        */
-
       function ListSorter(list, description) {
         var key, sorter, type;
         sorter = this;
@@ -3557,7 +3587,7 @@ ksc.factory('ksc.ListSorter', [
       by {List} or {ListMask}
       
       @param [List] list reference to the list (not) to be auto-sorted
-      @param [null|function|object|string|Array] description sort logic
+      @param [undefined|null|function|object|string|Array] sort logic fn or
         description, see: {ListSorter} and {ListSorter#constructor}
       
       @return [undefined]
@@ -3565,7 +3595,7 @@ ksc.factory('ksc.ListSorter', [
 
       ListSorter.register = function(list, description) {
         var getter, setter, sorter;
-        sorter = null;
+        sorter = void 0;
         if (description) {
           sorter = new ListSorter(list, description);
         }
@@ -3575,7 +3605,7 @@ ksc.factory('ksc.ListSorter', [
         setter = function(description) {
           if (description) {
             sorter = new ListSorter(list, description);
-            Array.prototype.sort.call(list, sorter.fn);
+            list._origFn.sort(sorter.fn);
             return list.events.emit('update', {
               node: list,
               action: {
@@ -3583,7 +3613,7 @@ ksc.factory('ksc.ListSorter', [
               }
             });
           } else {
-            return sorter = null;
+            return sorter = void 0;
           }
         };
         util.defineGetSet(list, 'sorter', getter, setter);
@@ -3597,41 +3627,12 @@ ksc.factory('ksc.ListSorter', [
 ]);
 
 ksc.factory('ksc.List', [
-  '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util', function($rootScope, EditableRecord, EventEmitter, ListMapper, ListSorter, Record, error, util) {
-    var List, SCOPE_UNSUBSCRIBER, argument_type_error, define_value, emit_action, inject, is_object, normalize_return_action;
+  '$rootScope', 'ksc.ArrayTracker', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util', function($rootScope, ArrayTracker, EditableRecord, EventEmitter, ListMapper, ListSorter, Record, error, util) {
+    var List, SCOPE_UNSUBSCRIBER, argument_type_error, define_value, is_object;
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber';
     argument_type_error = error.ArgumentType;
     define_value = util.defineValue;
     is_object = util.isObject;
-    normalize_return_action = function(items, return_action) {
-      if (typeof return_action !== 'boolean') {
-        items.push(return_action);
-        return_action = false;
-      }
-      return return_action;
-    };
-    emit_action = function(list, action) {
-      return list.events.emit('update', {
-        node: list,
-        action: action
-      });
-    };
-
-    /*
-    A helper function, similar to Array::splice, except it does not delete.
-    This is a central place for injecting into the array, a candidate for
-    turning elements into getters/setters if we ever go there.
-    
-    @param [Object] list Array with extensions from {List}
-    @param [number] pos Index in array where injection starts
-    @param [Record] records... Element(s) to be injected
-    
-    @return [undefined]
-     */
-    inject = function(list, pos, records) {
-      var _ref;
-      (_ref = Array.prototype.splice).call.apply(_ref, [list, pos, 0].concat(__slice.call(records)));
-    };
 
     /*
     Constructor for an Array instance and methods to be added to that instance
@@ -3682,6 +3683,10 @@ ksc.factory('ksc.List', [
        */
       List.prototype._mapper = void 0;
 
+      List.prototype._origFn = void 0;
+
+      List.prototype._tracker = void 0;
+
       List.prototype.events = void 0;
 
       List.prototype.idMap = void 0;
@@ -3691,8 +3696,6 @@ ksc.factory('ksc.List', [
       List.prototype.pseudoMap = void 0;
 
       List.prototype.options = void 0;
-
-      List.prototype.sorter = void 0;
 
 
       /*
@@ -3771,13 +3774,6 @@ ksc.factory('ksc.List', [
             description: 'id_property argument conflicts with ' + '.options.record.idProperty'
           });
         }
-        _ref1 = this.constructor.prototype;
-        for (key in _ref1) {
-          value = _ref1[key];
-          if (key !== 'constructor') {
-            define_value(list, key, value);
-          }
-        }
         options = angular.copy(options) || {};
         define_value(list, 'options', options);
         if (options.record == null) {
@@ -3805,6 +3801,25 @@ ksc.factory('ksc.List', [
             delete list[SCOPE_UNSUBSCRIBER];
             return list.destroy();
           }));
+        }
+        new ArrayTracker(list, {
+          set: function(index, value, next, set_type) {
+            var record;
+            if (set_type === 'external' && (record = list._tracker.store[index]) instanceof Record) {
+              record._replace(value);
+            } else {
+              next();
+            }
+          }
+        });
+        define_value(list, '_origFn', {});
+        _ref1 = this.constructor.prototype;
+        for (key in _ref1) {
+          value = _ref1[key];
+          if ((value != null) && key !== 'constructor') {
+            list._origFn[key] = list[key];
+            define_value(list, key, value);
+          }
         }
         ListSorter.register(list, options.sorter);
         if (initial_set) {
@@ -3910,19 +3925,19 @@ ksc.factory('ksc.List', [
           removable.push(record);
         }
         tmp_container = [];
-        while (item = Array.prototype.pop.call(list)) {
+        while (item = list._origFn.pop()) {
           if (__indexOf.call(removable, item) < 0) {
             tmp_container.push(item);
           }
         }
         if (tmp_container.length) {
           tmp_container.reverse();
-          inject(list, list.length, tmp_container);
+          List.inject(list, list.length, tmp_container);
         }
         action = {
           cut: cut
         };
-        emit_action(list, action);
+        List.emitAction(list, action);
         return action;
       };
 
@@ -3953,7 +3968,7 @@ ksc.factory('ksc.List', [
           list.events.unhalt();
         }
         if (action.cut.length) {
-          emit_action(list, action);
+          List.emitAction(list, action);
         }
         if (return_action) {
           return action;
@@ -4017,7 +4032,7 @@ ksc.factory('ksc.List', [
       List.prototype.push = function() {
         var action, items, list, return_action, _i;
         items = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), return_action = arguments[_i++];
-        return_action = normalize_return_action(items, return_action);
+        return_action = List.normalizeReturnAction(items, return_action);
         list = this;
         action = List.add(list, items, list.length);
         if (return_action) {
@@ -4041,6 +4056,25 @@ ksc.factory('ksc.List', [
       List.prototype.shift = function() {
         return List.remove(this, 'shift');
       };
+
+
+      /*
+      Optional list auto-sorter logic, see: {ListSorter}
+      
+      @note This is Getter/setter for function or undefined. Will start as
+        undefined by default. Function can be assigned at init time (as part of
+        options, like: `new ListMask src_list, filter_fn, {sorter: fn}`) or in
+        run-time by assigning function or null/undefined to either
+        list_mask.sorter or list_mask.options.sorter.
+      
+      @note list_mask.sorter or list_mask.options.sorter have the same
+        getter/setter
+      
+      @param [Record] record_a Record instance to compare
+      @param [Record] record_b Record instance to compare
+      
+      @return [number] <0, 0, >0 indicates sort relation between records A and B
+       */
 
 
       /*
@@ -4082,7 +4116,7 @@ ksc.factory('ksc.List', [
       List.prototype.unshift = function() {
         var action, items, list, return_action, _i;
         items = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), return_action = arguments[_i++];
-        return_action = normalize_return_action(items, return_action);
+        return_action = List.normalizeReturnAction(items, return_action);
         list = this;
         action = List.add(list, items, 0);
         if (return_action) {
@@ -4133,7 +4167,7 @@ ksc.factory('ksc.List', [
       List.prototype.splice = function() {
         var action, count, items, len, list, pos, positive_int_or_zero, return_action, _i;
         pos = arguments[0], count = arguments[1], items = 4 <= arguments.length ? __slice.call(arguments, 2, _i = arguments.length - 1) : (_i = 2, []), return_action = arguments[_i++];
-        return_action = normalize_return_action(items, return_action);
+        return_action = List.normalizeReturnAction(items, return_action);
         if (typeof items[0] === 'undefined' && items.length === 1) {
           items.pop();
         }
@@ -4176,7 +4210,7 @@ ksc.factory('ksc.List', [
           list.events.unhalt();
         }
         if (action.cut || action.add || action.update) {
-          emit_action(list, action);
+          List.emitAction(list, action);
         }
         if (return_action) {
           return action;
@@ -4206,8 +4240,8 @@ ksc.factory('ksc.List', [
           error.Permission('can not reverse an auto-sorted list');
         }
         if (list.length > 1) {
-          Array.prototype.reverse.call(list);
-          emit_action(list, {
+          list._origFn.reverse();
+          List.emitAction(list, {
             reverse: true
           });
         }
@@ -4264,13 +4298,13 @@ ksc.factory('ksc.List', [
               return -1;
             };
           }
-          Array.prototype.sort.call(list, sorter_fn);
+          list._origFn.sort(sorter_fn);
           for (i = _i = 0, _len = list.length; _i < _len; i = ++_i) {
             record = list[i];
             if (!(record !== cmp[i])) {
               continue;
             }
-            emit_action(list, {
+            List.emitAction(list, {
               sort: true
             });
             break;
@@ -4429,13 +4463,13 @@ ksc.factory('ksc.List', [
             if (!(item === record)) {
               continue;
             }
-            Array.prototype.splice.call(list, pos, 1);
+            list._origFn.splice(pos, 1);
             new_pos = list.sorter.position(record);
-            inject(list, new_pos, [record]);
+            List.inject(list, new_pos, [record]);
             break;
           }
         }
-        return emit_action(list, {
+        return List.emitAction(list, {
           update: [info]
         });
       };
@@ -4529,17 +4563,71 @@ ksc.factory('ksc.List', [
               for (_j = 0, _len1 = tmp.length; _j < _len1; _j++) {
                 item = tmp[_j];
                 pos = list.sorter.position(item);
-                inject(list, pos, [item]);
+                List.inject(list, pos, [item]);
               }
             } else {
-              inject(list, pos, tmp);
+              List.inject(list, pos, tmp);
             }
           }
         } finally {
           list.events.unhalt();
         }
-        emit_action(list, action);
+        List.emitAction(list, action);
         return action;
+      };
+
+
+      /*
+      A helper function to emit event propagating registered actions.
+      
+      @param [List] list Array with extensions from {List}
+      @param [Object] action Description of actions
+      
+      @return [boolean] indicates if event emission has happened
+       */
+
+      List.emitAction = function(list, action) {
+        return list.events.emit('update', {
+          node: list,
+          action: action
+        });
+      };
+
+
+      /*
+      A helper function, similar to Array::splice, except it does not delete.
+      This is a central place for injecting into the array, a candidate for
+      turning elements into getters/setters if we ever go there.
+      
+      @param [Object] list Array with extensions from {List}
+      @param [number] pos Index in array where injection starts
+      @param [Record] records... Element(s) to be injected
+      
+      @return [undefined]
+       */
+
+      List.inject = function(list, pos, records) {
+        var _ref;
+        (_ref = list._origFn.splice).call.apply(_ref, [list, pos, 0].concat(__slice.call(records)));
+      };
+
+
+      /*
+      A helper function that takes items and decides if last argument is
+      one of the items or a return action request boolean.
+      
+      @param [Array<Record>] items
+      @param [Record|boolean] item or boolean
+      
+      @return [boolean] return action request indicator
+       */
+
+      List.normalizeReturnAction = function(items, return_action) {
+        if (typeof return_action !== 'boolean') {
+          items.push(return_action);
+          return_action = false;
+        }
+        return return_action;
       };
 
 
@@ -4559,11 +4647,11 @@ ksc.factory('ksc.List', [
 
       List.remove = function(list, orig_fn) {
         var record, _ref;
-        if (record = Array.prototype[orig_fn].call(list)) {
+        if (record = list._origFn[orig_fn]()) {
           if ((_ref = list._mapper) != null) {
             _ref.del(record);
           }
-          emit_action(list, {
+          List.emitAction(list, {
             cut: [record]
           });
         }
@@ -4964,7 +5052,7 @@ ksc.factory('ksc.RecordContract', [
 ]);
 ksc.factory('ksc.Record', [
   'ksc.ArrayTracker', 'ksc.EventEmitter', 'ksc.RecordContract', 'ksc.error', 'ksc.util', function(ArrayTracker, EventEmitter, RecordContract, error, util) {
-    var CONTRACT, Record, define_get_set, define_value, has_own, is_array, is_key_conform, is_object, object_required, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PRIMARY_KEY, _PSEUDO, _SAVED;
+    var CONTRACT, Record, define_get_set, define_value, has_own, is_array, is_key_conform, is_object, _ARRAY, _EVENTS, _ID, _OPTIONS, _PARENT, _PARENT_KEY, _PRIMARY_KEY, _PSEUDO, _SAVED;
     _ARRAY = '_array';
     _EVENTS = '_events';
     _ID = '_id';
@@ -4981,16 +5069,6 @@ ksc.factory('ksc.Record', [
     is_array = Array.isArray;
     is_key_conform = util.isKeyConform;
     is_object = util.isObject;
-    object_required = function(name, value, arg) {
-      var inf;
-      if (!is_object(value)) {
-        inf = {};
-        inf[name] = value;
-        inf.argument = arg;
-        inf.required = 'object';
-        return error.ArgumentType(inf);
-      }
-    };
 
     /*
     Read-only key-value style record with supporting methods and optional
@@ -5016,24 +5094,6 @@ ksc.factory('ksc.Record', [
     @author Greg Varsanyi
      */
     return Record = (function() {
-      Record.prototype._array = void 0;
-
-      Record.prototype._events = void 0;
-
-      Record.prototype._id = void 0;
-
-      Record.prototype._idProperty = void 0;
-
-      Record.prototype._options = void 0;
-
-      Record.prototype._parent = void 0;
-
-      Record.prototype._parentKey = void 0;
-
-      Record.prototype._pseudo = void 0;
-
-      Record.prototype._saved = void 0;
-
 
       /*
       Create the Record instance with initial data and options
@@ -5051,7 +5111,6 @@ ksc.factory('ksc.Record', [
         parent record)
       @param [number|string] parent_key (optional) parent record's key
        */
-
       function Record(data, options, parent, parent_key) {
         var contract, id_property, id_property_get, id_property_set, key, record, ref, refs, target, _i, _j, _len, _len1, _ref, _ref1;
         if (data == null) {
@@ -5066,8 +5125,8 @@ ksc.factory('ksc.Record', [
             required: 'object'
           });
         }
-        object_required('data', data, 1);
-        object_required('options', options, 2);
+        Record.objReq('data', data, 1);
+        Record.objReq('options', options, 2);
         record = this;
         define_value(record, _OPTIONS, options);
         define_value(record, _SAVED, {});
@@ -5076,7 +5135,7 @@ ksc.factory('ksc.Record', [
         }
         define_value(record, _PARENT, parent);
         if ((parent != null) || (parent_key != null)) {
-          object_required('options', parent, 3);
+          Record.objReq('options', parent, 3);
           if (parent_key != null) {
             is_key_conform(parent_key, 1, 4);
             define_value(record, _PARENT_KEY, parent_key);
@@ -5585,6 +5644,31 @@ ksc.factory('ksc.Record', [
           }), (function(value) {
             return record._setProperty(index, value);
           }), 1);
+        }
+      };
+
+
+      /*
+      Helper function that throws an ArgumentTypeError if requirements are
+      not met (argument is not an object)
+      
+      @param [string] name Argument key
+      @param [mixed] value Argument value
+      @param [number] arg Argument index
+      
+      @throw [ArgumentTypeError] Argument is not an object
+      
+      @return [undefined]
+       */
+
+      Record.objReq = function(name, value, arg) {
+        var inf;
+        if (!is_object(value)) {
+          inf = {};
+          inf[name] = value;
+          inf.argument = arg;
+          inf.required = 'object';
+          error.ArgumentType(inf);
         }
       };
 
@@ -6491,8 +6575,6 @@ ksc.factory('ksc.RestRecord', [
     return RestRecord = (function(_super) {
       __extends(RestRecord, _super);
 
-      RestRecord.prototype._restCache = null;
-
       RestRecord.prototype._restPending = 0;
 
 
@@ -6817,7 +6899,7 @@ ksc.service('ksc.util', [
        */
 
       Util.empty = function() {
-        var fn, i, key, obj, objects, _i, _j, _len, _ref;
+        var fn, i, key, obj, objects, _i, _j, _len, _ref, _ref1;
         objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
         if (!objects.length) {
           error.MissingArgument({
@@ -6833,10 +6915,8 @@ ksc.service('ksc.util', [
         for (_i = 0, _len = objects.length; _i < _len; _i++) {
           obj = objects[_i];
           if (Array.isArray(obj)) {
-            if (!(fn = obj.pop)) {
-              fn = Array.prototype.pop;
-            }
-            for (i = _j = 0, _ref = obj.length; _j < _ref; i = _j += 1) {
+            fn = obj.pop || ((_ref = obj._origFn) != null ? _ref.pop : void 0) || Array.prototype.pop;
+            for (i = _j = 0, _ref1 = obj.length; _j < _ref1; i = _j += 1) {
               fn.call(obj);
             }
           } else {
