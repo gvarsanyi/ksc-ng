@@ -41,6 +41,26 @@ describe 'app.factory', ->
     afterEach ->
       unsubscribe()
 
+      # all items must be getters
+      for item, i in list
+        expect(Object.getOwnPropertyDescriptor(list, i).get?).toBe true
+
+
+    it 'Extended class works', ->
+      class Masky extends ListMask
+        constructor: (list) ->
+          return super list, (-> true)
+
+        first: ->
+          @[0]
+
+        list = new List
+        list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8}
+
+        sublist = new Masky list
+        expect(sublist.length).toBe 2
+        expect(sublist.first().id).toBe 1
+
     describe 'Split records', ->
       it 'basic scenario', ->
         list = new List
