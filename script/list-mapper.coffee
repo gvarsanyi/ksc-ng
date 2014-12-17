@@ -90,7 +90,7 @@ ksc.factory 'ksc.ListMapper', [
 
 
       ###
-      Add record to .idMap or .pseudoMap (whichever fits)
+      Add record to .idMap or .pseudoMap (whichever fits) as getter/setter
 
       @param [Record] record reference to a record
       @param [Array<string>] source_names (optional) named source identifier
@@ -109,7 +109,13 @@ ksc.factory 'ksc.ListMapper', [
 
         target = ListMapper.deepTarget target, source_names
 
-        target[id] = record
+        util.defineGetSet target,
+                          id,
+                          (-> record),
+                          ((value) -> record._replace value),
+                          1
+
+        record
 
 
       ###

@@ -1,9 +1,9 @@
 
 ksc.factory 'ksc.ListMask', [
   '$rootScope', 'ksc.ArrayTracker', 'ksc.EventEmitter', 'ksc.List',
-  'ksc.ListMapper', 'ksc.ListSorter', 'ksc.error', 'ksc.util',
+  'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
   ($rootScope, ArrayTracker, EventEmitter, List,
-   ListMapper, ListSorter, error, util) ->
+   ListMapper, ListSorter, Record, error, util) ->
 
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
@@ -211,7 +211,15 @@ ksc.factory 'ksc.ListMask', [
 
         list = []
 
-        new ArrayTracker list # adds ._tracker
+        # adds ._tracker
+        new ArrayTracker list,
+          set: (index, value, next, set_type) ->
+            if set_type is 'external' and
+            (record = list._tracker.store[index]) instanceof Record
+              record._replace value
+            else
+              next()
+            return
 
         define_value list, '_origFn', {}
 

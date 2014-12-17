@@ -536,3 +536,27 @@ describe 'app.factory', ->
       sublist.filter = sublist2.filter = (-> false)
       expect(sublist.length).toBe 0
       expect(sublist2.length).toBe 0
+
+    describe 'Getterified behavior', ->
+
+      it 'List element assignment (list[x] = {}) wont change references', ->
+
+        list    = new List 'id', [{id: 1, a: 'xyz'}, {id: 2, a: 'abc'}]
+        sublist = new ListMask list, filter_fn
+
+        record = sublist[0]
+        expect(Object.getOwnPropertyDescriptor(sublist, 0).get?).toBe true
+        expect(list.idMap[2]).toBe record
+        expect(list[1]).toBe record
+        expect(sublist[0]).toBe record
+        sublist[0] = {id: 3, a: 'aaa'}
+
+        expect(sublist[0]).toBe record
+        expect(sublist.idMap[3]).toBe record
+        expect(record.a).toBe 'aaa'
+
+        sublist[0] = {id: 3, a: 'fwf'}
+        expect(sublist.idMap[3]).toBeUndefined()
+        expect(sublist.length).toBe 0
+        expect(list[1]).toBe record
+        expect(record.a).toBe 'fwf'

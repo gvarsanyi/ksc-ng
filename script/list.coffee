@@ -173,7 +173,15 @@ ksc.factory 'ksc.List', [
             delete list[SCOPE_UNSUBSCRIBER]
             list.destroy()
 
-        new ArrayTracker list # adds ._tracker
+        # adds ._tracker
+        new ArrayTracker list,
+          set: (index, value, next, set_type) ->
+            if set_type is 'external' and
+            (record = list._tracker.store[index]) instanceof Record
+              record._replace value
+            else
+              next()
+            return
 
         define_value list, '_origFn', {}
 

@@ -220,7 +220,9 @@ ksc.factory 'ksc.ArrayTracker', [
         # copy to right
         if move_to_right and orig_len > index
           for i in [orig_len - 1 .. index] by -1
-            set_element tracker, i + items_len, store[i], 'move'
+            record = store[i]
+            store[i] = undefined
+            set_element tracker, i + items_len, record, 'move'
 
         for value, i in items
           set_element tracker, i + index, value
@@ -308,10 +310,12 @@ ksc.factory 'ksc.ArrayTracker', [
         if list.length
           orig_len  = list.length
           res       = list[index]
-          for i in [index + 1 ... orig_len] by 1
-            set_element tracker, i - 1, store[i], 'move'
           if del = tracker.del
             deletable = store[orig_len - 1]
+          for i in [index + 1 ... orig_len] by 1
+            record = store[i]
+            store[i] = undefined
+            set_element tracker, i - 1, record, 'move'
           list.length = orig_len - 1
           if del?(orig_len - 1, deletable) isnt false
             delete store[orig_len - 1]
@@ -334,10 +338,12 @@ ksc.factory 'ksc.ArrayTracker', [
         work = ->
           if arguments.length
             value = arguments[0]
-          if tracker.store[index] is value
+          if store[index] is value
             return false
-          tracker.store[index] = value
+          store[index] = value
           true
+
+        store = tracker.store
 
         if tracker.set
           tracker.set index, value, work, set_type or 'external'
@@ -450,8 +456,11 @@ ksc.factory 'ksc.ArrayTracker', [
 
         res = list[index ... index + how_many]
 
-        move = (i) ->
-          set_element tracker, i - how_many + items_len, store[i], 'move'
+        move = (i, to_right) ->
+          record = store[i]
+          if to_right
+            store[i] = undefined
+          set_element tracker, i - how_many + items_len, record, 'move'
 
         if how_many > items_len # cut_count >= 1
           for i in [index + how_many ... orig_len] by 1
@@ -460,7 +469,7 @@ ksc.factory 'ksc.ArrayTracker', [
             ArrayTracker.rm tracker, orig_len - i - 1
         else if how_many < items_len # copy to right
           for i in [orig_len - 1 .. index + how_many] by -1
-            move i
+            move i, 1
 
         if items_len
           for i in [how_many ... items_len] by 1
