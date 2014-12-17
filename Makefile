@@ -12,15 +12,23 @@ clean:
 	-@rm -rf dist
 	@mkdir -p dist
 
-dist: clean dependencies
-	@node_modules/.bin/coffee --no-header -b -o dist/tmp/pre script/
-	@cd dist/tmp/pre; \
-		for JS in *.js ; do \
-			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../$$JS; \
+tmpcompile:
+	-@rm -rf .tmp
+	@mkdir -p .tmp/coffee
+	@cd script; \
+		for COFFEE in *.coffee ; do \
+			cat $$COFFEE | grep -v "#DOC-ONLY#" > ../.tmp/coffee/$$COFFEE; \
 		done
-	@rm -rf dist/tmp/pre
-	@cat test/dep/test/coffeescript-helpers.js test/dep/test/module-init.js dist/tmp/*.js > dist/ksc.js
-	@rm -rf dist/tmp
+	@node_modules/.bin/coffee --no-header -b -o .tmp/pre-js .tmp/coffee/
+	@mkdir -p .tmp/js
+	@cd .tmp/pre-js; \
+		for JS in *.js ; do \
+			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../js/$$JS; \
+		done
+
+dist: clean dependencies tmpcompile
+	@cat test/dep/test/coffeescript-helpers.js test/dep/test/module-init.js .tmp/js/*.js > dist/ksc.js
+	@rm -rf .tmp
 	@ls -la dist/ksc.js
 	@node_modules/.bin/uglifyjs dist/ksc.js -b -o dist/ksc.sans-comments.js
 	@ls -la dist/ksc.sans-comments.js
@@ -37,18 +45,10 @@ doc: dependencies
 lint: dependencies
 	@node_modules/.bin/coffeelint script/ test/unit/
 
-_cmptest: dependencies
-	@node_modules/.bin/coffee --no-header -b -o test/tmp/pre script/
-	@cd test/tmp/pre; \
-		for JS in *.js ; do \
-			cat $$JS | grep -v " __hasProp = " | grep -v " __extends = " | grep -v " __slice = " | grep -v " __indexOf = " | grep -v " __bind = " > ../$$JS; \
-		done
-	@rm -rf test/tmp/pre
-
-test: dependencies _cmptest
+test: dependencies tmpcompile
 	-node_modules/karma/bin/karma start test/karma.conf.coffee $(file)
-	@rm -rf test/tmp
+	@rm -rf .tmp
 
-full-test: dependencies _cmptest
+full-test: dependencies tmpcompile
 	-node_modules/karma/bin/karma start test/karma-full-with-sauce.conf.coffee $(file)
-	@rm -rf test/tmp
+	@rm -rf .tmp
