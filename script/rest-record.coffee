@@ -28,7 +28,7 @@ ksc.factory 'ksc.RestRecord', [
     ###
     class RestRecord extends Record
       # @property [object] load promise used if ._options.cache is set
-      _restCache: null
+      _restCache: undefined #DOC-ONLY#
 
       # @property [number] number of pending REST requests (of any kind) - may
       # be used a load indicator

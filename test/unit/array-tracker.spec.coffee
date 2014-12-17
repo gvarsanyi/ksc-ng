@@ -12,9 +12,9 @@ describe 'app.service', ->
       arr = [1, 2, 3]
       store = {}
 
-      setter = (index, value, setter_fn) ->
-        # console.log 'set:', index, value
-        setter_fn String value
+      setter = (index, value, next_fn, setter_type) ->
+        # console.log 'set:', index, value, next_fn, setter_type
+        next_fn String value
 
       getter = (index, value) ->
         # console.log 'get:', index, value

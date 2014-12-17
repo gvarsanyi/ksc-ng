@@ -41,6 +41,26 @@ describe 'app.factory', ->
     afterEach ->
       unsubscribe()
 
+      # all items must be getters
+      for item, i in list
+        expect(Object.getOwnPropertyDescriptor(list, i).get?).toBe true
+
+
+    it 'Extended class works', ->
+      class Masky extends ListMask
+        constructor: (list) ->
+          return super list, (-> true)
+
+        first: ->
+          @[0]
+
+        list = new List
+        list.push {id: 1, start: 30, end: 50}, {id: 2, start: 7, end: 8}
+
+        sublist = new Masky list
+        expect(sublist.length).toBe 2
+        expect(sublist.first().id).toBe 1
+
     describe 'Split records', ->
       it 'basic scenario', ->
         list = new List
@@ -516,3 +536,27 @@ describe 'app.factory', ->
       sublist.filter = sublist2.filter = (-> false)
       expect(sublist.length).toBe 0
       expect(sublist2.length).toBe 0
+
+    describe 'Getterified behavior', ->
+
+      it 'List element assignment (list[x] = {}) wont change references', ->
+
+        list    = new List 'id', [{id: 1, a: 'xyz'}, {id: 2, a: 'abc'}]
+        sublist = new ListMask list, filter_fn
+
+        record = sublist[0]
+        expect(Object.getOwnPropertyDescriptor(sublist, 0).get?).toBe true
+        expect(list.idMap[2]).toBe record
+        expect(list[1]).toBe record
+        expect(sublist[0]).toBe record
+        sublist[0] = {id: 3, a: 'aaa'}
+
+        expect(sublist[0]).toBe record
+        expect(sublist.idMap[3]).toBe record
+        expect(record.a).toBe 'aaa'
+
+        sublist[0] = {id: 3, a: 'fwf'}
+        expect(sublist.idMap[3]).toBeUndefined()
+        expect(sublist.length).toBe 0
+        expect(list[1]).toBe record
+        expect(record.a).toBe 'fwf'

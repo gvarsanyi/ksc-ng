@@ -83,8 +83,7 @@ ksc.service 'ksc.util', [
             required:  'All arguments must be objects'
         for obj in objects
           if Array.isArray obj
-            unless fn = obj.pop
-              fn = Array::pop
+            fn = obj.pop or obj._origFn?.pop or Array::pop
             for i in [0 ... obj.length] by 1
               fn.call obj
           else

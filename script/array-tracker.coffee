@@ -50,64 +50,15 @@ ksc.factory 'ksc.ArrayTracker', [
     ###
     class ArrayTracker
 
-      ###
-      @method #del(index, value)
-        Indicates that element was deleted from a certain index (always the end
-        of the array)
-
-        @param [number] index of deleted element in array
-        @param [mixed] stored value of the element
-
-        @return [false|mixed] If false is returned, store[index] will not be
-          deleted by ArrayTracker so you can keep it or deal with it any other
-          way. Any other return value will be disregarded.
-      ###
-
-      ###
-      @method #get(index, value)
-        Inject getter logic for array elements (see first example in class def)
-
-        @note It is also used for reading values when temporarly turning values
-          into plain values (e.g. for using native sort() ot reverse() methods)
-
-        @param [number] index of element in array
-        @param [mixed] value stored for the element
-
-        @return [mixed] this will be used as element value in the array
-      ###
-
-      ###
-      @method #set(index, value, next, set_type)
-        Inject setter logic or set to/leave as null for default behavior
-        (elements stored as-is). See second example in class def.
-
-        @note It is also used for re-setting values after temporarly turning
-          values into plain values (e.g. for using native sort() ot reverse()
-          methods)
-
-        @param [number] index of element in array
-        @param [mixed] value to be set
-        @param [function] next call when your biz logic is ready. Takes 0 or 1
-          argument. If argument is provided that will be stored as value.
-        @param [string] set_type Any of the following values:
-          - 'external': coming from oustide by updating an element or adding new
-          - 'move': previously processed element moved to new index (after pop,
-            unshift or splice)
-          - 'reload': after temporarly reloading array with processed values,
-            values receive updated indexes (sort and reverse)
-
-        @return [mixed] whetever you define. Return value will not be used
-      ###
-
       # @property [Array] reference to the original array
-      list: undefined
+      list: undefined #DOC-ONLY#
 
       # @property [Object] store for original/overridden properties of the
       #   referenced array (hidden: not enumerable)
-      origFn: undefined
+      origFn: undefined #DOC-ONLY#
 
       # @property [Object] reference to value store object
-      store: undefined
+      store: undefined #DOC-ONLY#
 
 
       ###
@@ -150,16 +101,16 @@ ksc.factory 'ksc.ArrayTracker', [
             unless typeof fn is 'function'
               error.Type {fn, 'Must be a function'}
           else
-            fn = null
+            fn = undefined
           fn
 
         functions = {}
         for key in ['del', 'get', 'set']
-          functions[key] = options[key] or null
+          functions[key] = options[key] or undefined
         for key, fn of functions
           functions[key] = fnize fn
           do (key) ->
-            define_get_set tracker, key, (-> functions[key] or null),
+            define_get_set tracker, key, (-> functions[key] or undefined),
                            ((fn) -> functions[key] = fnize fn), 1
 
         for key, fn of ArrayTracker when key.substr(0, 1) is '_'
@@ -170,6 +121,55 @@ ksc.factory 'ksc.ArrayTracker', [
               ArrayTracker['_' + key].apply tracker, args
 
         process tracker
+
+      ###
+      Indicates that element was deleted from a certain index (always the end
+      of the array)
+
+      @param [number] index of deleted element in array
+      @param [mixed] stored value of the element
+
+      @return [false|mixed] If false is returned, store[index] will not be
+        deleted by ArrayTracker so you can keep it or deal with it any other
+        way. Any other return value will be disregarded.
+      ###
+      del: (index, value) -> #DOC-ONLY#
+
+      ###
+      Inject getter logic for array elements (see first example in class def)
+
+      @note It is also used for reading values when temporarly turning values
+        into plain values (e.g. for using native sort() ot reverse() methods)
+
+      @param [number] index of element in array
+      @param [mixed] value stored for the element
+
+      @return [mixed] this will be used as element value in the array
+      ###
+      get: (index, value) -> #DOC-ONLY#
+
+      ###
+      Inject setter logic or set to/leave as null for default behavior
+      (elements stored as-is). See second example in class def.
+
+      @note It is also used for re-setting values after temporarly turning
+        values into plain values (e.g. for using native sort() ot reverse()
+        methods)
+
+      @param [number] index of element in array
+      @param [mixed] value to be set
+      @param [function] next call when your biz logic is ready. Takes 0 or 1
+        argument. If argument is provided that will be stored as value.
+      @param [string] set_type Any of the following values:
+        - 'external': coming from oustide by updating an element or adding new
+        - 'move': previously processed element moved to new index (after pop,
+          unshift or splice)
+        - 'reload': after temporarly reloading array with processed values,
+          values receive updated indexes (sort and reverse)
+
+      @return [mixed] whetever you define. Return value will not be used
+      ###
+      set: (index, value, next, set_type) -> #DOC-ONLY#
 
       ###
       Detach tracker from array, revert to plain values and restore original
@@ -220,7 +220,9 @@ ksc.factory 'ksc.ArrayTracker', [
         # copy to right
         if move_to_right and orig_len > index
           for i in [orig_len - 1 .. index] by -1
-            set_element tracker, i + items_len, store[i], 'move'
+            record = store[i]
+            store[i] = undefined
+            set_element tracker, i + items_len, record, 'move'
 
         for value, i in items
           set_element tracker, i + index, value
@@ -308,10 +310,12 @@ ksc.factory 'ksc.ArrayTracker', [
         if list.length
           orig_len  = list.length
           res       = list[index]
-          for i in [index + 1 ... orig_len] by 1
-            set_element tracker, i - 1, store[i], 'move'
           if del = tracker.del
             deletable = store[orig_len - 1]
+          for i in [index + 1 ... orig_len] by 1
+            record = store[i]
+            store[i] = undefined
+            set_element tracker, i - 1, record, 'move'
           list.length = orig_len - 1
           if del?(orig_len - 1, deletable) isnt false
             delete store[orig_len - 1]
@@ -334,10 +338,12 @@ ksc.factory 'ksc.ArrayTracker', [
         work = ->
           if arguments.length
             value = arguments[0]
-          if tracker.store[index] is value
+          if store[index] is value
             return false
-          tracker.store[index] = value
+          store[index] = value
           true
+
+        store = tracker.store
 
         if tracker.set
           tracker.set index, value, work, set_type or 'external'
@@ -450,8 +456,11 @@ ksc.factory 'ksc.ArrayTracker', [
 
         res = list[index ... index + how_many]
 
-        move = (i) ->
-          set_element tracker, i - how_many + items_len, store[i], 'move'
+        move = (i, to_right) ->
+          record = store[i]
+          if to_right
+            store[i] = undefined
+          set_element tracker, i - how_many + items_len, record, 'move'
 
         if how_many > items_len # cut_count >= 1
           for i in [index + how_many ... orig_len] by 1
@@ -460,7 +469,7 @@ ksc.factory 'ksc.ArrayTracker', [
             ArrayTracker.rm tracker, orig_len - i - 1
         else if how_many < items_len # copy to right
           for i in [orig_len - 1 .. index + how_many] by -1
-            move i
+            move i, 1
 
         if items_len
           for i in [how_many ... items_len] by 1

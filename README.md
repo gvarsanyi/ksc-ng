@@ -62,5 +62,6 @@ See test coverage details at <project_dir>/test/coverage/<browsers>/index.html
 ### Lint check
     make lint
 
-### All tasks combined: full-test, lint, doc, dist
+### All tasks combined: test, lint, doc, dist
     make all
+Does not do full-test (Chrome-test only)

@@ -5,6 +5,7 @@ describe 'app.factory', ->
 
     List = ListMapper = ListMask = null
     list = list2 = list3 = sublist = sublist2 = sublist3 = null
+    property_desc = Object.getOwnPropertyDescriptor
 
     beforeEach ->
       module 'app'
@@ -45,3 +46,36 @@ describe 'app.factory', ->
 
       list.pop()
       expect(sublist3.pseudoMap.sub.list1[1]).toBeUndefined()
+
+    describe 'Getterified', ->
+
+      it '.idMap assignment (list.idMap[x] = {}) uses ._replace()', ->
+
+        list = new List 'id', [{id: 1, a: 1}, {id: 2, a: 2}]
+        record = list.idMap[2]
+        expect(list.idMap[3]).toBeUndefined()
+        expect(property_desc(list.idMap, 1).get?).toBe true
+        expect(list[1]).toBe record
+        list.idMap[2] = {id: 3, a: 3}
+
+        expect(list.idMap[3]).toBe record
+        expect(list.idMap[2]).toBeUndefined()
+        expect(list[1]).toBe record
+        expect(record.a).toBe 3
+
+      it '.pseudoMap assignment (list.pseudoMap[x] = {}) uses ._replace()', ->
+
+        list = new List 'id', [{id: 1, a: 1}, {id: null, a: 2}]
+        expect(list.idMap[3]).toBeUndefined()
+        for key of list.pseudoMap # gets pseudo_id
+          pseudo_id = key
+          break
+        record = list.pseudoMap[pseudo_id]
+        expect(property_desc(list.pseudoMap, pseudo_id).get?).toBe true
+        expect(list[1]).toBe record
+        list.pseudoMap[pseudo_id] = {id: 3, a: 3}
+
+        expect(list.idMap[3]).toBe record
+        expect(list.pseudoMap[pseudo_id]).toBeUndefined()
+        expect(list[1]).toBe record
+        expect(record.a).toBe 3

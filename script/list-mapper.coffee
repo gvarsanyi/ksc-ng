@@ -7,22 +7,6 @@ ksc.factory 'ksc.ListMapper', [
 
 
     ###
-    Helper function that looks up named source references on .idMap and
-    .pseudoMap hierarchies (aka target)
-
-    @param [Object] target .idMap or .pseudoMap
-    @param [Array] source_names (optional) list of source_names that ID target
-
-    @return [undefined]
-    ###
-    deep_target = (target, source_names) ->
-      if source_names
-        for source_name in source_names
-          target = target[source_name]
-      target
-
-
-    ###
     A helper class that features creating look-up objects for mappable lists
     like {List} and {ListMask}.
 
@@ -42,19 +26,19 @@ ksc.factory 'ksc.ListMapper', [
     class ListMapper
 
       # @property [Object] key-value (recordId: {Record}) mapping
-      idMap: null
+      idMap: undefined #DOC-ONLY#
 
       ###
       @property [boolean|undefined] indicates multiple named sources on parent.
         Set to boolean if parent is {ListMask} or undefined {List}.
       ###
-      multi: null
+      multi: undefined #DOC-ONLY#
 
       # @property [List/ListMask] parent {List} or {ListMask}
-      parent: null
+      parent: undefined #DOC-ONLY#
 
       # @property [Object] key-value (recordPseudoId: {Record}) mapping
-      pseudoMap: null
+      pseudoMap: undefined #DOC-ONLY#
 
 
       ###
@@ -106,7 +90,7 @@ ksc.factory 'ksc.ListMapper', [
 
 
       ###
-      Add record to .idMap or .pseudoMap (whichever fits)
+      Add record to .idMap or .pseudoMap (whichever fits) as getter/setter
 
       @param [Record] record reference to a record
       @param [Array<string>] source_names (optional) named source identifier
@@ -123,9 +107,15 @@ ksc.factory 'ksc.ListMapper', [
           id     = record._pseudo
           target = mapper.pseudoMap
 
-        target = deep_target target, source_names
+        target = ListMapper.deepTarget target, source_names
 
-        target[id] = record
+        util.defineGetSet target,
+                          id,
+                          (-> record),
+                          ((value) -> record._replace value),
+                          1
+
+        record
 
 
       ###
@@ -155,7 +145,7 @@ ksc.factory 'ksc.ListMapper', [
         else
           target = mapper.idMap
 
-        target = deep_target target, source_names
+        target = ListMapper.deepTarget target, source_names
 
         delete target[map_id]
         return
@@ -189,9 +179,24 @@ ksc.factory 'ksc.ListMapper', [
           id     = map_id
           target = mapper.parent.idMap
 
-        target = deep_target target, source_names
+        target = ListMapper.deepTarget target, source_names
 
         target[id] or false
+
+      ###
+      Helper function that looks up named source references on .idMap and
+      .pseudoMap hierarchies (aka target)
+
+      @param [Object] target .idMap or .pseudoMap
+      @param [Array] source_names (optional) list of source_names that ID target
+
+      @return [undefined]
+      ###
+      @deepTarget = (target, source_names) ->
+        if source_names
+          for source_name in source_names
+            target = target[source_name]
+        target
 
 
       ###

@@ -17,7 +17,7 @@ ksc.factory 'ksc.EventEmitter', [
     ###
     class EventSubscriptions
       # @property [object] names storage for subsctiptions per type
-      names: null
+      names: undefined #DOC-ONLY#
 
       ###
       Emission logic

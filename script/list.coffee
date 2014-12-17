@@ -1,9 +1,9 @@
 
 ksc.factory 'ksc.List', [
-  '$rootScope', 'ksc.EditableRecord', 'ksc.EventEmitter', 'ksc.ListMapper',
-  'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
-  ($rootScope, EditableRecord, EventEmitter, ListMapper,
-   ListSorter, Record, error, util) ->
+  '$rootScope', 'ksc.ArrayTracker', 'ksc.EditableRecord', 'ksc.EventEmitter',
+  'ksc.ListMapper', 'ksc.ListSorter', 'ksc.Record', 'ksc.error', 'ksc.util',
+  ($rootScope, ArrayTracker, EditableRecord, EventEmitter,
+   ListMapper, ListSorter, Record, error, util) ->
 
     SCOPE_UNSUBSCRIBER = '_scopeUnsubscriber'
 
@@ -11,30 +11,6 @@ ksc.factory 'ksc.List', [
 
     define_value = util.defineValue
     is_object    = util.isObject
-
-    normalize_return_action = (items, return_action) ->
-      unless typeof return_action is 'boolean'
-        items.push return_action
-        return_action = false
-      return_action
-
-    emit_action = (list, action) ->
-      list.events.emit 'update', {node: list, action}
-
-    ###
-    A helper function, similar to Array::splice, except it does not delete.
-    This is a central place for injecting into the array, a candidate for
-    turning elements into getters/setters if we ever go there.
-
-    @param [Object] list Array with extensions from {List}
-    @param [number] pos Index in array where injection starts
-    @param [Record] records... Element(s) to be injected
-
-    @return [undefined]
-    ###
-    inject = (list, pos, records) ->
-      Array::splice.call list, pos, 0, records...
-      return
 
 
     ###
@@ -86,6 +62,14 @@ ksc.factory 'ksc.List', [
       ###
       _mapper: undefined
 
+      # @property [Object] map of replaced methods. This actually contains
+      #   replacment methods from ArrayTracker, see actual original methods at
+      #   {ArrayTracker#origFn}
+      _origFn: undefined
+
+      # @property [ArrayTracker] reference to getter/setter management object
+      _tracker: undefined
+
       # @property [EventEmitter] reference to related event-emitter instance
       events: undefined
 
@@ -100,10 +84,6 @@ ksc.factory 'ksc.List', [
 
       # @property [object] list-related options
       options: undefined
-
-      # @property [ListSorter] (optional) list auto-sort logic see: {ListSorter}
-      sorter: undefined
-
 
       ###
       Creates a vanilla Array instance (e.g. []), adds methods and overrides
@@ -168,9 +148,6 @@ ksc.factory 'ksc.List', [
             description: 'id_property argument conflicts with ' +
                          '.options.record.idProperty'
 
-        for key, value of @constructor.prototype when key isnt 'constructor'
-          define_value list, key, value
-
         options = angular.copy(options) or {}
         define_value list, 'options', options
         options.record ?= {}
@@ -195,6 +172,23 @@ ksc.factory 'ksc.List', [
           define_value list, SCOPE_UNSUBSCRIBER, scope.$on '$destroy', ->
             delete list[SCOPE_UNSUBSCRIBER]
             list.destroy()
+
+        # adds ._tracker
+        new ArrayTracker list,
+          set: (index, value, next, set_type) ->
+            if set_type is 'external' and
+            (record = list._tracker.store[index]) instanceof Record
+              record._replace value
+            else
+              next()
+            return
+
+        define_value list, '_origFn', {}
+
+        for key, value of @constructor.prototype
+          if value? and key isnt 'constructor'
+            list._origFn[key] = list[key]
+            define_value list, key, value
 
         # sets both .sorter and .options.sorter
         ListSorter.register list, options.sorter
@@ -280,16 +274,16 @@ ksc.factory 'ksc.List', [
 
         tmp_container = []
 
-        while item = Array::pop.call list
+        while item = list._origFn.pop()
           unless item in removable
             tmp_container.push item
 
         if tmp_container.length
           tmp_container.reverse()
-          inject list, list.length, tmp_container
+          List.inject list, list.length, tmp_container
 
         action = {cut}
-        emit_action list, action
+        List.emitAction list, action
 
         action
 
@@ -316,7 +310,7 @@ ksc.factory 'ksc.List', [
           list.events.unhalt()
 
         if action.cut.length
-          emit_action list, action
+          List.emitAction list, action
 
         if return_action
           return action
@@ -372,7 +366,7 @@ ksc.factory 'ksc.List', [
         @return [Object] Affected records
       ###
       push: (items..., return_action) ->
-        return_action = normalize_return_action items, return_action
+        return_action = List.normalizeReturnAction items, return_action
 
         list = @
 
@@ -394,6 +388,25 @@ ksc.factory 'ksc.List', [
       ###
       shift: ->
         List.remove @, 'shift'
+
+      ###
+      Optional list auto-sorter logic, see: {ListSorter}
+
+      @note This is Getter/setter for function or undefined. Will start as
+        undefined by default. Function can be assigned at init time (as part of
+        options, like: `new ListMask src_list, filter_fn, {sorter: fn}`) or in
+        run-time by assigning function or null/undefined to either
+        list_mask.sorter or list_mask.options.sorter.
+
+      @note list_mask.sorter or list_mask.options.sorter have the same
+        getter/setter
+
+      @param [Record] record_a Record instance to compare
+      @param [Record] record_b Record instance to compare
+
+      @return [number] <0, 0, >0 indicates sort relation between records A and B
+      ###
+      sorter: (record_a, record_b) -> #DOC-ONLY#
 
       ###
       Upsert 1 or more records - adds to the beginning of the list if unsorted.
@@ -431,7 +444,7 @@ ksc.factory 'ksc.List', [
         @return [Object] Affected records
       ###
       unshift: (items..., return_action) ->
-        return_action = normalize_return_action items, return_action
+        return_action = List.normalizeReturnAction items, return_action
 
         list = @
 
@@ -479,7 +492,7 @@ ksc.factory 'ksc.List', [
         @return [Object] Actions taken (see event description: action)
       ###
       splice: (pos, count, items..., return_action) ->
-        return_action = normalize_return_action items, return_action
+        return_action = List.normalizeReturnAction items, return_action
 
         if typeof items[0] is 'undefined' and items.length is 1
           items.pop()
@@ -518,7 +531,7 @@ ksc.factory 'ksc.List', [
           list.events.unhalt()
 
         if action.cut or action.add or action.update
-          emit_action list, action
+          List.emitAction list, action
 
         if return_action
           return action
@@ -545,9 +558,9 @@ ksc.factory 'ksc.List', [
           error.Permission 'can not reverse an auto-sorted list'
 
         if list.length > 1
-          Array::reverse.call list
+          list._origFn.reverse()
 
-          emit_action list, {reverse: true}
+          List.emitAction list, {reverse: true}
 
         list
 
@@ -586,10 +599,10 @@ ksc.factory 'ksc.List', [
               return 1
             -1
 
-          Array::sort.call list, sorter_fn
+          list._origFn.sort sorter_fn
 
           for record, i in list when record isnt cmp[i]
-            emit_action list, {sort: true}
+            List.emitAction list, {sort: true}
             break
 
         list
@@ -705,12 +718,12 @@ ksc.factory 'ksc.List', [
         if list.sorter # find the proper place for the updated record
           record = info.record
           for item, pos in list when item is record
-            Array::splice.call list, pos, 1
+            list._origFn.splice pos, 1
             new_pos = list.sorter.position record
-            inject list, new_pos, [record]
+            List.inject list, new_pos, [record]
             break
 
-        emit_action list, {update: [info]}
+        List.emitAction list, {update: [info]}
 
 
       ###
@@ -789,15 +802,56 @@ ksc.factory 'ksc.List', [
             if list.sorter # sorted (insert to position)
               for item in tmp
                 pos = list.sorter.position item
-                inject list, pos, [item]
+                List.inject list, pos, [item]
             else # not sorted (actual push/unshift)
-              inject list, pos, tmp
+              List.inject list, pos, tmp
         finally
           list.events.unhalt()
 
-        emit_action list, action
+        List.emitAction list, action
 
         action
+
+      ###
+      A helper function to emit event propagating registered actions.
+
+      @param [List] list Array with extensions from {List}
+      @param [Object] action Description of actions
+
+      @return [boolean] indicates if event emission has happened
+      ###
+      @emitAction: (list, action) ->
+        list.events.emit 'update', {node: list, action}
+
+      ###
+      A helper function, similar to Array::splice, except it does not delete.
+      This is a central place for injecting into the array, a candidate for
+      turning elements into getters/setters if we ever go there.
+
+      @param [Object] list Array with extensions from {List}
+      @param [number] pos Index in array where injection starts
+      @param [Record] records... Element(s) to be injected
+
+      @return [undefined]
+      ###
+      @inject: (list, pos, records) ->
+        list._origFn.splice.call list, pos, 0, records...
+        return
+
+      ###
+      A helper function that takes items and decides if last argument is
+      one of the items or a return action request boolean.
+
+      @param [Array<Record>] items
+      @param [Record|boolean] item or boolean
+
+      @return [boolean] return action request indicator
+      ###
+      @normalizeReturnAction: (items, return_action) ->
+        unless typeof return_action is 'boolean'
+          items.push return_action
+          return_action = false
+        return_action
 
       ###
       Aggregate method for pop/shift
@@ -813,8 +867,8 @@ ksc.factory 'ksc.List', [
       @return [Record] Removed record
       ###
       @remove: (list, orig_fn) ->
-        if record = Array.prototype[orig_fn].call list
+        if record = list._origFn[orig_fn]()
           list._mapper?.del record
-          emit_action list, {cut: [record]}
+          List.emitAction list, {cut: [record]}
         record
 ]

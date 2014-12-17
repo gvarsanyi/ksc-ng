@@ -3,8 +3,8 @@
 *.kate-swp
 node_modules
 /.project
+.tmp/
 doc/*
 test/coverage/*
 libs*.js*
-test/tmp/
 test/sauce.json

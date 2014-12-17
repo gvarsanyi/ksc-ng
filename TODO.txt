@@ -1,5 +1,3 @@
 - generic list cache logic
 - poller/push event receiver/refresher service, API
-- getterify/setterify List elements
 - add event handling tests for array related events on [editable-]record
-

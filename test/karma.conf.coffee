@@ -16,8 +16,8 @@ module.exports = (config) ->
     files.push 'unit/**/*.coffee'
     reporters.push 'coverage'
     preprocessors =
-      'tmp/**/*.js':      'coverage'
-      'unit/**/*.coffee': 'coffee'
+      '../.tmp/js/**/*.js': 'coverage'
+      'unit/**/*.coffee':   'coffee'
 
 
   config.set
@@ -31,7 +31,7 @@ module.exports = (config) ->
     files:            ['dep/angular.js'
                        'dep/angular-*.js'
                        'dep/test/**/*.js'
-                       'tmp/**/*.js'].concat files
+                       '../.tmp/js/**/*.js'].concat files
     frameworks:       ['jasmine']
     logLevel:         'WARN'
     preprocessors:    preprocessors
