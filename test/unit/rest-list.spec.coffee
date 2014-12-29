@@ -50,6 +50,9 @@ describe 'app.factory', ->
 
     it 'idProperty is required', ->
       expect(-> new RestList).toThrow()
+      expect(-> new RestList 'id').not.toThrow()
+      expect(-> new RestList record: idProperty: 'id').not.toThrow()
+      expect(-> new RestList record: idProperty: ['id1', 'id2']).not.toThrow()
 
     it 'Method .restGetRaw() with query params', ->
       list = new RestList list_cfg
